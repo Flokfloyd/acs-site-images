@@ -1,7 +1,12 @@
 // EspaceMembre.tsx — connexion par e-mail + code, espace adhérent, gestion admin
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
-import { sb, C, font, serif } from "./AcsBase.tsx"
+import { sb as sbReel, C, font, serif } from "./AcsBase.tsx"
+import { demoClient } from "./AcsDemo.tsx"
+
+// En mode démo (aperçu dans l’éditeur), toutes les fonctions utilisent un faux client en mémoire
+let clientDemo: any = null
+const sb = (): any => clientDemo ?? sbReel()
 
 type Adherent = { id: string; email: string; prenom?: string; nom?: string; role: "membre" | "admin"; cotisation_annee?: number; actif: boolean }
 
@@ -20,7 +25,9 @@ function Msg({ text, err }: { text: string; err?: boolean }) {
 }
 
 // ===================================================================================
-export default function EspaceMembre(props: { lienSemestriels: string }) {
+export default function EspaceMembre(props: { lienSemestriels: string; demo: "non" | "connexion" | "membre" | "admin" }) {
+    const demoRef = React.useRef<any>(null)
+    if (props.demo && props.demo !== "non") { if (!demoRef.current || demoRef.current.mode !== props.demo) demoRef.current = { mode: props.demo, c: demoClient(props.demo) }; clientDemo = demoRef.current.c } else clientDemo = null
     const client = sb()
     const [ready, setReady] = React.useState(false)
     const [email, setEmail] = React.useState("")
@@ -32,7 +39,7 @@ export default function EspaceMembre(props: { lienSemestriels: string }) {
         client.auth.getSession().then(({ data }) => { setSessionEmail(data.session?.user.email ?? null); setReady(true) })
         const { data } = client.auth.onAuthStateChange((_e, s) => setSessionEmail(s?.user.email ?? null))
         return () => data.subscription.unsubscribe()
-    }, [])
+    }, [client])
 
     React.useEffect(() => {
         if (!client || !sessionEmail) { setMoi(null); return }
@@ -48,8 +55,11 @@ export default function EspaceMembre(props: { lienSemestriels: string }) {
     return wrap(<Tableau moi={moi} lienSemestriels={props.lienSemestriels} />)
 }
 
-EspaceMembre.defaultProps = { lienSemestriels: "/#n4" }
-addPropertyControls(EspaceMembre, { lienSemestriels: { type: ControlType.String, title: "Lien semestriels", defaultValue: "/#n4" } })
+EspaceMembre.defaultProps = { lienSemestriels: "/#n4", demo: "non" }
+addPropertyControls(EspaceMembre, {
+    lienSemestriels: { type: ControlType.String, title: "Lien semestriels", defaultValue: "/#n4" },
+    demo: { type: ControlType.Enum, title: "Aperçu démo", options: ["non", "connexion", "membre", "admin"], optionTitles: ["Non (réel)", "Écran de connexion", "Adhérent connecté", "Admin connecté"], defaultValue: "non" },
+})
 
 // ---------- Connexion : e-mail puis code à 6 chiffres ----------
 function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) => void }) {
