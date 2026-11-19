@@ -132,7 +132,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                 <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
             </div>
             {admin && (
-                <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${C.line}` }}>
                     {tabs.map(([k, t]) => (
                         <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>
                     ))}
