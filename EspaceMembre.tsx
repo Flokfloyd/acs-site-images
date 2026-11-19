@@ -1,7 +1,7 @@
 // EspaceMembre.tsx — connexion par e-mail + code, espace adhérent, gestion admin
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
-import { sb, C, font } from "./AcsBase.tsx"
+import { sb, C, font, serif } from "./AcsBase.tsx"
 
 type Adherent = { id: string; email: string; prenom?: string; nom?: string; role: "membre" | "admin"; cotisation_annee?: number; actif: boolean }
 
@@ -11,7 +11,7 @@ const input: React.CSSProperties = { width: "100%", boxSizing: "border-box", bac
 const label: React.CSSProperties = { display: "block", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent, margin: "0 0 6px" }
 const btn = (primary = true): React.CSSProperties => ({ background: primary ? C.accent : "transparent", color: primary ? C.accentDark : C.txt, border: primary ? "none" : `1px solid ${C.line}`, borderRadius: 0, padding: "12px 20px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer" })
 const small = (danger = false): React.CSSProperties => ({ background: "transparent", color: danger ? C.danger : C.txt, border: `1px solid ${danger ? C.danger : C.line}`, borderRadius: 0, padding: "6px 12px", font: "inherit", fontSize: 13, cursor: "pointer" })
-const h2: React.CSSProperties = { fontSize: 26, lineHeight: 1.2, margin: "0 0 8px", fontWeight: 600 }
+const h2: React.CSSProperties = { fontFamily: serif, fontSize: 26, lineHeight: 1.2, margin: "0 0 8px", fontWeight: 600 }
 const muted: React.CSSProperties = { color: C.mute, margin: 0 }
 
 function Msg({ text, err }: { text: string; err?: boolean }) {
@@ -41,7 +41,7 @@ export default function EspaceMembre(props: { lienSemestriels: string }) {
 
     const wrap = (children: React.ReactNode) => <div style={{ width: "100%", color: C.txt, ...font }}>{children}</div>
 
-    if (!client) return wrap(<div style={box}><h2 style={h2}>Espace membre</h2><p style={muted}>L’espace membre ouvre bientôt. Les adhérents pourront s’y connecter avec leur adresse e-mail.</p></div>)
+    if (!client) return wrap(<div style={box}><h2 style={h2}>Bientôt disponible</h2><p style={muted}>L’espace membre ouvre bientôt. Les adhérents pourront s’y connecter avec leur adresse e-mail.</p></div>)
     if (!ready) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
     if (!sessionEmail) return wrap(<Connexion email={email} setEmail={setEmail} />)
     if (!moi) return wrap(<div style={box}><h2 style={h2}>Adresse non reconnue</h2><p style={muted}>{sessionEmail} ne figure pas (ou plus) dans la liste des adhérents. Contactez le bureau de l’association.</p><div style={{ marginTop: 20 }}><button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button></div></div>)

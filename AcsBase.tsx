@@ -2,7 +2,9 @@
 // Renseigner les deux valeurs ci-dessous (Supabase > Project Settings > API).
 // La clé « anon » est publique par conception : la sécurité repose sur les
 // règles d'accès (RLS) définies dans la base.
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
+// @ts-ignore — import par URL, résolu par Framer à l’exécution
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
+type SupabaseClient = any
 
 export const SUPABASE_URL = "" // ex. "https://abcdefgh.supabase.co"
 export const SUPABASE_ANON_KEY = "" // ex. "eyJhbGciOi..."
@@ -27,4 +29,5 @@ export const C = {
     danger: "#e08a73",
 }
 
-export const font = { fontFamily: "inherit", fontSize: 15, lineHeight: 1.5 }
+export const font = { fontFamily: "Poppins, sans-serif", fontSize: 15, lineHeight: 1.5 }
+export const serif = "Fraunces, Georgia, serif"

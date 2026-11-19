@@ -1,7 +1,7 @@
 // AgendaLive.tsx — agenda public lu depuis la base (mis à jour par les admins)
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
-import { sb, C, font } from "./AcsBase.tsx"
+import { sb, C, font, serif } from "./AcsBase.tsx"
 
 type Evt = { id: string; date_label: string; date_debut: string | null; titre: string; lieu?: string; description?: string }
 
@@ -28,7 +28,7 @@ export default function AgendaLive(props: { max: number; colonnes: number }) {
             {evts.map((e) => (
                 <article key={e.id} style={{ background: C.panel, border: `1px solid ${C.line}`, padding: 24, display: "flex", flexDirection: "column", gap: 6 }}>
                     <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent }}>{e.date_label}</span>
-                    <h3 style={{ margin: 0, fontSize: 20, lineHeight: 1.25, fontWeight: 600 }}>{e.titre}</h3>
+                    <h3 style={{ margin: 0, fontFamily: serif, fontSize: 20, lineHeight: 1.25, fontWeight: 600 }}>{e.titre}</h3>
                     {(e.lieu || e.description) && <p style={{ margin: 0, color: C.mute }}>{[e.lieu, e.description].filter(Boolean).join(" · ")}</p>}
                 </article>
             ))}
