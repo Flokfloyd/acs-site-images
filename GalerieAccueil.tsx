@@ -88,7 +88,7 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
     }, [nombre])
     return (
         <div style={{ width: "100%" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
                 {photos.map((p, i) => <Vignette key={p.id} p={p} hauteur={210} onClick={() => setOuverte(i)} />)}
             </div>
             {lien && (
