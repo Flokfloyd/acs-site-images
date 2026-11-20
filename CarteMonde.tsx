@@ -16,53 +16,135 @@ export function pt(lon: number, lat: number): [number, number] {
     return [500 + S * x, 259.998 - S * y]
 }
 
-type Cat = "Cactées" | "Succulentes" | "Bulbes"
+type Cat = "Cactées" | "Mésembs" | "Caudex" | "Succulentes" | "Bulbes"
 type Genre = { n: string; c: Cat; pts: [number, number][]; zone: string; pays: string[]; note: string }
 
-// Aires d'origine simplifiées (points indicatifs, pas des localités précises).
-export const GENRES: Genre[] = [
-    { n: "Ariocarpus", c: "Cactées", pts: [[-101.2, 24.2]], zone: "Désert de Chihuahua", pays: ["Mexique", "États-Unis"], note: "Cactus « roches vivantes » à tubercules, à croissance très lente." },
-    { n: "Astrophytum", c: "Cactées", pts: [[-100.3, 26.0]], zone: "Nord-est du Mexique, sud du Texas", pays: ["Mexique", "États-Unis"], note: "Étoiles et mitres d'évêque, couverts de petits flocons blancs." },
-    { n: "Mammillaria", c: "Cactées", pts: [[-99.3, 20.6]], zone: "Mexique surtout, jusqu'aux Caraïbes et au Venezuela", pays: ["Mexique", "États-Unis", "Guatemala", "Colombie", "Venezuela"], note: "Le plus grand genre de cactus, avec plusieurs centaines d'espèces." },
-    { n: "Carnegiea", c: "Cactées", pts: [[-111.6, 32.4]], zone: "Désert de Sonora", pays: ["États-Unis", "Mexique"], note: "Le saguaro, cactus géant des westerns." },
-    { n: "Copiapoa", c: "Cactées", pts: [[-70.6, -26.4]], zone: "Désert d'Atacama", pays: ["Chili"], note: "Cactus du littoral chilien, nourris par les brouillards côtiers." },
-    { n: "Gymnocalycium", c: "Cactées", pts: [[-64.8, -28.5], [-60.5, -22.5]], zone: "Argentine, Bolivie, Paraguay, Uruguay, sud du Brésil", pays: ["Argentine", "Bolivie", "Paraguay", "Uruguay", "Brésil"], note: "Petits cactus globuleux, fleurs généreuses, faciles en collection." },
-    { n: "Rebutia", c: "Cactées", pts: [[-65.4, -21.6]], zone: "Andes de Bolivie et du nord de l'Argentine", pays: ["Bolivie", "Argentine"], note: "Petits cactus d'altitude qui fleurissent dès le printemps." },
-    { n: "Parodia", c: "Cactées", pts: [[-54.5, -29.5]], zone: "Sud du Brésil, Uruguay, Argentine, Paraguay", pays: ["Brésil", "Uruguay", "Argentine", "Paraguay", "Bolivie"], note: "Comprend les anciens Notocactus." },
-    { n: "Rhipsalis", c: "Cactées", pts: [[-43.4, -22.6], [47.5, -18.9], [80.7, 7.4]], zone: "Forêts tropicales d'Amérique ; aussi Afrique, Madagascar, Sri Lanka", pays: ["Brésil", "Madagascar", "Sri Lanka"], note: "Cactus épiphytes : le seul genre présent naturellement hors des Amériques." },
-    { n: "Echeveria", c: "Succulentes", pts: [[-98.2, 19.2], [-78.6, -1.6]], zone: "Mexique, Amérique centrale, Andes", pays: ["Mexique", "Guatemala", "Équateur", "Pérou", "Bolivie"], note: "Rosettes de crassulacées très cultivées." },
-    { n: "Agave", c: "Succulentes", pts: [[-103.6, 21.0], [-110.8, 30.8]], zone: "Mexique et sud-ouest des États-Unis", pays: ["Mexique", "États-Unis"], note: "Grandes rosettes qui fleurissent une seule fois." },
-    { n: "Dudleya", c: "Succulentes", pts: [[-117.3, 33.6]], zone: "Californie et Basse-Californie", pays: ["États-Unis", "Mexique"], note: "Rosettes poudrées des falaises du Pacifique." },
-    { n: "Sedum", c: "Succulentes", pts: [[-3.9, 48.6], [-97.0, 17.2]], zone: "Hémisphère nord, dont la Bretagne et le Mexique", pays: ["France", "Mexique"], note: "L'orpin d'Angleterre pousse sur nos rochers littoraux bretons." },
-    { n: "Sempervivum", c: "Succulentes", pts: [[7.6, 46.0], [0.8, 42.7], [43.4, 42.9]], zone: "Montagnes d'Europe et du Caucase", pays: ["France", "Suisse", "Italie", "Espagne", "Géorgie"], note: "Les joubarbes, rustiques sous notre climat." },
-    { n: "Aeonium", c: "Succulentes", pts: [[-15.9, 28.2]], zone: "Canaries, Madère, Maroc", pays: ["Espagne", "Portugal", "Maroc"], note: "Rosettes sur tiges, en repos l'été." },
-    { n: "Orostachys", c: "Succulentes", pts: [[138.5, 36.4], [127.8, 37.6]], zone: "Japon, Corée, Chine, Mongolie, Russie orientale", pays: ["Japon", "Corée du Sud", "Chine", "Mongolie"], note: "Petites rosettes asiatiques, très rustiques." },
-    { n: "Adenium", c: "Succulentes", pts: [[44.6, 15.0], [43.0, 2.5]], zone: "Péninsule Arabique, Corne et est de l'Afrique", pays: ["Yémen", "Oman", "Arabie saoudite", "Somalie", "Kenya"], note: "La rose du désert, au tronc renflé (caudex)." },
-    { n: "Kalanchoe", c: "Succulentes", pts: [[46.6, -20.6]], zone: "Madagascar et Afrique tropicale", pays: ["Madagascar"], note: "Près de la moitié des espèces vivent à Madagascar." },
-    { n: "Pachypodium", c: "Succulentes", pts: [[44.6, -23.4], [17.4, -28.3]], zone: "Madagascar et Afrique australe", pays: ["Madagascar", "Afrique du Sud", "Namibie"], note: "Troncs épineux et renflés, « palmiers de Madagascar »." },
-    { n: "Aloe", c: "Succulentes", pts: [[28.4, -25.4], [37.0, 0.5], [45.5, 16.5]], zone: "Afrique, Madagascar, péninsule Arabique", pays: ["Afrique du Sud", "Kenya", "Madagascar", "Yémen"], note: "Plus de 500 espèces, de la plante de rocaille à l'arbre." },
-    { n: "Welwitschia", c: "Succulentes", pts: [[14.9, -22.6]], zone: "Désert du Namib", pays: ["Namibie", "Angola"], note: "Deux feuilles seulement, pour une vie de plusieurs siècles." },
-    { n: "Lithops", c: "Succulentes", pts: [[17.9, -29.3], [16.0, -25.9]], zone: "Namaqualand, Karoo, sud de la Namibie", pays: ["Afrique du Sud", "Namibie", "Botswana"], note: "Les « cailloux vivants », camouflés parmi les pierres." },
-    { n: "Conophytum", c: "Succulentes", pts: [[18.8, -31.0]], zone: "Succulent Karoo", pays: ["Afrique du Sud", "Namibie"], note: "Minuscules corps charnus, en repos l'été." },
-    { n: "Haworthia", c: "Succulentes", pts: [[21.5, -33.8]], zone: "Provinces du Cap", pays: ["Afrique du Sud"], note: "Petites rosettes à fenêtres translucides, idéales en intérieur." },
-    { n: "Gasteria", c: "Succulentes", pts: [[25.4, -33.3]], zone: "Cap-Oriental surtout", pays: ["Afrique du Sud", "Namibie"], note: "Feuilles épaisses en langue, fleurs en forme d'estomac." },
-    { n: "Calandrinia", c: "Succulentes", pts: [[133.5, -25.0]], zone: "Australie (et Amériques)", pays: ["Australie", "Chili"], note: "Parakeelyas des déserts australiens." },
-    { n: "Massonia", c: "Bulbes", pts: [[19.6, -32.3]], zone: "Afrique australe", pays: ["Afrique du Sud", "Namibie", "Lesotho"], note: "Bulbes à deux feuilles plaquées au sol, floraison d'hiver." },
+// [genre, catégorie, points "lon,lat;lon,lat", zone, pays séparés par |, note]
+// Aires d'origine simplifiées : points indicatifs, pas des localités précises.
+const D: [string, Cat, string, string, string, string][] = [
+    // ---- Cactées
+    ["Ariocarpus", "Cactées", "-101.2,24.2", "Désert de Chihuahua", "Mexique|États-Unis", "Cactus « roches vivantes » à tubercules, à croissance très lente."],
+    ["Astrophytum", "Cactées", "-100.3,26.0", "Nord-est du Mexique, sud du Texas", "Mexique|États-Unis", "Étoiles et mitres d'évêque, couverts de petits flocons blancs."],
+    ["Aztekium", "Cactées", "-99.9,25.0", "Nuevo León, falaises de gypse", "Mexique", "Minuscules cactus plissés, parmi les plus lents à pousser."],
+    ["Turbinicarpus", "Cactées", "-100.2,22.8", "Plateau central et nord-est du Mexique", "Mexique", "Petits cactus très recherchés, souvent protégés dans la nature."],
+    ["Pelecyphora", "Cactées", "-100.6,22.4", "San Luis Potosí", "Mexique", "Tubercules en forme de cloporte, fleurs magenta."],
+    ["Strombocactus", "Cactées", "-99.6,20.9", "Querétaro et Hidalgo", "Mexique", "Pousse sur des falaises de schiste, graines minuscules."],
+    ["Leuchtenbergia", "Cactées", "-103.2,26.6", "Désert de Chihuahua", "Mexique", "Longs tubercules qui lui donnent l'allure d'un agave."],
+    ["Thelocactus", "Cactées", "-100.8,24.6", "Nord du Mexique, Texas", "Mexique|États-Unis", "Fleurs parmi les plus grandes des petits cactus."],
+    ["Coryphantha", "Cactées", "-102.4,25.4", "Mexique et sud des États-Unis", "Mexique|États-Unis", "Cactus à tubercules sillonnés, fleurs jaunes ou roses."],
+    ["Stenocactus", "Cactées", "-100.0,21.4", "Plateau central mexicain", "Mexique", "Côtes très nombreuses et ondulées, comme un cerveau."],
+    ["Mammillaria", "Cactées", "-99.3,20.4", "Mexique surtout, jusqu'aux Caraïbes et au Venezuela", "Mexique|États-Unis|Guatemala|Colombie|Venezuela", "Le plus grand genre de cactus, avec plusieurs centaines d'espèces."],
+    ["Echinocactus", "Cactées", "-99.9,21.8;-115.6,36.4", "Mexique et sud-ouest des États-Unis", "Mexique|États-Unis", "Comprend le coussin de belle-mère, devenu rare dans la nature."],
+    ["Ferocactus", "Cactées", "-110.8,29.2;-114.6,33.4", "Sonora, Basse-Californie, Arizona", "Mexique|États-Unis", "Gros cactus barils aux épines crochues et colorées."],
+    ["Echinocereus", "Cactées", "-106.4,31.6", "Mexique et ouest des États-Unis", "Mexique|États-Unis", "Cactus « hérissons », souvent rustiques au sec."],
+    ["Escobaria", "Cactées", "-104.6,34.0", "Des Grandes Plaines au Mexique, jusqu'au Canada", "États-Unis|Mexique|Canada", "Petits cactus très résistants au froid."],
+    ["Pediocactus", "Cactées", "-111.6,38.6", "Montagnes de l'ouest des États-Unis", "États-Unis", "Cactus d'altitude, habitués à la neige."],
+    ["Sclerocactus", "Cactées", "-109.6,37.4", "Plateau du Colorado", "États-Unis|Mexique", "Cactus de désert froid, délicats en culture."],
+    ["Carnegiea", "Cactées", "-111.6,32.4", "Désert de Sonora", "États-Unis|Mexique", "Le saguaro, cactus géant des westerns."],
+    ["Pachycereus", "Cactées", "-111.2,26.4", "Basse-Californie et ouest du Mexique", "Mexique", "Le cardón, l'un des plus grands cactus du monde."],
+    ["Cephalocereus", "Cactées", "-98.9,20.8", "Hidalgo et Puebla", "Mexique", "Le « vieillard », couvert de longs poils blancs."],
+    ["Cylindropuntia", "Cactées", "-112.6,32.8", "Déserts du sud-ouest américain", "États-Unis|Mexique", "Chollas aux articles cylindriques très épineux."],
+    ["Opuntia", "Cactées", "-101.0,22.0;-65.4,-26.0", "Du Canada à l'Argentine", "Mexique|États-Unis|Canada|Argentine|Brésil", "Les figuiers de Barbarie, à raquettes."],
+    ["Epiphyllum", "Cactées", "-91.0,15.6", "Forêts du Mexique à l'Amérique tropicale", "Mexique|Guatemala|Costa Rica|Venezuela", "Cactus épiphytes aux grandes fleurs nocturnes parfumées."],
+    ["Melocactus", "Cactées", "-75.8,20.1;-41.2,-12.4", "Caraïbes, Amérique centrale et du Sud", "Cuba|Brésil|Venezuela|Colombie|Pérou", "Portent un céphalium, sorte de bonnet laineux, à maturité."],
+    ["Discocactus", "Cactées", "-48.4,-15.8", "Centre du Brésil, Bolivie, Paraguay", "Brésil|Bolivie|Paraguay", "Cactus aplatis aux fleurs blanches nocturnes."],
+    ["Uebelmannia", "Cactées", "-43.6,-18.2", "Minas Gerais", "Brésil", "Épiderme mat et granuleux, pousse sur quartzite."],
+    ["Pilosocereus", "Cactées", "-42.0,-14.6", "Brésil surtout, jusqu'au Mexique", "Brésil|Mexique", "Colonnes bleutées et laineuses."],
+    ["Schlumbergera", "Cactées", "-43.0,-22.4", "Montagnes de Rio de Janeiro", "Brésil", "Le cactus de Noël, épiphyte des forêts d'altitude."],
+    ["Rhipsalis", "Cactées", "-45.4,-23.4;47.5,-18.9;80.7,7.4", "Forêts tropicales d'Amérique ; aussi Afrique, Madagascar, Sri Lanka", "Brésil|Madagascar|Sri Lanka", "Cactus épiphytes : le seul genre présent naturellement hors des Amériques."],
+    ["Cereus", "Cactées", "-57.6,-25.4", "Sud du Brésil, Paraguay, Argentine", "Brésil|Paraguay|Argentine|Uruguay", "Grands cactus colonnaires aux fleurs nocturnes."],
+    ["Frailea", "Cactées", "-55.8,-28.2", "Sud du Brésil, Paraguay, Uruguay", "Brésil|Paraguay|Uruguay|Argentine|Bolivie", "Minuscules cactus qui se fécondent souvent sans s'ouvrir."],
+    ["Parodia", "Cactées", "-53.4,-30.2", "Sud du Brésil, Uruguay, Argentine, Paraguay", "Brésil|Uruguay|Argentine|Paraguay|Bolivie", "Comprend les anciens Notocactus."],
+    ["Gymnocalycium", "Cactées", "-64.8,-28.5;-60.5,-22.5", "Argentine, Bolivie, Paraguay, Uruguay, sud du Brésil", "Argentine|Bolivie|Paraguay|Uruguay|Brésil", "Petits cactus globuleux, fleurs généreuses, faciles en collection."],
+    ["Echinopsis", "Cactées", "-66.0,-24.4", "Andes d'Argentine, de Bolivie et du Pérou", "Argentine|Bolivie|Pérou|Chili", "Comprend Lobivia et Trichocereus, aux fleurs spectaculaires."],
+    ["Rebutia", "Cactées", "-65.4,-21.6", "Andes de Bolivie et du nord de l'Argentine", "Bolivie|Argentine", "Petits cactus d'altitude qui fleurissent dès le printemps."],
+    ["Sulcorebutia", "Cactées", "-65.2,-18.2", "Andes boliviennes", "Bolivie", "Petits cactus à épines peignées, très variables."],
+    ["Cleistocactus", "Cactées", "-64.4,-20.0", "Bolivie, Argentine, Pérou", "Bolivie|Argentine|Pérou|Paraguay|Uruguay", "Fleurs tubulaires presque fermées, pollinisées par les colibris."],
+    ["Oreocereus", "Cactées", "-67.8,-19.6", "Hauts plateaux andins", "Pérou|Bolivie|Chili|Argentine", "Colonnes laineuses qui supportent le gel de l'Altiplano."],
+    ["Matucana", "Cactées", "-76.6,-9.6", "Andes du Pérou", "Pérou", "Fleurs zygomorphes rouge vif."],
+    ["Espostoa", "Cactées", "-78.6,-6.6", "Andes du Pérou et de l'Équateur", "Pérou|Équateur", "Cactus colonnaires couverts d'une laine blanche."],
+    ["Copiapoa", "Cactées", "-70.6,-26.4", "Désert d'Atacama", "Chili", "Cactus du littoral chilien, nourris par les brouillards côtiers."],
+    ["Eriosyce", "Cactées", "-71.2,-30.6", "Chili et ouest de l'Argentine", "Chili|Argentine|Pérou", "Comprend Neoporteria et Thelocephala, du désert côtier."],
+    // ---- Mésembs (Aizoacées)
+    ["Lithops", "Mésembs", "17.9,-29.3;16.0,-25.9", "Namaqualand, Karoo, sud de la Namibie", "Afrique du Sud|Namibie|Botswana", "Les « cailloux vivants », camouflés parmi les pierres."],
+    ["Conophytum", "Mésembs", "18.8,-31.0", "Succulent Karoo", "Afrique du Sud|Namibie", "Minuscules corps charnus, en repos l'été."],
+    ["Argyroderma", "Mésembs", "18.5,-31.4", "Knersvlakte, sur quartz", "Afrique du Sud", "Paires de feuilles argentées comme des galets."],
+    ["Fenestraria", "Mésembs", "16.6,-28.4", "Côte du Namaqualand", "Afrique du Sud|Namibie", "Feuilles à fenêtre translucide, enterrées dans le sable."],
+    ["Titanopsis", "Mésembs", "19.6,-29.8", "Afrique du Sud, sud de la Namibie", "Afrique du Sud|Namibie", "Feuilles couvertes de verrues calcaires."],
+    ["Dinteranthus", "Mésembs", "20.6,-28.8", "Bushmanland", "Afrique du Sud", "Proches des Lithops, à corps lisse et pâle."],
+    ["Pleiospilos", "Mésembs", "22.4,-32.6", "Petit et Grand Karoo", "Afrique du Sud", "Feuilles en demi-boule, comme des cailloux fendus."],
+    ["Glottiphyllum", "Mésembs", "21.4,-33.4", "Petit Karoo", "Afrique du Sud", "Feuilles molles en langue, fleurs jaunes."],
+    ["Trichodiadema", "Mésembs", "22.6,-33.6", "Karoo", "Afrique du Sud", "Chaque feuille porte une petite couronne de poils."],
+    ["Faucaria", "Mésembs", "25.6,-32.8", "Cap-Oriental", "Afrique du Sud", "« Mâchoires de tigre » aux feuilles dentées."],
+    ["Aloinopsis", "Mésembs", "24.6,-31.2", "Karoo central", "Afrique du Sud", "Petites rosettes tuberculées, assez rustiques."],
+    ["Delosperma", "Mésembs", "28.4,-29.4", "Afrique australe et de l'Est", "Afrique du Sud|Lesotho", "Pourpiers vivaces, certains rustiques en rocaille."],
+    ["Frithia", "Mésembs", "28.4,-25.6", "Gauteng et Mpumalanga", "Afrique du Sud", "« Bébés orteils », feuilles en massue à fenêtre."],
+    ["Carpobrotus", "Mésembs", "18.6,-34.0", "Côtes d'Afrique du Sud", "Afrique du Sud", "Les griffes de sorcière, devenues envahissantes sur nos côtes bretonnes."],
+    // ---- Caudiciformes
+    ["Pachypodium", "Caudex", "44.6,-23.4;17.4,-28.3", "Madagascar et Afrique australe", "Madagascar|Afrique du Sud|Namibie", "Troncs épineux et renflés, « palmiers de Madagascar »."],
+    ["Operculicarya", "Caudex", "44.2,-22.6", "Sud-ouest de Madagascar", "Madagascar", "Petits arbres trapus, très prisés en bonsaï."],
+    ["Uncarina", "Caudex", "46.2,-24.8", "Sud de Madagascar", "Madagascar", "Caudex aux fleurs jaunes et aux fruits à crochets."],
+    ["Adansonia", "Caudex", "44.4,-20.2;31.0,-14.4;126.2,-17.4", "Madagascar, Afrique, Australie", "Madagascar|Zambie|Australie", "Les baobabs : six espèces sur huit vivent à Madagascar."],
+    ["Adenium", "Caudex", "44.6,15.0;43.0,2.5", "Péninsule Arabique, Corne et est de l'Afrique", "Yémen|Oman|Arabie saoudite|Somalie|Kenya", "La rose du désert, au tronc renflé."],
+    ["Cyphostemma", "Caudex", "16.4,-21.2", "Afrique et Madagascar", "Namibie|Madagascar", "Vignes à tronc énorme, comme C. juttae de Namibie."],
+    ["Fockea", "Caudex", "22.4,-33.2", "Afrique australe", "Afrique du Sud|Namibie", "Gros tubercule et tiges volubiles."],
+    ["Tylecodon", "Caudex", "18.2,-29.9", "Namaqualand et sud de la Namibie", "Afrique du Sud|Namibie", "Crassulacées à tronc, en feuilles l'hiver."],
+    ["Beaucarnea", "Caudex", "-97.2,19.4", "Est du Mexique", "Mexique", "Le pied d'éléphant, à la base renflée."],
+    ["Fouquieria", "Caudex", "-114.2,29.6", "Basse-Californie et Sonora", "Mexique|États-Unis", "Comprend le boojum, colonne effilée du désert."],
+    ["Bursera", "Caudex", "-103.4,18.4", "Ouest du Mexique", "Mexique", "Petits arbres à écorce qui pèle, très parfumés."],
+    // ---- Autres succulentes
+    ["Echeveria", "Succulentes", "-98.2,19.2;-78.6,-1.6", "Mexique, Amérique centrale, Andes", "Mexique|Guatemala|Équateur|Pérou|Bolivie", "Rosettes de crassulacées très cultivées."],
+    ["Pachyphytum", "Succulentes", "-100.4,21.6", "Plateau central mexicain", "Mexique", "Feuilles dodues et poudrées, comme des dragées."],
+    ["Graptopetalum", "Succulentes", "-104.6,24.6", "Mexique et Arizona", "Mexique|États-Unis", "Rosettes nacrées, faciles à bouturer."],
+    ["Agave", "Succulentes", "-103.6,21.0;-110.8,30.8", "Mexique et sud-ouest des États-Unis", "Mexique|États-Unis", "Grandes rosettes qui fleurissent une seule fois."],
+    ["Yucca", "Succulentes", "-108.2,33.2", "Amérique du Nord et centrale", "États-Unis|Mexique", "Certains sont parfaitement rustiques en Bretagne."],
+    ["Dudleya", "Succulentes", "-117.3,33.6", "Californie et Basse-Californie", "États-Unis|Mexique", "Rosettes poudrées des falaises du Pacifique."],
+    ["Sedum", "Succulentes", "-3.9,48.6;-97.0,17.2", "Hémisphère nord, dont la Bretagne et le Mexique", "France|Mexique", "L'orpin d'Angleterre pousse sur nos rochers littoraux bretons."],
+    ["Sempervivum", "Succulentes", "7.6,46.0;0.8,42.7;43.4,42.9", "Montagnes d'Europe et du Caucase", "France|Suisse|Italie|Espagne|Géorgie", "Les joubarbes, rustiques sous notre climat."],
+    ["Aeonium", "Succulentes", "-15.9,28.2", "Canaries, Madère, Maroc", "Espagne|Portugal|Maroc", "Rosettes sur tiges, en repos l'été."],
+    ["Orostachys", "Succulentes", "138.5,36.4;127.8,37.6", "Japon, Corée, Chine, Mongolie", "Japon|Corée du Sud|Chine|Mongolie", "Petites rosettes asiatiques, très rustiques."],
+    ["Euphorbia", "Succulentes", "20.4,-32.4;45.8,-24.2;-15.6,28.0", "Afrique, Madagascar, Canaries…", "Afrique du Sud|Madagascar|Espagne|Maroc", "Des centaines d'espèces succulentes ; attention au latex irritant."],
+    ["Kalanchoe", "Succulentes", "46.6,-20.6", "Madagascar et Afrique tropicale", "Madagascar", "Près de la moitié des espèces vivent à Madagascar."],
+    ["Aloe", "Succulentes", "28.4,-25.4;37.0,0.5;45.5,16.5", "Afrique, Madagascar, péninsule Arabique", "Afrique du Sud|Kenya|Madagascar|Yémen", "Plus de 500 espèces, de la plante de rocaille à l'arbre."],
+    ["Haworthia", "Succulentes", "21.5,-33.8", "Provinces du Cap", "Afrique du Sud", "Petites rosettes à fenêtres translucides, idéales en intérieur."],
+    ["Gasteria", "Succulentes", "25.4,-33.3", "Cap-Oriental surtout", "Afrique du Sud|Namibie", "Feuilles épaisses en langue, fleurs en forme d'estomac."],
+    ["Crassula", "Succulentes", "19.2,-33.6", "Afrique australe surtout", "Afrique du Sud|Namibie", "De l'arbre de jade aux minuscules espèces en colonne."],
+    ["Cotyledon", "Succulentes", "20.4,-33.0", "Afrique australe", "Afrique du Sud|Namibie", "Feuilles poudrées et fleurs en clochettes pendantes."],
+    ["Portulacaria", "Succulentes", "24.8,-33.4", "Fourrés du Cap-Oriental", "Afrique du Sud", "Le « pourpier en arbre », nourriture des éléphants."],
+    ["Anacampseros", "Succulentes", "20.2,-31.6", "Afrique australe", "Afrique du Sud|Namibie", "Petites rosettes, parfois couvertes d'écailles argentées."],
+    ["Curio", "Succulentes", "19.4,-31.0", "Afrique du Sud et Namibie", "Afrique du Sud|Namibie", "Les anciens Senecio succulents, comme le « collier de perles »."],
+    ["Stapelia", "Succulentes", "22.8,-31.8", "Afrique australe", "Afrique du Sud|Namibie|Botswana", "Fleurs étoilées à odeur de charogne, qui attirent les mouches."],
+    ["Hoodia", "Succulentes", "18.4,-26.6", "Désert du Kalahari et Namib", "Namibie|Afrique du Sud|Botswana", "Tiges épineuses, grandes fleurs en soucoupe."],
+    ["Huernia", "Succulentes", "37.4,-3.4;27.4,-23.8", "Afrique de l'Est et australe, Arabie", "Kenya|Tanzanie|Afrique du Sud|Yémen", "Petites stapéliées aux fleurs en cloche."],
+    ["Welwitschia", "Succulentes", "14.9,-22.6", "Désert du Namib", "Namibie|Angola", "Deux feuilles seulement, pour une vie de plusieurs siècles."],
+    ["Calandrinia", "Succulentes", "133.5,-25.0", "Australie (et Amériques)", "Australie|Chili", "Parakeelyas des déserts australiens."],
+    // ---- Bulbes
+    ["Massonia", "Bulbes", "19.6,-32.3", "Afrique australe", "Afrique du Sud|Namibie|Lesotho", "Bulbes à deux feuilles plaquées au sol, floraison d'hiver."],
+    ["Haemanthus", "Bulbes", "18.6,-32.8", "Afrique australe", "Afrique du Sud|Namibie|Botswana", "Pinceaux de fleurs serrées entre deux feuilles larges."],
+    ["Boophone", "Bulbes", "27.0,-26.6", "Afrique australe et de l'Est", "Afrique du Sud|Botswana|Kenya", "Gros bulbe et feuilles disposées en éventail."],
+    ["Eriospermum", "Bulbes", "19.4,-33.0", "Afrique australe", "Afrique du Sud|Namibie", "Tubercules aux feuilles étranges, parfois couvertes de poils."],
+    ["Ledebouria", "Bulbes", "29.4,-25.0;77.4,15.2", "Afrique subsaharienne et Inde", "Afrique du Sud|Inde", "Petits bulbes aux feuilles tachetées."],
+    ["Bowiea", "Bulbes", "30.2,-28.6", "Afrique australe et de l'Est", "Afrique du Sud|Kenya", "Gros bulbe vert à tiges grimpantes."],
+    ["Albuca", "Bulbes", "20.0,-33.4", "Afrique et péninsule Arabique", "Afrique du Sud|Namibie", "Comprend les albucas aux feuilles en tire-bouchon."],
 ]
+export const GENRES: Genre[] = D.map(([n, c, p, zone, pays, note]) => ({ n, c, zone, note, pays: pays.split("|"), pts: p.split(";").map((x) => x.split(",").map(Number) as [number, number]) }))
 
 const CONTINENTS: [string, string[]][] = [
-    ["Amériques", ["Mexique", "États-Unis", "Guatemala", "Colombie", "Venezuela", "Équateur", "Pérou", "Bolivie", "Chili", "Argentine", "Paraguay", "Uruguay", "Brésil"]],
+    ["Amérique du Nord et centrale", ["Canada", "États-Unis", "Mexique", "Cuba", "Guatemala", "Costa Rica"]],
+    ["Amérique du Sud", ["Colombie", "Venezuela", "Équateur", "Pérou", "Bolivie", "Brésil", "Paraguay", "Uruguay", "Chili", "Argentine"]],
     ["Europe et Méditerranée", ["France", "Espagne", "Portugal", "Suisse", "Italie", "Géorgie", "Maroc"]],
-    ["Afrique et Madagascar", ["Afrique du Sud", "Namibie", "Botswana", "Lesotho", "Angola", "Kenya", "Somalie", "Madagascar"]],
-    ["Asie", ["Yémen", "Oman", "Arabie saoudite", "Sri Lanka", "Chine", "Mongolie", "Corée du Sud", "Japon"]],
+    ["Afrique et Madagascar", ["Afrique du Sud", "Namibie", "Botswana", "Lesotho", "Angola", "Zambie", "Tanzanie", "Kenya", "Somalie", "Madagascar"]],
+    ["Asie", ["Yémen", "Oman", "Arabie saoudite", "Inde", "Sri Lanka", "Chine", "Mongolie", "Corée du Sud", "Japon"]],
     ["Océanie", ["Australie"]],
 ]
 
 const serif = "'Fraunces', Georgia, serif"
 const sans = "'Poppins', system-ui, sans-serif"
-const CATS: ("Tous" | Cat)[] = ["Tous", "Cactées", "Succulentes", "Bulbes"]
+const CATS: ["Tous" | Cat, string][] = [["Tous", "Tous"], ["Cactées", "Cactées"], ["Mésembs", "Mésembs"], ["Caudex", "Caudex"], ["Succulentes", "Autres succulentes"], ["Bulbes", "Bulbes"]]
+const NOM_CAT: Record<Cat, string> = { Cactées: "Cactées", Mésembs: "Mésembs (Aizoacées)", Caudex: "Caudiciformes", Succulentes: "Succulentes", Bulbes: "Bulbes et géophytes" }
+const sansAccent = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 
-type Infos = { id: number; photo?: string; credit?: string; obs: number; pts: [number, number][] } | "erreur" | undefined
+type Infos = { id: number; photo?: string; credit?: string; obs: number; pts: [number, number][]; nomFr?: string } | "erreur" | undefined
 const cache = new Map<string, Infos>()
 
 function useInat(nom: string | null) {
@@ -73,12 +155,13 @@ function useInat(nom: string | null) {
         let fini = false
         ;(async () => {
             try {
-                const t = await (await fetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(nom)}&rank=genus&per_page=5&locale=fr`)).json()
-                const tx = (t.results || []).find((r) => r.name === nom) || t.results?.[0]
+                const t = await (await fetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(nom)}&rank=genus&per_page=10&locale=fr`)).json()
+                const tx = (t.results || []).find((r) => r.name === nom && r.iconic_taxon_name === "Plantae") || (t.results || []).find((r) => r.name === nom)
                 if (!tx) throw new Error("introuvable")
                 const o = await (await fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${tx.id}&quality_grade=research&captive=false&geo=true&per_page=200&order_by=votes`)).json()
                 const pts = (o.results || []).map((r) => r.geojson?.coordinates).filter(Boolean)
-                cache.set(nom, { id: tx.id, photo: tx.default_photo?.medium_url, credit: tx.default_photo?.attribution, obs: tx.observations_count || 0, pts })
+                const nomFr = tx.preferred_common_name && sansAccent(tx.preferred_common_name) !== sansAccent(nom) ? tx.preferred_common_name : undefined
+                cache.set(nom, { id: tx.id, photo: tx.default_photo?.medium_url?.replace("/medium.", "/large."), credit: tx.default_photo?.attribution, obs: tx.observations_count || 0, pts, nomFr })
             } catch (e) {
                 cache.set(nom, "erreur")
             }
@@ -95,6 +178,7 @@ function useInat(nom: string | null) {
  */
 export default function CarteMonde(props) {
     const { encre = "#1d1612", vert = "#4a7a36", accent = "#b5543a", fond = "#efe6d6" } = props
+    const carteFond = "#f6f0e6", trait = "rgba(29,22,18,0.16)"
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(1000)
     React.useEffect(() => {
@@ -106,138 +190,232 @@ export default function CarteMonde(props) {
         return () => ro.disconnect()
     }, [])
     const [cat, setCat] = React.useState<"Tous" | Cat>("Tous")
+    const [q, setQ] = React.useState("")
     const [sel, setSel] = React.useState<string | null>(null)
     const [survol, setSurvol] = React.useState<string | null>(null)
+    const [ouverts, setOuverts] = React.useState<Record<string, boolean>>({})
+    const [suggOuv, setSuggOuv] = React.useState(false)
     const infos = useInat(sel)
     const etroit = w < 760
-    const visibles = GENRES.filter((g) => cat === "Tous" || g.c === cat)
+    const qq = sansAccent(q.trim())
+    const correspond = (g: Genre) => !qq || sansAccent(g.n).includes(qq) || g.pays.some((p) => sansAccent(p).includes(qq)) || sansAccent(g.zone).includes(qq)
+    const visibles = GENRES.filter((g) => (cat === "Tous" || g.c === cat) && correspond(g))
     const g = GENRES.find((x) => x.n === sel) || null
-    const choisir = (n: string) => setSel((s) => (s === n ? null : n))
-    const r = etroit ? 5.5 : 5
+    const choisir = (n: string) => { setSel((s) => (s === n ? null : n)); setSuggOuv(false) }
+    const r = etroit ? 5 : 4.4
+    const LARG_MOBILE = 900
     const defil = React.useRef<HTMLDivElement>(null)
     React.useEffect(() => {
         const el = defil.current
         if (!el) return
-        const cible = g ? pt(g.pts[0][0], g.pts[0][1])[0] * 0.86 : 860 * 0.42
+        const k = LARG_MOBILE / 1000
+        const cible = g ? positions(g)[0][0] * k : LARG_MOBILE * 0.42
         el.scrollTo({ left: Math.max(0, cible - el.clientWidth / 2), behavior: g ? "smooth" : "auto" })
     }, [etroit, sel])
+    const ficheRef = React.useRef<HTMLDivElement>(null)
 
-    const puce = (actif: boolean) => ({
-        fontFamily: sans, fontSize: 13, fontWeight: 500, padding: "6px 12px", cursor: "pointer",
+    const puce = (actif: boolean): React.CSSProperties => ({
+        fontFamily: sans, fontSize: 13, fontWeight: 500, padding: "7px 13px", cursor: "pointer", whiteSpace: "nowrap",
         border: `1px solid ${actif ? encre : "rgba(29,22,18,0.25)"}`, background: actif ? encre : "transparent", color: actif ? fond : encre, borderRadius: 0,
     })
     const nomEtiquette = survol || sel
     const gEtiq = GENRES.find((x) => x.n === nomEtiquette)
+    const nbPays = new Set(GENRES.flatMap((x) => x.pays)).size
 
+    // Encart agrandi de l'Afrique australe, où se concentrent mésembs, bulbes et caudex
+    const IX = 612, IY = 396, K = 4.6
+    const [ax0] = pt(15.2, -29), [ax1] = pt(33.4, -29), [, ay0] = pt(24, -21.6), [, ay1] = pt(24, -35.3)
+    const IW = (ax1 - ax0) * K, IH = (ay1 - ay0) * K
+    const dansEncart = (lo: number, la: number) => lo > 15.2 && lo < 33.4 && la < -21.6 && la > -35.3
+    const versEncart = (x: number, y: number): [number, number] => [IX + (x - ax0) * K, IY + (y - ay0) * K]
+    const point = (gg: Genre, x: number, y: number, key: string) => {
+        const actif = gg.n === sel, sur = gg.n === survol
+        return (
+            <g key={key} style={{ cursor: "pointer" }} onClick={() => choisir(gg.n)} onMouseEnter={() => setSurvol(gg.n)} onMouseLeave={() => setSurvol(null)}>
+                <circle cx={x} cy={y} r={r * 1.8} fill="transparent" />
+                {actif && <circle cx={x} cy={y} r={r * 2.3} fill="none" stroke={accent} strokeWidth={1.2} />}
+                <circle cx={x} cy={y} r={actif || sur ? r * 1.3 : r} fill={actif ? accent : vert} fillOpacity={actif || sur ? 1 : 0.85} stroke={fond} strokeWidth={1} />
+            </g>
+        )
+    }
+    const etiquetteSvg = (n: string, x: number, y: number, key: string) => {
+        const droite = x < 860
+        return <text key={key} x={x + (droite ? r * 2.4 + 3 : -(r * 2.4 + 3))} y={y + 5} textAnchor={droite ? "start" : "end"} fontFamily={serif} fontSize={etroit ? 17 : 16} fontWeight={600} fontStyle="italic" fill={n === sel ? accent : encre} stroke={fond} strokeWidth={4} strokeLinejoin="round" paintOrder="stroke" style={{ pointerEvents: "none" }}>{n}</text>
+    }
+    const positions = (gg: Genre) => {
+        const out: [number, number][] = []
+        for (const [lo, la] of gg.pts) {
+            const [x, y] = pt(lo, la)
+            out.push(dansEncart(lo, la) ? versEncart(x, y) : [x, y])
+        }
+        return out
+    }
     const carte = (
-        <svg viewBox="0 0 1000 446" style={{ width: "100%", height: "auto", display: "block", overflow: "visible", touchAction: "manipulation" }} role="img" aria-label="Carte du monde des régions d'origine de quelques genres de cactus, succulentes et bulbes">
-            <path d={COTE_MONDE} fill="none" stroke={encre} strokeOpacity={0.85} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <svg viewBox="0 4 1000 612" style={{ width: "100%", height: "auto", display: "block", overflow: "visible", touchAction: "manipulation" }} role="img" aria-label="Carte du monde des régions d'origine de genres de cactus, succulentes et bulbes">
+            <defs><clipPath id="acs-encart"><rect x={IX} y={IY} width={IW} height={IH} /></clipPath></defs>
+            <path d={COTE_MONDE} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+            <rect x={ax0} y={ay0} width={ax1 - ax0} height={ay1 - ay0} fill="none" stroke={encre} strokeOpacity={0.45} strokeWidth={0.8} strokeDasharray="2 2" />
+            <path d={`M${ax0 + (ax1 - ax0) / 2} ${ay1} L${IX + IW / 2} ${IY}`} stroke={encre} strokeOpacity={0.3} strokeWidth={0.8} strokeDasharray="2 2" fill="none" />
+            <rect x={IX} y={IY} width={IW} height={IH} fill={fond} stroke={encre} strokeOpacity={0.5} strokeWidth={1} />
+            <g clipPath="url(#acs-encart)">
+                <path d={COTE_MONDE} transform={`translate(${IX - ax0 * K} ${IY - ay0 * K}) scale(${K})`} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+            </g>
+            <text x={IX + 6} y={IY + IH + 14} fontFamily={sans} fontSize={11} letterSpacing={0.8} fill={encre} fillOpacity={0.6}>AFRIQUE AUSTRALE, AGRANDIE</text>
             {infos && infos !== "erreur" && infos.pts.map(([lo, la], i) => {
                 const [x, y] = pt(lo, la)
-                return <circle key={"o" + i} cx={x} cy={y} r={2.2} fill={accent} fillOpacity={0.35} />
+                const [ex, ey] = dansEncart(lo, la) ? versEncart(x, y) : [x, y]
+                return <circle key={"o" + i} cx={ex} cy={ey} r={2} fill={accent} fillOpacity={0.4} />
             })}
-            {visibles.map((gg) => gg.pts.map(([lo, la], i) => {
-                const [x, y] = pt(lo, la)
-                const actif = gg.n === sel, sur = gg.n === survol
-                return (
-                    <g key={gg.n + i} style={{ cursor: "pointer" }} onClick={() => choisir(gg.n)} onMouseEnter={() => setSurvol(gg.n)} onMouseLeave={() => setSurvol(null)}>
-                        <circle cx={x} cy={y} r={r * 2} fill="transparent" />
-                        {actif && <circle cx={x} cy={y} r={r * 2.2} fill="none" stroke={accent} strokeWidth={1} />}
-                        <circle cx={x} cy={y} r={actif || sur ? r * 1.25 : r} fill={actif ? accent : vert} stroke={fond} strokeWidth={1.2} />
-                    </g>
-                )
-            }))}
-            {gEtiq && gEtiq.pts.map(([lo, la], i) => {
-                const [x, y] = pt(lo, la)
-                const droite = x < 860
-                return (
-                    <text key={"t" + i} x={x + (droite ? r * 2.2 + 4 : -(r * 2.2 + 4))} y={y + 4} textAnchor={droite ? "start" : "end"} fontFamily={serif} fontSize={etroit ? 17 : 19} fontWeight={600} fontStyle="italic" fill={gEtiq.n === sel ? accent : encre} stroke={fond} strokeWidth={4} strokeLinejoin="round" paintOrder="stroke" style={{ pointerEvents: "none" }}>{gEtiq.n}</text>
-                )
-            })}
+            {visibles.map((gg) => positions(gg).map(([x, y], i) => point(gg, x, y, gg.n + i)))}
+            {gEtiq && (() => {
+                const vus: [number, number][] = []
+                return positions(gEtiq).map(([x, y], i) => {
+                    if (vus.some(([a, b]) => Math.hypot(a - x, b - y) < 70)) return null
+                    vus.push([x, y])
+                    return etiquetteSvg(gEtiq.n, x, y, "t" + i)
+                })
+            })()}
         </svg>
     )
 
-    const fiche = g ? (
-        <div style={{ fontFamily: sans, color: encre }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.6, textTransform: "uppercase", color: vert }}>{g.c}</div>
-            <div style={{ fontFamily: serif, fontSize: 30, fontStyle: "italic", fontWeight: 600, marginTop: 4 }}>{g.n}</div>
-            <div style={{ fontSize: 14, opacity: 0.75, marginTop: 2 }}>{g.zone}</div>
-            <p style={{ fontSize: 15, lineHeight: 1.6, margin: "12px 0 0" }}>{g.note}</p>
-            {infos === undefined && <div style={{ fontSize: 13, opacity: 0.6, marginTop: 14 }}>Chargement depuis iNaturalist…</div>}
-            {infos === "erreur" && <div style={{ fontSize: 13, opacity: 0.6, marginTop: 14 }}>iNaturalist ne répond pas pour le moment.</div>}
-            {infos && infos !== "erreur" && (
-                <div style={{ marginTop: 16 }}>
-                    {infos.photo && (
-                        <figure style={{ margin: 0 }}>
-                            <img src={infos.photo} alt={g.n} style={{ width: "100%", maxWidth: 420, aspectRatio: "4 / 3", objectFit: "cover", display: "block" }} />
-                            <figcaption style={{ fontSize: 11, opacity: 0.6, marginTop: 6, lineHeight: 1.4 }}>{infos.credit} — via iNaturalist</figcaption>
-                        </figure>
-                    )}
-                    <div style={{ fontSize: 13, marginTop: 12, lineHeight: 1.5 }}>
-                        <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 9, background: accent, opacity: 0.6, marginRight: 8 }} />
-                        {infos.obs.toLocaleString("fr-FR")} observations sur iNaturalist{infos.pts.length ? ` ; les points clairs montrent ${infos.pts.length} observations validées de plantes sauvages` : ""}.
-                    </div>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
-                        <a href={`https://www.inaturalist.org/taxa/${infos.id}`} target="_blank" rel="noopener" style={{ ...puce(true), textDecoration: "none" }}>Fiche iNaturalist</a>
-                        <a href={`https://www.inaturalist.org/observations?taxon_id=${infos.id}&quality_grade=research&captive=false&subview=map`} target="_blank" rel="noopener" style={{ ...puce(false), textDecoration: "none" }}>Carte des observations</a>
-                    </div>
+    const recherche = (
+        <div style={{ position: "relative", flex: etroit ? "1 1 100%" : "0 1 320px", minWidth: 0 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", opacity: 0.55 }}><circle cx="6.5" cy="6.5" r="5" fill="none" stroke={encre} strokeWidth="1.6" /><path d="M10.5 10.5 L15 15" stroke={encre} strokeWidth="1.6" /></svg>
+            <input value={q} onChange={(e) => { setQ(e.target.value); setSuggOuv(true) }} onFocus={() => setSuggOuv(true)} onBlur={() => setTimeout(() => setSuggOuv(false), 150)}
+                onKeyDown={(e) => { if (e.key === "Enter" && visibles.length) { choisir(visibles[0].n); (e.target as HTMLInputElement).blur() } if (e.key === "Escape") setQ("") }}
+                placeholder="Rechercher un genre ou un pays" aria-label="Rechercher un genre ou un pays"
+                style={{ width: "100%", boxSizing: "border-box", fontFamily: sans, fontSize: 15, color: encre, background: carteFond, border: `1px solid rgba(29,22,18,0.3)`, borderRadius: 0, padding: "10px 34px 10px 36px", outline: "none" }} />
+            {q && <button aria-label="Effacer" onClick={() => setQ("")} style={{ all: "unset", cursor: "pointer", position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontFamily: sans, fontSize: 18, lineHeight: 1, opacity: 0.6, padding: 4 }}>×</button>}
+            {suggOuv && qq && (
+                <div style={{ position: "absolute", left: 0, right: 0, top: "100%", zIndex: 5, background: carteFond, border: `1px solid rgba(29,22,18,0.3)`, borderTop: "none", maxHeight: 280, overflowY: "auto", boxShadow: "0 10px 24px rgba(29,22,18,0.12)" }}>
+                    {visibles.length === 0 && <div style={{ fontFamily: sans, fontSize: 14, padding: "10px 14px", opacity: 0.65 }}>Aucun genre trouvé.</div>}
+                    {visibles.slice(0, 12).map((x) => (
+                        <button key={x.n} onMouseDown={(e) => e.preventDefault()} onClick={() => { choisir(x.n); ficheRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" }) }}
+                            style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 12, width: "100%", padding: "9px 14px", borderBottom: `1px solid ${trait}` }}>
+                            <span style={{ fontFamily: serif, fontStyle: "italic", fontSize: 16, color: encre }}>{x.n}</span>
+                            <span style={{ fontFamily: sans, fontSize: 12, color: encre, opacity: 0.6, textAlign: "right" }}>{x.c === "Succulentes" ? "Succulente" : x.c} · {x.pays.slice(0, 2).join(", ")}{x.pays.length > 2 ? "…" : ""}</span>
+                        </button>
+                    ))}
                 </div>
             )}
         </div>
-    ) : (
-        <div style={{ fontFamily: sans, color: encre, fontSize: 15, lineHeight: 1.65, opacity: 0.85 }}>
-            Nos plantes viennent des déserts, des montagnes et des forêts du monde entier. {etroit ? "Touchez" : "Cliquez sur"} un point ou un nom de genre pour voir son aire d'origine, une photo et les observations faites dans la nature, grâce aux données ouvertes d'iNaturalist.
+    )
+
+    const etiquette = (t: string) => <div style={{ fontFamily: sans, fontSize: 11.5, fontWeight: 600, letterSpacing: 1.6, textTransform: "uppercase", color: vert }}>{t}</div>
+
+    const fiche = (
+        <div ref={ficheRef} style={{ background: carteFond, border: `1px solid ${trait}`, padding: etroit ? 20 : 28, fontFamily: sans, color: encre, boxSizing: "border-box" }}>
+            {g ? (
+                <>
+                    {etiquette(NOM_CAT[g.c])}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginTop: 6 }}>
+                        <div style={{ fontFamily: serif, fontSize: etroit ? 30 : 36, lineHeight: 1.1, fontStyle: "italic", fontWeight: 600 }}>{g.n}</div>
+                        <button onClick={() => setSel(null)} aria-label="Fermer la fiche" style={{ all: "unset", cursor: "pointer", fontSize: 22, opacity: 0.5, padding: "0 4px" }}>×</button>
+                    </div>
+                    {infos && infos !== "erreur" && infos.nomFr && <div style={{ fontSize: 14, opacity: 0.7, marginTop: 2 }}>{infos.nomFr}</div>}
+                    <div style={{ fontSize: 15, marginTop: 12, lineHeight: 1.5 }}><span style={{ opacity: 0.6 }}>Origine · </span>{g.zone}</div>
+                    <div style={{ fontSize: 14, marginTop: 4, lineHeight: 1.5, opacity: 0.75 }}>{g.pays.join(", ")}</div>
+                    <p style={{ fontSize: 16, lineHeight: 1.6, margin: "14px 0 0" }}>{g.note}</p>
+                    <div style={{ marginTop: 18 }}>
+                        {infos === undefined && <div style={{ aspectRatio: "4 / 3", background: "rgba(29,22,18,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, opacity: 0.7 }}>Chargement depuis iNaturalist…</div>}
+                        {infos === "erreur" && <div style={{ fontSize: 13, opacity: 0.65 }}>iNaturalist ne répond pas pour le moment.</div>}
+                        {infos && infos !== "erreur" && (
+                            <>
+                                {infos.photo && (
+                                    <figure style={{ margin: 0 }}>
+                                        <img src={infos.photo} alt={g.n} loading="lazy" style={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", display: "block", background: "rgba(29,22,18,0.06)" }} />
+                                        <figcaption style={{ fontSize: 11.5, opacity: 0.6, marginTop: 6, lineHeight: 1.4 }}>{infos.credit} — via iNaturalist</figcaption>
+                                    </figure>
+                                )}
+                                <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginTop: 14, fontSize: 14, lineHeight: 1.5 }}>
+                                    <span style={{ flex: "none", display: "inline-block", width: 10, height: 10, borderRadius: 10, background: accent, opacity: 0.6 }} />
+                                    <span><strong style={{ fontWeight: 600 }}>{infos.obs.toLocaleString("fr-FR")}</strong> observations sur iNaturalist{infos.pts.length ? ` ; les points clairs de la carte montrent ${infos.pts.length} plantes sauvages vérifiées.` : "."}</span>
+                                </div>
+                                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+                                    <a href={`https://www.inaturalist.org/taxa/${infos.id}`} target="_blank" rel="noopener" style={{ ...puce(true), textDecoration: "none" }}>Fiche iNaturalist ↗</a>
+                                    <a href={`https://www.inaturalist.org/observations?taxon_id=${infos.id}&quality_grade=research&captive=false&subview=map`} target="_blank" rel="noopener" style={{ ...puce(false), textDecoration: "none" }}>Carte des observations ↗</a>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </>
+            ) : (
+                <>
+                    {etiquette("Mode d'emploi")}
+                    <div style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.2, fontWeight: 600, marginTop: 8 }}>{GENRES.length} genres, {nbPays} pays</div>
+                    <p style={{ fontSize: 16, lineHeight: 1.65, margin: "12px 0 0", opacity: 0.85 }}>
+                        {etroit ? "Touchez" : "Cliquez sur"} un point de la carte, cherchez un nom ou ouvrez un continent : la fiche affiche l'aire d'origine, une photo et les observations faites dans la nature, grâce aux données ouvertes d'iNaturalist.
+                    </p>
+                    <div style={{ fontSize: 13, opacity: 0.65, marginTop: 18 }}>Pour commencer :</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
+                        {["Lithops", "Ariocarpus", "Massonia", "Pachypodium", "Copiapoa", "Sempervivum"].map((n) => (
+                            <button key={n} onClick={() => choisir(n)} style={{ ...puce(false), fontFamily: serif, fontStyle: "italic", fontSize: 15 }}>{n}</button>
+                        ))}
+                    </div>
+                </>
+            )}
         </div>
     )
 
     const liste = (
-        <div style={{ fontFamily: sans, color: encre, display: "grid", gap: 28 }}>
+        <div style={{ fontFamily: sans, color: encre }}>
             {CONTINENTS.map(([cont, pays]) => {
                 const lignes = pays.map((p) => [p, visibles.filter((x) => x.pays.includes(p))] as const).filter(([, l]) => l.length)
                 if (!lignes.length) return null
+                const nbG = new Set(lignes.flatMap(([, l]) => l.map((x) => x.n))).size
+                const ouvert = !!qq || !!ouverts[cont]
                 return (
-                    <div key={cont}>
-                        <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: 1.6, textTransform: "uppercase", color: vert, paddingBottom: 6, borderBottom: "1px solid rgba(29,22,18,0.2)" }}>{cont}</div>
-                        <div style={{ display: "grid", gridTemplateColumns: etroit ? "1fr 1fr" : "repeat(auto-fill, minmax(190px, 1fr))", gap: etroit ? "12px 16px" : "14px 28px", marginTop: 12 }}>
-                            {lignes.map(([p, l]) => (
-                                <div key={p} style={{ minWidth: 0 }}>
-                                    <div style={{ fontFamily: serif, fontSize: 16, fontWeight: 600 }}>{p}</div>
-                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0 10px", marginTop: 2 }}>
-                                        {l.map((x) => (
-                                            <button key={x.n} onClick={() => choisir(x.n)} onMouseEnter={() => setSurvol(x.n)} onMouseLeave={() => setSurvol(null)}
-                                                style={{ all: "unset", cursor: "pointer", fontFamily: serif, fontStyle: "italic", fontSize: 14.5, lineHeight: 1.6, color: x.n === sel ? accent : encre, opacity: x.n === sel ? 1 : 0.8, textDecoration: x.n === sel ? "underline" : "none", textUnderlineOffset: 3 }}>{x.n}</button>
-                                        ))}
+                    <div key={cont} style={{ borderTop: `1px solid rgba(29,22,18,0.22)` }}>
+                        <button onClick={() => setOuverts((o) => ({ ...o, [cont]: !ouvert }))} aria-expanded={ouvert}
+                            style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 0" }}>
+                            <span style={{ fontFamily: serif, fontSize: 19, fontWeight: 600 }}>{cont}</span>
+                            <span style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, opacity: 0.7, whiteSpace: "nowrap" }}>
+                                {lignes.length} pays · {nbG} genres
+                                <svg width="12" height="12" viewBox="0 0 12 12" style={{ transform: ouvert ? "rotate(180deg)" : "none", transition: "transform .2s" }}><path d="M2 4 L6 8 L10 4" fill="none" stroke={encre} strokeWidth="1.6" /></svg>
+                            </span>
+                        </button>
+                        {ouvert && (
+                            <div style={{ paddingBottom: 18 }}>
+                                {lignes.map(([p, l]) => (
+                                    <div key={p} style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 2 : 16, padding: "8px 0", borderTop: `1px solid ${trait}` }}>
+                                        <span style={{ fontSize: 14, fontWeight: 600, width: etroit ? "auto" : 130, flex: "none", paddingTop: 2 }}>{p}</span>
+                                        <span style={{ display: "flex", flexWrap: "wrap", gap: "2px 12px" }}>
+                                            {l.map((x) => (
+                                                <button key={x.n} onClick={() => { choisir(x.n); if (etroit) ficheRef.current?.scrollIntoView?.({ behavior: "smooth", block: "start" }) }} onMouseEnter={() => setSurvol(x.n)} onMouseLeave={() => setSurvol(null)}
+                                                    style={{ all: "unset", cursor: "pointer", fontFamily: serif, fontStyle: "italic", fontSize: 15.5, lineHeight: 1.6, color: x.n === sel ? accent : encre, textDecoration: x.n === sel ? "underline" : "none", textUnderlineOffset: 3 }}>{x.n}</button>
+                                            ))}
+                                        </span>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )
             })}
-            <div style={{ fontSize: 12, opacity: 0.6, lineHeight: 1.5 }}>Aires d'origine simplifiées. Photos et observations : iNaturalist (licences des auteurs indiquées). Fond de carte : Natural Earth.</div>
+            <div style={{ borderTop: `1px solid rgba(29,22,18,0.22)`, paddingTop: 12, fontSize: 12, opacity: 0.6, lineHeight: 1.5 }}>Aires d'origine simplifiées. Photos et observations : iNaturalist (auteurs et licences indiqués sous chaque photo). Fond de carte : Natural Earth.</div>
         </div>
     )
 
     return (
-        <div ref={ref} style={{ width: "100%", display: "flex", flexDirection: "column", gap: etroit ? 20 : 28 }}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {CATS.map((c) => <button key={c} style={puce(cat === c)} onClick={() => { setCat(c); if (g && c !== "Tous" && g.c !== c) setSel(null) }}>{c}</button>)}
+        <div ref={ref} style={{ width: "100%", display: "flex", flexDirection: "column", gap: etroit ? 18 : 24 }}>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
+                {recherche}
+                <div style={{ display: "flex", gap: 6, flexWrap: etroit ? "nowrap" : "wrap", overflowX: etroit ? "auto" : "visible", maxWidth: "100%" }}>
+                    {CATS.map(([c, t]) => <button key={c} style={puce(cat === c)} onClick={() => { setCat(c); if (g && c !== "Tous" && g.c !== c) setSel(null) }}>{t}</button>)}
+                </div>
             </div>
             {etroit ? (
                 <div>
-                    <div ref={defil} style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", margin: "0 -4px" }}>
-                        <div style={{ width: 860 }}>{carte}</div>
+                    <div ref={defil} style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                        <div style={{ width: LARG_MOBILE }}>{carte}</div>
                     </div>
                     <div style={{ fontFamily: sans, fontSize: 12, opacity: 0.6, marginTop: 6 }}>Faites glisser la carte pour voir tout le monde.</div>
                 </div>
-            ) : (
-                <div style={{ display: "flex", gap: 48, alignItems: "flex-start" }}>
-                    <div style={{ flex: "2.3 1 0", minWidth: 0 }}>{carte}</div>
-                    <div style={{ flex: "1 1 0", minWidth: 0 }}>{fiche}</div>
-                </div>
-            )}
-            {etroit && fiche}
-            <div style={{ marginTop: etroit ? 8 : 16 }}>{liste}</div>
+            ) : carte}
+            <div style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 28 : 48, alignItems: "flex-start", marginTop: etroit ? 0 : 8 }}>
+                <div style={{ flex: etroit ? "none" : "1 1 0", width: etroit ? "100%" : undefined, minWidth: 0, position: etroit ? "static" : "sticky", top: 96 }}>{fiche}</div>
+                <div style={{ flex: etroit ? "none" : "1.25 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>{liste}</div>
+            </div>
         </div>
     )
 }
