@@ -31,7 +31,7 @@ const ZONES: { titre: string; liste: Exp[] }[] = [
         { n: "18", nom: "Les Succulentes de Locqui", dep: "22", spe: "Haworthias, aeoniums et succulentes" },
         { n: "19", nom: "Dionée", spe: "Plantes carnivores", type: "asso" },
         { n: "20", nom: "Fleurs et Ânes d’Armor", dep: "22", spe: "Plantes carnivores" },
-        { n: "21", nom: "A.C.S., l’association organisatrice", spe: "Adhésion et conseils, cactus et succulentes, gravier, engrais et substrat", type: "asso" },
+        { n: "21", nom: "A.C.S., l’association organisatrice", spe: "Adhésion, conseils, plantes, gravier et substrat", type: "asso" },
     ] },
     { titre: "Terrain de sport", liste: [
         { n: "22", nom: "Éric M.", spe: "Cactées, aloès", type: "amateur" },
@@ -65,11 +65,11 @@ export default function ExposantsSalon(props: { clair: boolean }) {
                     <div style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 20, fontWeight: 600, margin: "0 0 12px" }}>{z.titre}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12 }}>
                         {z.liste.map((e) => (
-                            <div key={e.n} style={{ background: c.bg, border: `1px solid ${c.line}`, padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start" }}>
+                            <div key={e.n} style={{ background: c.bg, border: `1px solid ${c.line}`, padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start", height: 112, boxSizing: "border-box", overflow: "hidden" }}>
                                 <span style={{ flex: "0 0 auto", minWidth: 34, height: 34, background: e.type === "amateur" ? "transparent" : c.badge, border: `1.5px solid ${c.badge}`, boxSizing: "border-box", color: e.type === "amateur" ? c.badge : c.badgeTxt, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }} title={"Stand n°" + e.n}>{e.n}</span>
                                 <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3 }}>{e.nom}{e.dep ? <span style={{ fontWeight: 400, color: c.mut }}> ({e.dep})</span> : null}</div>
-                                    <div style={{ fontSize: 14, lineHeight: 1.45, color: c.mut, marginTop: 3 }}>{e.type === "asso" ? "Association · " : e.type === "amateur" ? "Amateur · " : ""}{e.spe}</div>
+                                    <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.nom}{e.dep ? <span style={{ fontWeight: 400, color: c.mut }}> ({e.dep})</span> : null}</div>
+                                    <div style={{ fontSize: 14, lineHeight: 1.45, color: c.mut, marginTop: 3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.type === "asso" ? "Association · " : e.type === "amateur" ? "Amateur · " : ""}{e.spe}</div>
                                 </div>
                             </div>
                         ))}
