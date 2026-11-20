@@ -12,7 +12,7 @@ export const sb = (): any => clientDemo ?? sbReel()
 export type Adherent = { id: string; email: string; prenom?: string; nom?: string; role: "membre" | "admin"; cotisation_annee?: number; actif: boolean; annuaire?: boolean }
 
 // ---------- petits éléments d'interface (angles droits, palette du site) ----------
-export const box: React.CSSProperties = { background: C.panel, border: `1px solid ${C.line}`, padding: 28, color: C.txt, ...font }
+export const box: React.CSSProperties = { background: C.panel, border: `1px solid ${C.line}`, padding: "clamp(18px, 4vw, 28px)", color: C.txt, ...font }
 export const input: React.CSSProperties = { width: "100%", boxSizing: "border-box", colorScheme: "dark", background: C.bg, color: C.txt, border: `1px solid ${C.line}`, borderRadius: 0, padding: "12px 14px", font: "inherit", fontSize: 15, outline: "none" }
 export const label: React.CSSProperties = { display: "block", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent, margin: "0 0 6px" }
 export const btn = (primary = true): React.CSSProperties => ({ background: primary ? C.accent : "transparent", color: primary ? C.accentDark : C.txt, border: primary ? "none" : `1px solid ${C.line}`, borderRadius: 0, padding: "12px 20px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer" })
@@ -20,7 +20,7 @@ export const small = (danger = false): React.CSSProperties => ({ background: "tr
 export const h2: React.CSSProperties = { fontFamily: serif, fontSize: 26, lineHeight: 1.2, margin: "0 0 8px", fontWeight: 600 }
 export const muted: React.CSSProperties = { color: C.mute, margin: 0 }
 
-export function Msg({ text, err }: { text: string; err?: boolean }) {
+function Msg({ text, err }: { text: string; err?: boolean }) {
     if (!text) return null
     return <p style={{ margin: "12px 0 0", color: err ? C.danger : C.accent, fontSize: 14 }}>{text}</p>
 }
@@ -147,7 +147,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                     <p style={muted}>{moi.email}{admin ? " · administrateur" : ""}</p>
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    {admin && <a href="/admin" style={{ ...btn(false), textDecoration: "none" }}>Administration</a>}
+                    {admin && <a href="/admin" style={{ ...btn(), textDecoration: "none" }}>Administration</a>}
                     <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
                 </div>
             </div>
@@ -393,7 +393,7 @@ function Messages() {
     )
 }
 
-export function Aide({ children }: { children: React.ReactNode }) {
+function Aide({ children }: { children: React.ReactNode }) {
     return <p style={{ margin: 0, color: C.mute, fontSize: 14, borderLeft: `2px solid ${C.accent}`, paddingLeft: 12 }}>{children}</p>
 }
 
@@ -443,7 +443,6 @@ export const CHAMPS_ADH: Champ[] = [
     { k: "ordre_bureau", t: "Ordre d’affichage dans le bureau", type: "number" },
     { k: "email_bureau", t: "E-mail de contact du bureau (si différent)", type: "text" },
     { k: "cotisation_annee", t: "Cotisation payée pour l’année", type: "number", aide: "Mise à jour automatiquement quand une adhésion est enregistrée." },
-    { k: "role", t: "Administrateur (peut gérer le site)", type: "admin" },
     { k: "actif", t: "Peut se connecter", type: "bool" },
 ]
 
@@ -470,7 +469,7 @@ export const CHAMPS_MSG: Champ[] = [
     { k: "contenu", t: "Message", type: "textarea", requis: true },
 ]
 
-export function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer, avant }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null; avant?: (row: any, ancien: any) => Promise<void> }) {
+function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer, avant }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null; avant?: (row: any, ancien: any) => Promise<void> }) {
     const client = sb()!
     const [lignes, setLignes] = React.useState<any[]>([])
     const [edit, setEdit] = React.useState<any | null>(null)
@@ -534,8 +533,8 @@ export function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouv
             {lignes.length > 8 && <input style={{ ...input, marginBottom: 12 }} placeholder="Rechercher…" value={filtre} onChange={(e) => setFiltre(e.target.value)} />}
             <div>
                 {visibles.map((r) => (
-                    <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 0", borderTop: `1px solid ${C.line}` }}>
-                        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{resume(r)}</span>
+                    <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px 12px", padding: "12px 0", borderTop: `1px solid ${C.line}`, flexWrap: "wrap" }}>
+                        <span style={{ flex: "1 1 220px", minWidth: 0, overflowWrap: "anywhere" }}>{resume(r)}</span>
                         <span style={{ display: "flex", gap: 8, flex: "0 0 auto" }}>
                             <button style={small()} onClick={() => setEdit({ ...vide(), ...r })}>Modifier</button>
                             <button style={small(true)} onClick={() => supprimer(r)}>Supprimer</button>
@@ -549,7 +548,7 @@ export function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouv
     )
 }
 
-export function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
+function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
     const aide = c.aide ? <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>{c.aide}</span> : null
     if (c.type === "admin") return (
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
@@ -579,7 +578,7 @@ function SommaireForm({ v, set }: { v: any; set: (v: any) => void }) {
     }} placeholder={"Édito ; 2\nEcheveria ; 6"} />
 }
 
-export function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
+function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
     const client = sb()!
     const [etat, setEtat] = React.useState("")
     const envoyer = async (f: File) => {
@@ -600,7 +599,7 @@ export function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any)
 }
 
 // ---------- Import en masse des adhérents ----------
-export function ImportAdherents() {
+function ImportAdherents() {
     const client = sb()!
     const [ouvert, setOuvert] = React.useState(false)
     const [txt, setTxt] = React.useState("")
@@ -740,3 +739,6 @@ function Annuaire() {
         </div>
     )
 }
+
+// Composants partagés avec l’administration (regroupés pour ne pas apparaître comme composants séparés dans Framer)
+export const UI = { Msg, Aide, Editeur, ChampForm, ImportAdherents }

@@ -3,11 +3,25 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { C, font, serif } from "./AcsBase.tsx"
 import {
-    sb, box, input, label, btn, small, h2, muted, Msg, Aide, euros, dateFr, STATUTS, exporter,
-    Editeur, ChampForm, ImportAdherents, localiserAdherent, preparerEvenement, JOURS_MOIS,
+    sb, box, input, label, btn, small, h2, muted, euros, dateFr, STATUTS, exporter, UI,
+    localiserAdherent, preparerEvenement, JOURS_MOIS,
     CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR,
 } from "./EspaceMembre.tsx"
 import type { Champ } from "./EspaceMembre.tsx"
+const { Msg, Aide, Editeur, ChampForm, ImportAdherents } = UI
+
+// Largeur disponible (pour passer en affichage mobile) : renvoie un « ref » à poser sur le conteneur
+function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
+    const [el, setEl] = React.useState<HTMLElement | null>(null)
+    const [etroit, setEtroit] = React.useState(false)
+    React.useEffect(() => {
+        if (!el || typeof ResizeObserver === "undefined") return
+        const o = new ResizeObserver(([e]) => setEtroit(e.contentRect.width < seuil))
+        o.observe(el)
+        return () => o.disconnect()
+    }, [el])
+    return [setEl, etroit]
+}
 
 const ONGLETS = [["agenda", "Agenda"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["semestriels", "Semestriels"]] as const
 type O = (typeof ONGLETS)[number][0]
@@ -23,6 +37,7 @@ export default function Administration(props: { pageMembre: string }) {
     const [email, setEmail] = React.useState("")
     const [onglet, setO] = React.useState<O>("agenda")
     const [campagneOuverte, setCampagneOuverte] = React.useState<string | null>(null)
+    const [ref, etroit] = useEtroit(760)
 
     React.useEffect(() => {
         if (!client) return
@@ -48,15 +63,21 @@ export default function Administration(props: { pageMembre: string }) {
     if (etat === "refuse") return wrap(<div style={box}><h2 style={h2}>Accès réservé</h2><p style={muted}>{email} n’est pas administrateur de l’association.</p></div>)
 
     return wrap(
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
-                {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>)}
-            </div>
-            {onglet === "agenda" && <Agenda moi={email} ouvrirCampagne={ouvrirCampagne} />}
+        <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {etroit ? (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ ...small(), padding: "9px 12px", fontSize: 14, fontWeight: 600, background: onglet === k ? C.accent : "transparent", color: onglet === k ? C.accentDark : C.txt, borderColor: onglet === k ? C.accent : C.line }}>{t}</button>)}
+                </div>
+            ) : (
+                <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
+                    {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 14px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>)}
+                </div>
+            )}
+            {onglet === "agenda" && <Agenda moi={email} ouvrirCampagne={ouvrirCampagne} etroit={etroit} />}
             {onglet === "paiements" && <><Aide>Notez ici les adhésions réglées par chèque ou en espèces, et passez en « valide » les inscriptions réglées. Les paiements en ligne s’enregistreront seuls une fois branchés.</Aide>
                 <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => { const a = new Date().getFullYear(); return { annee: a, montant: 20, formule: "Année complète", debut: `${a}-01-01`, fin: `${a}-12-31`, source: "Chèque" } }} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
                 <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
-            {onglet === "adherents" && <AdherentsAdmin />}
+            {onglet === "adherents" && <AdherentsAdmin moi={email} />}
             {onglet === "compta" && <Compta />}
             {onglet === "boutique" && <><Aide>Les articles cochés « En vente » apparaissent sur la page Boutique du site, dans l’ordre indiqué. Laissez le stock vide si vous ne le suivez pas.</Aide>
                 <Editeur table="produits" ordre="ordre" titre="Articles" champs={CHAMPS_PROD} nouveau={(l) => ({ actif: true, ordre: (l.length + 1) * 10 })} resume={(r) => `${r.categorie ? r.categorie + " · " : ""}${r.nom} · ${euros(r.prix)}${r.stock != null ? ` · stock ${r.stock}` : ""}${r.actif ? "" : " (retiré)"}`} /></>}
@@ -92,13 +113,60 @@ const CHAMPS_ECR: Champ[] = [
 const CIBLES: [string, string][] = [["tous", "Tous les adhérents"], ["a_jour", "Adhérents à jour de cotisation"], ["retard", "Cotisation à renouveler"], ["bureau", "Membres du bureau"], ["evenement", "Inscrits à un événement"]]
 
 // ---------- Adhérents ----------
-function AdherentsAdmin() {
+function AdherentsAdmin({ moi }: { moi: string }) {
     const annee = new Date().getFullYear()
+    const [cle, setCle] = React.useState(0)
     return <>
+        <Administrateurs moi={moi} changer={() => setCle((x) => x + 1)} />
         <Aide>Seules les adresses de cette liste peuvent se connecter. Pour le bureau, remplissez « Fonction au bureau » : la personne apparaît alors dans les contacts du bureau.</Aide>
         <ImportAdherents />
-        <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.fonction_bureau ? " · " + r.fonction_bureau : ""}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} />
+        <Editeur key={cle} table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.fonction_bureau ? " · " + r.fonction_bureau : ""}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} />
     </>
+}
+
+function Administrateurs({ moi, changer }: { moi: string; changer: () => void }) {
+    const client = sb()
+    const [tous, setTous] = React.useState<any[]>([])
+    const [choix, setChoix] = React.useState("")
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const charger = React.useCallback(async () => {
+        const { data } = await client.from("adherents").select("id,email,prenom,nom,role,actif").order("nom")
+        setTous(data ?? [])
+    }, [])
+    React.useEffect(() => { charger() }, [charger])
+    const admins = tous.filter((a) => a.role === "admin")
+    const nom = (a: any) => [a.prenom, a.nom].filter(Boolean).join(" ") || a.email
+    const definir = async (a: any, role: "admin" | "membre") => {
+        if (role === "membre") {
+            if (a.email === moi) return setMsg({ t: "Vous ne pouvez pas retirer vos propres droits : demandez à un autre administrateur.", err: true })
+            if (admins.length <= 1) return setMsg({ t: "Il faut garder au moins un administrateur.", err: true })
+            if (!window.confirm(`Retirer les droits d’administration de ${nom(a)} ?`)) return
+        }
+        const { error } = await client.from("adherents").update({ role }).eq("id", a.id)
+        if (error) return setMsg({ t: error.message, err: true })
+        setMsg({ t: role === "admin" ? `${nom(a)} est maintenant administrateur.` : `${nom(a)} n’est plus administrateur.`, err: false })
+        setChoix(""); await charger(); changer()
+    }
+    return (
+        <div style={box}>
+            <h3 style={{ ...h2, fontSize: 20 }}>Administrateurs <span style={{ color: C.mute, fontWeight: 400 }}>({admins.length})</span></h3>
+            <p style={{ ...muted, fontSize: 14, marginBottom: 12 }}>Ils ont accès à cette administration : agenda, adhérents, comptabilité, boutique et envoi d’e-mails.</p>
+            {admins.map((a) => (
+                <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "10px 0", borderTop: `1px solid ${C.line}`, flexWrap: "wrap" }}>
+                    <span style={{ minWidth: 0 }}>{nom(a)} <span style={{ color: C.mute, fontSize: 13, wordBreak: "break-all" }}>· {a.email}{a.email === moi ? " (vous)" : ""}</span></span>
+                    {a.email !== moi && <button style={small(true)} onClick={() => definir(a, "membre")}>Retirer</button>}
+                </div>
+            ))}
+            <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <select style={{ ...input, flex: "1 1 240px", width: "auto" }} value={choix} onChange={(e) => setChoix(e.target.value)}>
+                    <option value="">Ajouter un administrateur…</option>
+                    {tous.filter((a) => a.role !== "admin" && a.actif).map((a) => <option key={a.id} value={a.id}>{nom(a)}{a.prenom || a.nom ? ` (${a.email})` : ""}</option>)}
+                </select>
+                <button style={btn()} disabled={!choix} onClick={() => { const a = tous.find((x) => x.id === choix); if (a) definir(a, "admin") }}>Ajouter</button>
+            </div>
+            <Msg text={msg.t} err={msg.err} />
+        </div>
+    )
 }
 
 // ---------- Envoi via la fonction Supabase « envoyer » ----------
@@ -117,13 +185,15 @@ async function envoyer(body: any): Promise<{ ok: boolean; texte: string }> {
 const JOURS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
 
-function Agenda({ moi, ouvrirCampagne }: { moi: string; ouvrirCampagne: (id: string) => void }) {
+function Agenda({ moi, ouvrirCampagne, etroit }: { moi: string; ouvrirCampagne: (id: string) => void; etroit: boolean }) {
     const client = sb()
     const auj = new Date()
     const [mois, setMois] = React.useState(new Date(auj.getFullYear(), auj.getMonth(), 1))
     const [evts, setEvts] = React.useState<any[]>([])
     const [sel, setSel] = React.useState<any | null>(null)
+    const [jour, setJour] = React.useState<string | null>(null)
     const [msg, setMsg] = React.useState({ t: "", err: false })
+    const ouvrir = (e: any) => { setMsg({ t: "", err: false }); setSel({ ...e, prix: e.prix ?? 0, places: e.places ?? "", __annoncer: false }) }
     const charger = React.useCallback(async () => {
         const { data, error } = await client.from("evenements").select("*").order("date_debut", { ascending: true, nullsFirst: false })
         if (error) setMsg({ t: error.message, err: true }); else setEvts(data ?? [])
@@ -144,31 +214,44 @@ function Agenda({ moi, ouvrirCampagne }: { moi: string; ouvrirCampagne: (id: str
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <button style={small()} onClick={() => setMois(new Date(mois.getFullYear(), mois.getMonth() - 1, 1))} aria-label="Mois précédent">‹</button>
-                        <h3 style={{ ...h2, fontSize: 22, margin: "0 8px", minWidth: 170, textAlign: "center", textTransform: "capitalize" }}>{mois.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</h3>
+                        <h3 style={{ ...h2, fontSize: etroit ? 18 : 22, margin: "0 4px", minWidth: etroit ? 120 : 170, textAlign: "center", textTransform: "capitalize", whiteSpace: "nowrap" }}>{mois.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</h3>
                         <button style={small()} onClick={() => setMois(new Date(mois.getFullYear(), mois.getMonth() + 1, 1))} aria-label="Mois suivant">›</button>
                         <button style={{ ...small(), marginLeft: 6 }} onClick={() => setMois(new Date(auj.getFullYear(), auj.getMonth(), 1))}>Aujourd’hui</button>
                     </div>
-                    <button style={btn()} onClick={() => nouveau()}>Nouvel événement</button>
+                    <button style={{ ...btn(), ...(etroit ? { width: "100%" } : {}) }} onClick={() => nouveau()}>Nouvel événement</button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 1, background: C.line, border: `1px solid ${C.line}` }}>
-                    {JOURS.map((j) => <div key={j} style={{ background: C.panel, padding: "6px 8px", fontSize: 12, color: C.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>{j}</div>)}
+                    {JOURS.map((j) => <div key={j} style={{ background: C.panel, padding: etroit ? "6px 2px" : "6px 8px", textAlign: etroit ? "center" : "left", fontSize: etroit ? 11 : 12, color: C.mute, textTransform: "uppercase", letterSpacing: "0.06em" }}>{j}</div>)}
                     {cases.slice(0, semaines * 7).map((d) => {
                         const k = iso(d), horsMois = d.getMonth() !== mois.getMonth(), estAuj = k === iso(auj)
                         const liste = duJour(k)
+                        if (etroit) return (
+                            <button key={k} onClick={() => setJour(jour === k ? null : k)} style={{ background: jour === k ? "rgba(155,189,138,0.18)" : horsMois ? C.bg : "#1f1813", border: "none", borderRadius: 0, minHeight: 48, padding: "6px 2px", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, font: "inherit" }}>
+                                <span style={{ fontSize: 13, color: estAuj ? C.accentDark : horsMois ? "rgba(246,240,230,0.3)" : C.txt, background: estAuj ? C.accent : "transparent", padding: "0 5px", fontWeight: estAuj ? 700 : 400 }}>{d.getDate()}</span>
+                                <span style={{ display: "flex", gap: 3 }}>{liste.slice(0, 3).map((e) => <span key={e.id} style={{ width: 6, height: 6, background: e.inscription_ouverte ? C.accent : C.mute }} />)}</span>
+                            </button>
+                        )
                         return (
                             <div key={k} onClick={() => nouveau(k)} title="Cliquer pour ajouter un événement ce jour-là" style={{ background: horsMois ? C.bg : "#1f1813", minHeight: 86, padding: 6, cursor: "pointer", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                                 <span style={{ fontSize: 13, color: estAuj ? C.accentDark : horsMois ? "rgba(246,240,230,0.3)" : C.mute, background: estAuj ? C.accent : "transparent", alignSelf: "flex-start", padding: estAuj ? "0 6px" : 0, fontWeight: estAuj ? 700 : 400 }}>{d.getDate()}</span>
                                 {liste.map((e) => (
-                                    <button key={e.id} onClick={(x) => { x.stopPropagation(); setMsg({ t: "", err: false }); setSel({ ...e, prix: e.prix ?? 0, places: e.places ?? "", __annoncer: false }) }}
+                                    <button key={e.id} onClick={(x) => { x.stopPropagation(); ouvrir(e) }}
                                         style={{ textAlign: "left", background: e.inscription_ouverte ? "rgba(155,189,138,0.22)" : "rgba(246,240,230,0.08)", color: C.txt, border: "none", borderLeft: `3px solid ${e.inscription_ouverte ? C.accent : C.mute}`, borderRadius: 0, padding: "3px 6px", font: "inherit", fontSize: 12, lineHeight: 1.3, cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", opacity: e.publie === false ? 0.5 : 1 }}>
-                                        {e.heure ? e.heure + " · " : ""}{e.titre}
+                                        {e.heure ? e.heure + " · " : ""}{e.titre}{e.publie === false ? " (non publié)" : ""}
                                     </button>
                                 ))}
                             </div>
                         )
                     })}
                 </div>
-                <p style={{ ...muted, fontSize: 13, marginTop: 10 }}>Cliquez sur un jour pour y créer un événement, ou sur un événement pour le modifier et voir les inscrits. En vert : inscriptions ouvertes.</p>
+                {etroit && jour && (
+                    <div style={{ marginTop: 14 }}>
+                        <span style={label}>{JOURS_MOIS(jour)}</span>
+                        {duJour(jour).map((e) => <button key={e.id} onClick={() => ouvrir(e)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "10px 0", color: C.txt, font: "inherit", cursor: "pointer" }}>{e.heure ? <span style={{ color: C.accent, fontSize: 13 }}>{e.heure} · </span> : null}{e.titre}</button>)}
+                        <button style={{ ...btn(false), marginTop: 8, width: "100%" }} onClick={() => nouveau(jour)}>Ajouter un événement ce jour-là</button>
+                    </div>
+                )}
+                <p style={{ ...muted, fontSize: 13, marginTop: 10 }}>{etroit ? "Touchez un jour pour voir ses événements ou en ajouter un." : "Cliquez sur un jour pour y créer un événement, ou sur un événement pour le modifier et voir les inscrits."} En vert : inscriptions ouvertes.</p>
                 <Msg text={msg.t} err={msg.err} />
             </div>
 
@@ -178,12 +261,12 @@ function Agenda({ moi, ouvrirCampagne }: { moi: string; ouvrirCampagne: (id: str
                 <div style={box}>
                     <span style={label}>Prochains événements</span>
                     {prochains.length === 0 && <p style={muted}>Rien de prévu.</p>}
-                    {prochains.map((e) => <button key={e.id} onClick={() => { setSel({ ...e, prix: e.prix ?? 0, places: e.places ?? "", __annoncer: false }); window.scrollTo({ top: 0, behavior: "smooth" }) }} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "10px 0", color: C.txt, font: "inherit", cursor: "pointer" }}><span style={{ color: C.accent, fontSize: 13 }}>{e.date_label}</span><br />{e.titre}</button>)}
+                    {prochains.map((e) => <button key={e.id} onClick={() => ouvrir(e)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "10px 0", color: C.txt, font: "inherit", cursor: "pointer" }}><span style={{ color: C.accent, fontSize: 13 }}>{e.date_label}</span><br />{e.titre}</button>)}
                 </div>
                 <div style={box}>
                     <span style={label}>Dates à confirmer</span>
                     {sansDate.length === 0 && <p style={muted}>Aucun.</p>}
-                    {sansDate.map((e) => <button key={e.id} onClick={() => setSel({ ...e, prix: e.prix ?? 0, places: e.places ?? "", __annoncer: false })} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "10px 0", color: C.txt, font: "inherit", cursor: "pointer" }}><span style={{ color: C.accent, fontSize: 13 }}>{e.date_label}</span><br />{e.titre}</button>)}
+                    {sansDate.map((e) => <button key={e.id} onClick={() => ouvrir(e)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "10px 0", color: C.txt, font: "inherit", cursor: "pointer" }}><span style={{ color: C.accent, fontSize: 13 }}>{e.date_label}</span><br />{e.titre}</button>)}
                 </div>
             </div>
         </div>
@@ -257,7 +340,7 @@ function Inscrits({ evt, moi, ouvrirCampagne }: { evt: any; moi: string; ouvrirC
     const client = sb()
     const [liste, setListe] = React.useState<any[] | null>(null)
     const [adh, setAdh] = React.useState<any[]>([])
-    const [f, setF] = React.useState({ email: "", nb: 1, statut: "valide", confirmer: true })
+    const [f, setF] = React.useState({ email: "", nb: 1, statut: "valide", confirmer: false })
     const [msg, setMsg] = React.useState({ t: "", err: false })
     const charger = React.useCallback(async () => {
         const { data } = await client.from("inscriptions").select("*").eq("evenement_id", evt.id).order("cree_le")
@@ -307,7 +390,7 @@ function Inscrits({ evt, moi, ouvrirCampagne }: { evt: any; moi: string; ouvrirC
                     </div>
                 ))}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(200px, 2fr) 90px minmax(140px, 1fr)", gap: 10, marginTop: 14, alignItems: "end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 14, alignItems: "end" }}>
                 <div><span style={label}>Ajouter un inscrit</span><input style={input} list="acs-adh" placeholder="adresse e-mail" value={f.email} onChange={(x) => setF({ ...f, email: x.target.value })} />
                     <datalist id="acs-adh">{adh.map((a) => <option key={a.email} value={a.email}>{[a.prenom, a.nom].filter(Boolean).join(" ")}</option>)}</datalist></div>
                 <div><span style={label}>Pers.</span><input style={input} type="number" min={1} value={f.nb} onChange={(x) => setF({ ...f, nb: Math.max(1, Number(x.target.value) || 1) })} /></div>
@@ -366,7 +449,7 @@ function Compta() {
                     <button style={btn(false)} onClick={journal}>Exporter le journal (CSV)</button>
                 </div>
                 {!d ? <p style={muted}>Chargement…</p> : <>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.line, border: `1px solid ${C.line}`, marginBottom: 20 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1, background: C.line, border: `1px solid ${C.line}`, marginBottom: 20 }}>
                         {[["Recettes", recettes, C.accent], ["Dépenses", depenses, C.danger], ["Solde", recettes - depenses, recettes - depenses >= 0 ? C.txt : C.danger]].map(([t, v, c]) => <div key={t as string} style={{ background: C.panel, padding: "14px 16px" }}><div style={{ color: C.mute, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t}</div><div style={{ fontFamily: serif, fontSize: 26, fontWeight: 600, color: c as string }}>{euros(v as number)}</div></div>)}
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 28 }}>

@@ -1,13 +1,12 @@
-// BoutonMembre.tsx — barre de navigation : « Connexion », ou une fois connecté « Membres ▾ » (et « Admin ▾ » pour les administrateurs), puis Adhérer / nom du membre
+// BoutonMembre.tsx — barre de navigation : « Connexion », ou une fois connecté « Membres ▾ » (avec « Administration » pour les admins), puis Adhérer / nom du membre
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb } from "./AcsBase.tsx"
 
 const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Annuaire", "#annuaire"]]
-const LIENS_ADMIN: [string, string][] = [["Agenda", "#agenda"], ["Adhésions et paiements", "#paiements"], ["Adhérents", "#adherents"], ["Comptabilité", "#compta"], ["Boutique", "#boutique"], ["Campagnes e-mail", "#campagnes"], ["Semestriels", "#semestriels"]]
 const POLICE = "Poppins, sans-serif"
 
-function Deroulant({ titre, href, liens, compact, style, deconnexion }: { titre: string; href: string; liens: [string, string][]; compact: boolean; style: React.CSSProperties; deconnexion?: boolean }) {
+function Deroulant({ titre, href, liens, compact, style, deconnexion, admin }: { titre: string; href: string; liens: [string, string][]; compact: boolean; style: React.CSSProperties; deconnexion?: boolean; admin?: string }) {
     const [ouvert, setOuvert] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
     React.useEffect(() => {
@@ -27,6 +26,7 @@ function Deroulant({ titre, href, liens, compact, style, deconnexion }: { titre:
                 <div style={{ position: "absolute", top: "100%", right: 0, paddingTop: 6, zIndex: 50 }}>
                     <div style={{ background: "#16120f", border: "1px solid rgba(246,240,230,0.2)", minWidth: 210, boxShadow: "0 12px 30px rgba(0,0,0,0.35)" }}>
                         {liens.map(([t, h]) => <a key={t} href={href + h} onClick={() => setOuvert(false)} style={item} {...survol}>{t}</a>)}
+                        {admin && <a href={admin} onClick={() => setOuvert(false)} style={{ ...item, color: "#9bbd8a", fontWeight: 600 }} {...survol}>Administration</a>}
                         {deconnexion && <button onClick={() => { setOuvert(false); sb()?.auth.signOut().finally(() => { window.location.href = "/" }) }} style={{ ...item, color: "rgba(246,240,230,0.7)", borderBottom: "none" }} {...survol}>Se déconnecter</button>}
                     </div>
                 </div>
@@ -75,10 +75,8 @@ export default function BoutonMembre(props: { page: string; pageAdmin: string; c
 
     return (
         <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-            {!connecte ? <a href={page} style={style}>Connexion</a> : <>
-                {moi?.role === "admin" && <Deroulant titre="Admin" href={pageAdmin} liens={LIENS_ADMIN} compact={props.compact} style={style} />}
-                <Deroulant titre="Membres" href={page} liens={LIENS_MEMBRE} compact={props.compact} style={style} deconnexion />
-            </>}
+            {!connecte ? <a href={page} style={style}>Connexion</a>
+                : <Deroulant titre="Membres" href={page} liens={LIENS_MEMBRE} compact={props.compact} style={style} deconnexion admin={moi?.role === "admin" ? pageAdmin : undefined} />}
             {adh}
         </div>
     )
