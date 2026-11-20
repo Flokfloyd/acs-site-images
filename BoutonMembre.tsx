@@ -9,19 +9,29 @@ const LIENS: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil
  * @framerSupportedLayoutWidth auto
  * @framerSupportedLayoutHeight auto
  */
-export default function BoutonMembre(props: { page: string; compact: boolean }) {
+export default function BoutonMembre(props: { page: string; compact: boolean; adhesion: boolean; accent: string }) {
     const page = props.page || "/espace-membre"
     const [connecte, setConnecte] = React.useState(false)
+    const [email, setEmail] = React.useState<string | null>(null)
+    const [moi, setMoi] = React.useState<{ prenom?: string; nom?: string; cotisation_annee?: number } | null>(null)
     const [ouvert, setOuvert] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
 
     React.useEffect(() => {
         const c = sb()
         if (!c) return
-        c.auth.getSession().then(({ data }: any) => setConnecte(!!data.session))
-        const { data } = c.auth.onAuthStateChange((_e: any, s: any) => setConnecte(!!s))
+        const maj = (s: any) => { setConnecte(!!s); setEmail(s?.user?.email ?? null) }
+        c.auth.getSession().then(({ data }: any) => maj(data.session))
+        const { data } = c.auth.onAuthStateChange((_e: any, s: any) => maj(s))
         return () => data.subscription.unsubscribe()
     }, [])
+    React.useEffect(() => {
+        const c = sb()
+        if (!c || !email || !props.adhesion) { setMoi(null); return }
+        let fini = false
+        c.from("adherents").select("prenom,nom,cotisation_annee").eq("email", email.toLowerCase()).maybeSingle().then(({ data }: any) => { if (!fini) setMoi(data ?? null) })
+        return () => { fini = true }
+    }, [email, props.adhesion])
     React.useEffect(() => {
         if (!ouvert) return
         const f = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOuvert(false) }
@@ -31,6 +41,19 @@ export default function BoutonMembre(props: { page: string; compact: boolean }) 
 
     const style: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(246,240,230,0.4)", background: "transparent", color: "#f6f0e6", padding: props.compact ? "10px 14px" : "10px 20px", font: "600 14px Poppins, sans-serif", textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap", borderRadius: 0 }
 
+    const accent = props.accent || "#9bbd8a"
+    const annee = new Date().getFullYear()
+    const aJour = !!moi && (moi.cotisation_annee ?? 0) >= annee
+    const nomMembre = moi ? [moi.prenom, moi.nom].filter(Boolean).join(" ") : ""
+    const plein: React.CSSProperties = { ...style, background: accent, border: `1px solid ${accent}`, color: "#16120f" }
+    const adh = !props.adhesion ? null
+        : connecte && aJour ? <a href={page + "#profil"} title={`Adhésion ${annee} à jour`} style={plein}>{nomMembre || "Adhérent"} <span aria-hidden>✓</span></a>
+        : connecte && moi ? <a href="/#adhesion" style={plein}>Renouveler · 20 €</a>
+        : <a href="/#adhesion" style={plein}>Adhérer · 20 €</a>
+
+    return <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{bouton()}{adh}</div>
+
+    function bouton() {
     if (!connecte) return <a href={page} style={style}>Connexion</a>
 
     return (
@@ -50,10 +73,13 @@ export default function BoutonMembre(props: { page: string; compact: boolean }) 
             )}
         </div>
     )
+    }
 }
 
-BoutonMembre.defaultProps = { page: "/espace-membre", compact: false }
+BoutonMembre.defaultProps = { page: "/espace-membre", compact: false, adhesion: false, accent: "#9bbd8a" }
 addPropertyControls(BoutonMembre, {
     page: { type: ControlType.String, title: "Page", defaultValue: "/espace-membre" },
     compact: { type: ControlType.Boolean, title: "Compact", defaultValue: false },
+    adhesion: { type: ControlType.Boolean, title: "Bouton Adhérer", defaultValue: false },
+    accent: { type: ControlType.Color, title: "Accent", defaultValue: "#9bbd8a" },
 })
