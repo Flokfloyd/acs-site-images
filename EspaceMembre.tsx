@@ -32,7 +32,7 @@ export default function EspaceMembre(props: { lienSemestriels: string; demo: "no
     const client = sb()
     const [ready, setReady] = React.useState(false)
     const [email, setEmail] = React.useState("")
-    const [moi, setMoi] = React.useState<Adherent | null>(null)
+    const [moi, setMoi] = React.useState<Adherent | null | undefined>(undefined)
     const [sessionEmail, setSessionEmail] = React.useState<string | null>(null)
 
     React.useEffect(() => {
@@ -44,7 +44,16 @@ export default function EspaceMembre(props: { lienSemestriels: string; demo: "no
 
     React.useEffect(() => {
         if (!client || !sessionEmail) { setMoi(null); return }
-        client.from("adherents").select("*").eq("email", sessionEmail.toLowerCase()).maybeSingle().then(({ data }) => setMoi((data as Adherent) ?? null))
+        let fini = false
+        setMoi(undefined)
+        const essai = async (n: number) => {
+            const { data, error } = await client.from("adherents").select("*").eq("email", sessionEmail.toLowerCase()).maybeSingle()
+            if (fini) return
+            if ((error || !data) && n < 3) { setTimeout(() => essai(n + 1), 700 * (n + 1)); return }
+            setMoi((data as Adherent) ?? null)
+        }
+        essai(0)
+        return () => { fini = true }
     }, [sessionEmail])
 
     const wrap = (children: React.ReactNode) => <div style={{ width: "100%", color: C.txt, ...font }}>{children}</div>
@@ -52,6 +61,7 @@ export default function EspaceMembre(props: { lienSemestriels: string; demo: "no
     if (!client) return wrap(<div style={box}><h2 style={h2}>Bientôt disponible</h2><p style={muted}>L’espace membre ouvre bientôt. Les adhérents pourront s’y connecter avec leur adresse e-mail.</p></div>)
     if (!ready) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
     if (!sessionEmail) return wrap(<Connexion email={email} setEmail={setEmail} />)
+    if (moi === undefined) return wrap(<div style={box}><p style={muted}>Chargement de votre espace…</p></div>)
     if (!moi) return wrap(<div style={box}><h2 style={h2}>Adresse non reconnue</h2><p style={muted}>{sessionEmail} ne figure pas (ou plus) dans la liste des adhérents. Contactez le bureau de l’association.</p><div style={{ marginTop: 20 }}><button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button></div></div>)
     return wrap(<Tableau moi={moi} lienSemestriels={props.lienSemestriels} />)
 }
