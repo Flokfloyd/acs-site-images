@@ -245,6 +245,27 @@ function Evenements() {
     )
 }
 
+
+// ---------- Espace personnel ----------
+const euros = (n: any) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+const dateFr = (d: any, heure = false) => { if (!d) return "—"; const x = new Date(d); return heure ? x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + " à " + x.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) }
+const STATUTS: Record<string, string> = { valide: "Validé", en_attente: "En attente", abandonne: "Abandonné", rembourse: "Remboursé" }
+const lien: React.CSSProperties = { color: C.accent, textDecoration: "none" }
+function useTable(table: string, ordre: string) {
+    const [rows, setRows] = React.useState<any[] | null>(null)
+    React.useEffect(() => { sb()!.from(table).select("*").order(ordre, { ascending: false }).then(({ data }: any) => setRows(data ?? [])) }, [table])
+    return rows
+}
+function useRpc(nom: string) {
+    const [rows, setRows] = React.useState<any[] | null>(null)
+    React.useEffect(() => { sb()!.rpc(nom).then(({ data }: any) => setRows(data ?? [])) }, [nom])
+    return rows
+}
+function exporter(nom: string, entetes: string[], lignes: any[][]) {
+    const csv = "\ufeff" + [entetes, ...lignes].map((l) => l.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n")
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = nom; a.click()
+}
+
 function VueEnsemble({ moi, aller }: { moi: Adherent; aller: (o: any) => void }) {
     const adhesions = useTable("adhesions", "annee")
     const inscr = useTable("inscriptions", "cree_le")
