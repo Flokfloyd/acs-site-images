@@ -94,7 +94,7 @@ export default function CarteBretagne(props) {
                 <circle cx={bx} cy={by} r={3.6} fill={accent} />
                 <text x={bx - 6} y={by - 9} textAnchor="end" fontSize={9} fontWeight={700} fontFamily={sans} fill={accent}>Bédée · le salon</text>
             </svg>
-            <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 1, background: "rgba(29,22,18,0.12)", border: "1px solid rgba(29,22,18,0.12)" }}>
+            <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 1, background: "rgba(29,22,18,0.12)", border: "1px solid rgba(29,22,18,0.12)" }}>
                 {VILLES.map((v) => (
                     <div key={v.nom} style={{ background: "#fbf7f0", padding: "10px 12px" }}>
                         <div style={{ fontFamily: serif, fontSize: 16, fontWeight: 600 }}>{v.nom}</div>
