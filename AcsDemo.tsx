@@ -3,15 +3,27 @@
 
 const data: Record<string, any[]> = {
     adherents: [
-        { id: "1", email: "admin@exemple.fr", prenom: "Camille", nom: "Martin", role: "admin", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 01", code_postal: "35137", ville: "Bédée", lat: 48.18, lon: -1.95 },
+        { id: "1", email: "admin@exemple.fr", prenom: "Camille", nom: "Martin", fonction_bureau: "Présidente", ordre_bureau: 1, role: "admin", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 01", code_postal: "35137", ville: "Bédée", lat: 48.18, lon: -1.95 },
         { id: "2", email: "marie.durand@exemple.fr", prenom: "Marie", nom: "Durand", conjoint: "Yann Durand", role: "membre", cotisation_annee: 2025, actif: true, annuaire: true, telephone: "06 00 00 00 02", code_postal: "29200", ville: "Brest", lat: 48.39, lon: -4.49 },
         { id: "3", email: "paul.le-goff@exemple.fr", prenom: "Paul", nom: "Le Goff", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "22300", ville: "Lannion", lat: 48.73, lon: -3.46 },
-        { id: "4", email: "anne.riou@exemple.fr", prenom: "Anne", nom: "Riou", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 04", code_postal: "56000", ville: "Vannes", lat: 47.66, lon: -2.76 },
+        { id: "4", email: "anne.riou@exemple.fr", prenom: "Anne", nom: "Riou", fonction_bureau: "Secrétaire", ordre_bureau: 2, role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 04", code_postal: "56000", ville: "Vannes", lat: 47.66, lon: -2.76 },
         { id: "5", email: "luc.bernard@exemple.fr", prenom: "Luc", nom: "Bernard", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "44000", ville: "Nantes", lat: 47.22, lon: -1.55 },
         { id: "6", email: "sophie.hamon@exemple.fr", prenom: "Sophie", nom: "Hamon", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "35000", ville: "Rennes", lat: 48.11, lon: -1.68 },
         { id: "7", email: "jean.morel@exemple.fr", prenom: "Jean", nom: "Morel", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 07", code_postal: "35000", ville: "Rennes", lat: 48.11, lon: -1.68 },
         { id: "8", email: "claire.petit@exemple.fr", prenom: "Claire", nom: "Petit", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "85270", ville: "Saint-Hilaire-de-Riez", lat: 46.74, lon: -1.98 },
         { id: "9", email: "hugo.leroy@exemple.fr", prenom: "Hugo", nom: "Leroy", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "29900", ville: "Concarneau", lat: 47.89, lon: -3.9 },
+    ],
+    adhesions: [2024, 2025].map((a) => ({ id: "a" + a, email: "marie.durand@exemple.fr", annee: a, formule: "Année complète pour un couple", montant: 20, debut: `${a}-01-01`, fin: `${a}-12-31`, source: "En ligne", recu_url: null, cree_le: `${a}-01-20T18:00:00Z` })),
+    inscriptions: [
+        { id: "i1", email: "marie.durand@exemple.fr", formulaire: "Sortie du 16 mai", montant: 0, statut: "valide", cree_le: "2026-05-05T16:31:00Z" },
+        { id: "i2", email: "marie.durand@exemple.fr", formulaire: "Repas du samedi 13 juin", montant: 15, statut: "valide", cree_le: "2026-04-27T20:34:00Z" },
+        { id: "i3", email: "marie.durand@exemple.fr", formulaire: "T-shirt ACS 10 ans", montant: 15, statut: "valide", cree_le: "2025-06-14T10:00:00Z" },
+    ],
+    dons: [],
+    messages: [
+        { id: "m1", sujet: "Sondage pour le voyage 2027", contenu: "Bonjour à toutes et à tous,\n\nNous préparons le voyage botanique 2027. Dites-nous vos envies de destination avant le 15 décembre.\n\nLe bureau", envoye_le: "2026-11-19T18:00:00Z" },
+        { id: "m2", sujet: "Troc plantes le 27 septembre", contenu: "Rendez-vous à Bédée à 14 h pour notre troc d’automne.", envoye_le: "2026-09-16T12:00:00Z" },
+        { id: "m3", sujet: "Salon de Bédée, bénévoles", contenu: "Merci de nous indiquer vos disponibilités pour le montage du salon.", envoye_le: "2026-05-10T11:27:00Z" },
     ],
     evenements: [
         { id: "e1", date_debut: "2027-06-01", date_label: "Juin 2027", titre: "Salon de l’A.C.S. à Bédée", lieu: "Bédée (35)", description: "Environ 40 exposants", reserve_membres: false, publie: true },
@@ -61,6 +73,8 @@ export function demoClient(etat: "connexion" | "admin" | "membre") {
         from: (t: string) => new Q(t),
         rpc: (nom: string, args: any) => {
             if (nom === "choisir_annuaire") { const r = data.adherents.find((a) => a.email === email); if (r) r.annuaire = args.visible; return Promise.resolve({ data: null, error: null }) }
+            if (nom === "bureau") return Promise.resolve({ data: data.adherents.filter((a) => a.fonction_bureau).sort((a, b) => a.ordre_bureau - b.ordre_bureau).map((a) => ({ prenom: a.prenom, nom: a.nom, fonction: a.fonction_bureau, email: a.email, telephone: a.telephone })), error: null })
+            if (nom === "maj_profil") { const r = data.adherents.find((a) => a.email === email); if (r) Object.assign(r, args.p); return Promise.resolve({ data: null, error: null }) }
             if (nom === "annuaire") return Promise.resolve({ data: [...data.adherents].filter((a) => a.actif && a.annuaire !== false).sort((a, b) => (a.nom > b.nom ? 1 : -1)), error: null })
             return Promise.resolve({ data: null, error: null })
         },

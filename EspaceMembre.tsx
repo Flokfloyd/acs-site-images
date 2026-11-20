@@ -117,13 +117,13 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 // ---------- Tableau de bord ----------
 function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: string }) {
     const client = sb()!
-    const annee = new Date().getFullYear()
-    const aJour = (moi.cotisation_annee ?? 0) >= annee
-    const [onglet, setOnglet] = React.useState<"accueil" | "annuaire" | "agenda" | "semestriels" | "adherents">("accueil")
+    type O = "accueil" | "profil" | "historique" | "messages" | "annuaire" | "agenda" | "semestriels" | "adherents" | "paiements" | "envoi"
+    const [onglet, setOnglet] = React.useState<O>("accueil")
     const admin = moi.role === "admin"
-    const [visible, setVisible] = React.useState(moi.annuaire !== false)
-    const basculer = async (v: boolean) => { setVisible(v); const { error } = await client.rpc("choisir_annuaire", { visible: v }); if (error) setVisible(!v) }
-    const tabs: [typeof onglet, string][] = [["accueil", "Mon espace"], ["annuaire", "Annuaire"], ...(admin ? ([["agenda", "Agenda"], ["semestriels", "Semestriels"], ["adherents", "Adhérents"]] as [typeof onglet, string][]) : [])]
+    const perso: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Mon profil"], ["historique", "Adhésions et achats"], ["messages", "Messages"], ["annuaire", "Annuaire"]]
+    const gestion: [O, string][] = [["agenda", "Agenda"], ["semestriels", "Semestriels"], ["adherents", "Adhérents"], ["paiements", "Paiements"], ["envoi", "Écrire aux adhérents"]]
+    const annee = new Date().getFullYear()
+    const tabBtn = (k: O, t: string) => <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 14px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -134,41 +134,197 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                 </div>
                 <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
             </div>
-            {(
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${C.line}` }}>
-                    {tabs.map(([k, t]) => (
-                        <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>
-                    ))}
-                </div>
-            )}
-            {onglet === "accueil" && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-                    <div style={box}>
-                        <span style={label}>Cotisation</span>
-                        <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 600 }}>{aJour ? `À jour pour ${annee}` : "À renouveler"}</p>
-                        <p style={muted}>{aJour ? "Merci pour votre soutien !" : `Dernière cotisation : ${moi.cotisation_annee ?? "—"}. Adhésion annuelle : 20 €.`}</p>
-                    </div>
-                    <div style={box}>
-                        <span style={label}>Semestriels</span>
-                        <p style={{ ...muted, marginBottom: 16 }}>Tous les numéros sont à lire en ligne.</p>
-                        <a href={lienSemestriels} style={{ ...btn(), display: "inline-block", textDecoration: "none" }}>Lire les semestriels</a>
-                    </div>
-                    <div style={box}>
-                        <span style={label}>Annuaire</span>
-                        <p style={{ ...muted, marginBottom: 14 }}>Les autres adhérents voient votre nom, votre commune, votre e-mail et votre téléphone. Votre adresse postale reste visible du seul bureau.</p>
-                        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-                            <input type="checkbox" checked={visible} onChange={(e) => basculer(e.target.checked)} style={{ width: 18, height: 18, accentColor: C.accent }} />Apparaître dans l’annuaire
-                        </label>
-                    </div>
-                </div>
-            )}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${C.line}` }}>
+                {perso.map(([k, t]) => tabBtn(k, t))}
+            </div>
+            {admin && <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0, borderBottom: `1px solid ${C.line}`, marginTop: -8 }}>
+                <span style={{ ...label, margin: "0 6px 0 0", color: C.mute }}>Gestion</span>
+                {gestion.map(([k, t]) => tabBtn(k, t))}
+            </div>}
+            {onglet === "accueil" && <VueEnsemble moi={moi} lienSemestriels={lienSemestriels} aller={setOnglet} />}
+            {onglet === "profil" && <Profil moi={moi} />}
+            {onglet === "historique" && <Historique moi={moi} />}
+            {onglet === "messages" && <Messages />}
             {onglet === "annuaire" && <Annuaire />}
             {onglet === "agenda" && <><Aide>Ajoutez une sortie, une réunion ou le salon. S’il n’y a pas encore de date précise, laissez la date vide et écrivez par exemple « Juin 2027 ».</Aide>
                 <Editeur table="evenements" ordre="date_debut" titre="Événements" champs={CHAMPS_AGENDA} fixes={{ publie: true }} preparer={preparerEvenement} resume={(r) => `${r.date_label} — ${r.titre}${r.reserve_membres ? " · adhérents" : ""}`} /></>}
             {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la visionneuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
-            {onglet === "adherents" && <><Aide>Seules les adresses de cette liste peuvent se connecter. Pour un renouvellement, modifiez l’année de cotisation.</Aide><ImportAdherents />
-                <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} nouveau={() => ({ cotisation_annee: annee })} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} /></>}
+            {onglet === "adherents" && <><Aide>Seules les adresses de cette liste peuvent se connecter. Pour le bureau, remplissez « Fonction au bureau » : la personne apparaît alors dans les contacts du bureau.</Aide><ImportAdherents />
+                <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.fonction_bureau ? " · " + r.fonction_bureau : ""}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} /></>}
+            {onglet === "paiements" && <><Aide>Les paiements en ligne s’enregistrent seuls une fois le paiement connecté. Ici, notez les adhésions réglées par chèque ou en espèces, et les inscriptions aux sorties : l’adhérent les retrouve dans son espace.</Aide>
+                <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => ({ annee, montant: 20, formule: "Année complète", debut: `${annee}-01-01`, fin: `${annee}-12-31`, source: "Chèque" })} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
+                <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide" })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
+            {onglet === "envoi" && <><Aide>Le message apparaît dans l’onglet « Messages » de chaque adhérent pendant deux ans. Il est aussi envoyé par e-mail à ceux qui l’acceptent, une fois l’envoi d’e-mails branché.</Aide>
+                <Editeur table="messages" ordre="envoye_le" desc titre="Messages envoyés" champs={CHAMPS_MSG} fixes={{ auteur: moi.email }} resume={(r) => `${dateFr(r.envoye_le)} — ${r.sujet}`} /></>}
+        </div>
+    )
+}
+
+// ---------- Espace personnel ----------
+const euros = (n: any) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+const dateFr = (d: any, heure = false) => { if (!d) return "—"; const x = new Date(d); return heure ? x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + " à " + x.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) }
+const STATUTS: Record<string, string> = { valide: "Validé", en_attente: "En attente", abandonne: "Abandonné", rembourse: "Remboursé" }
+const lien: React.CSSProperties = { color: C.accent, textDecoration: "none" }
+function useTable(table: string, ordre: string) {
+    const [rows, setRows] = React.useState<any[] | null>(null)
+    React.useEffect(() => { sb()!.from(table).select("*").order(ordre, { ascending: false }).then(({ data }: any) => setRows(data ?? [])) }, [table])
+    return rows
+}
+function useRpc(nom: string) {
+    const [rows, setRows] = React.useState<any[] | null>(null)
+    React.useEffect(() => { sb()!.rpc(nom).then(({ data }: any) => setRows(data ?? [])) }, [nom])
+    return rows
+}
+function exporter(nom: string, entetes: string[], lignes: any[][]) {
+    const csv = "\ufeff" + [entetes, ...lignes].map((l) => l.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n")
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = nom; a.click()
+}
+
+function VueEnsemble({ moi, lienSemestriels, aller }: { moi: Adherent; lienSemestriels: string; aller: (o: any) => void }) {
+    const adhesions = useTable("adhesions", "annee")
+    const messages = useTable("messages", "envoye_le")
+    const bureau = useRpc("bureau")
+    const annee = new Date().getFullYear()
+    const aJour = (moi.cotisation_annee ?? 0) >= annee
+    const derniere = adhesions?.[0]
+    return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+            <div style={box}>
+                <span style={label}>Mon adhésion</span>
+                <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 600, color: aJour ? C.txt : C.danger }}>{aJour ? `À jour pour ${annee}` : "À renouveler"}</p>
+                <p style={muted}>{derniere ? `${derniere.formule} · du ${dateFr(derniere.debut)} au ${dateFr(derniere.fin)}` : `Dernière cotisation : ${moi.cotisation_annee ?? "—"}.`}</p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+                    {!aJour && <a href="/#adhesion" style={{ ...btn(), textDecoration: "none" }}>Renouveler · 20 €</a>}
+                    {derniere?.recu_url && <a href={derniere.recu_url} target="_blank" rel="noreferrer" style={{ ...btn(false), textDecoration: "none" }}>Reçu {derniere.annee}</a>}
+                    <button style={btn(false)} onClick={() => aller("historique")}>Historique</button>
+                </div>
+            </div>
+            <div style={box}>
+                <span style={label}>Derniers messages</span>
+                {messages === null ? <p style={muted}>…</p> : messages.length === 0 ? <p style={muted}>Aucun message pour l’instant.</p> :
+                    messages.slice(0, 3).map((m) => <div key={m.id} style={{ padding: "8px 0", borderTop: `1px solid ${C.line}` }}><div style={{ fontWeight: 600 }}>{m.sujet}</div><div style={{ ...muted, fontSize: 13 }}>{dateFr(m.envoye_le)}</div></div>)}
+                <button style={{ ...btn(false), marginTop: 12 }} onClick={() => aller("messages")}>Tous les messages</button>
+            </div>
+            <div style={box}>
+                <span style={label}>Semestriels</span>
+                <p style={{ ...muted, marginBottom: 16 }}>Tous les numéros sont à lire en ligne.</p>
+                <a href={lienSemestriels} style={{ ...btn(), display: "inline-block", textDecoration: "none" }}>Lire les semestriels</a>
+            </div>
+            <div style={{ ...box, gridColumn: "1 / -1" }}>
+                <span style={label}>Le bureau de l’association {annee}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginTop: 8 }}>
+                    {(bureau ?? []).map((b) => (
+                        <div key={b.email + b.fonction}>
+                            <div style={{ fontFamily: serif, fontSize: 18, fontWeight: 600 }}>{b.prenom} {b.nom}</div>
+                            <div style={{ color: C.accent, fontSize: 13, marginBottom: 6 }}>{b.fonction}</div>
+                            <a href={`mailto:${b.email}`} style={{ ...lien, display: "block", fontSize: 14, wordBreak: "break-all" }}>{b.email}</a>
+                            {b.telephone && <a href={`tel:${b.telephone.replace(/\s/g, "")}`} style={{ color: C.txt, textDecoration: "none", fontSize: 14 }}>{b.telephone}</a>}
+                        </div>
+                    ))}
+                    {bureau && bureau.length === 0 && <p style={muted}>Contacts du bureau bientôt disponibles.</p>}
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function Profil({ moi }: { moi: any }) {
+    const client = sb()!
+    const [f, setF] = React.useState<any>({ conjoint: moi.conjoint ?? "", telephone: moi.telephone ?? "", adresse: moi.adresse ?? "", code_postal: moi.code_postal ?? "", ville: moi.ville ?? "", annuaire: moi.annuaire !== false, recoit_emails: moi.recoit_emails !== false })
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const set = (k: string) => (e: any) => setF({ ...f, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value })
+    const enregistrer = async () => {
+        const p: any = { ...f }
+        await localiserAdherent(p, moi)
+        const { error } = await client.rpc("maj_profil", { p })
+        if (error) setMsg({ t: error.message, err: true }); else { Object.assign(moi, p); setMsg({ t: "Vos informations sont enregistrées.", err: false }) }
+    }
+    const champ = (k: string, t: string, place?: string) => <div><span style={label}>{t}</span><input style={input} value={f[k]} placeholder={place} onChange={set(k)} /></div>
+    const coche = (k: string, t: string, aide: string) => <label style={{ display: "flex", gap: 12, cursor: "pointer", alignItems: "flex-start" }}><input type="checkbox" checked={f[k]} onChange={set(k)} style={{ width: 18, height: 18, accentColor: C.accent, marginTop: 3 }} /><span>{t}<span style={{ display: "block", color: C.mute, fontSize: 13 }}>{aide}</span></span></label>
+    return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "start" }}>
+            <div style={box}>
+                <h3 style={{ ...h2, fontSize: 20 }}>Mes coordonnées</h3>
+                <p style={{ ...muted, marginBottom: 18 }}>{[moi.prenom, moi.nom].filter(Boolean).join(" ")} · {moi.email}. Pour changer de nom ou d’adresse e-mail, écrivez au bureau.</p>
+                <div style={{ display: "grid", gap: 14 }}>
+                    {champ("conjoint", "Second adhérent du foyer", "Prénom Nom")}
+                    {champ("telephone", "Téléphone", "06 12 34 56 78")}
+                    {champ("adresse", "Adresse postale", "Pour l’envoi du semestriel")}
+                    <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 12 }}>{champ("code_postal", "Code postal")}{champ("ville", "Commune")}</div>
+                </div>
+            </div>
+            <div style={box}>
+                <h3 style={{ ...h2, fontSize: 20 }}>Confidentialité</h3>
+                <div style={{ display: "grid", gap: 18, marginTop: 14 }}>
+                    {coche("recoit_emails", "Recevoir les e-mails de l’association", "Sorties, salon, semestriel. Les messages restent consultables ici même si vous décochez.")}
+                    {coche("annuaire", "Apparaître dans l’annuaire des adhérents", "Nom, commune, e-mail et téléphone. Votre adresse postale reste visible du seul bureau.")}
+                </div>
+                <p style={{ ...muted, fontSize: 13, marginTop: 18 }}>Le site ne mesure ni l’ouverture des e-mails ni les clics. Pour faire supprimer vos données, écrivez au bureau.</p>
+            </div>
+            <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <button style={btn()} onClick={enregistrer}>Enregistrer mes choix</button>
+                <Msg text={msg.t} err={msg.err} />
+            </div>
+        </div>
+    )
+}
+
+function Tableau2({ titre, entetes, lignes, fichier, vide }: { titre: string; entetes: string[]; lignes: React.ReactNode[][] | null; fichier?: [string, any[][]]; vide: string }) {
+    return (
+        <div style={box}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
+                <h3 style={{ ...h2, fontSize: 20, margin: 0 }}>{titre} <span style={{ color: C.mute, fontWeight: 400 }}>({lignes?.length ?? "…"})</span></h3>
+                {fichier && lignes && lignes.length > 0 && <button style={small()} onClick={() => exporter(fichier[0], entetes, fichier[1])}>Exporter</button>}
+            </div>
+            {lignes && lignes.length === 0 ? <p style={muted}>{vide}</p> :
+                <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                        <thead><tr>{entetes.map((e) => <th key={e} style={{ textAlign: "left", padding: "8px 10px 8px 0", color: C.mute, fontWeight: 500, fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", borderBottom: `1px solid ${C.line}`, whiteSpace: "nowrap" }}>{e}</th>)}</tr></thead>
+                        <tbody>{(lignes ?? []).map((l, i) => <tr key={i}>{l.map((c, j) => <td key={j} style={{ padding: "10px 10px 10px 0", borderBottom: `1px solid ${C.line}`, verticalAlign: "top" }}>{c}</td>)}</tr>)}</tbody>
+                    </table>
+                </div>}
+        </div>
+    )
+}
+
+function Historique({ moi }: { moi: Adherent }) {
+    const adhesions = useTable("adhesions", "annee")
+    const inscr = useTable("inscriptions", "cree_le")
+    const dons = useTable("dons", "le")
+    const valides = inscr?.filter((r) => r.statut !== "abandonne") ?? null
+    const pastille = (st: string) => <span style={{ fontSize: 12, padding: "2px 8px", border: `1px solid ${st === "valide" ? C.accent : C.line}`, color: st === "valide" ? C.accent : C.mute, whiteSpace: "nowrap" }}>{STATUTS[st] || st}</span>
+    return (
+        <div style={{ display: "grid", gap: 16 }}>
+            <Tableau2 titre="Mes adhésions" entetes={["Année", "Formule", "Montant", "Période", "Reçu"]} vide="Aucune adhésion enregistrée."
+                lignes={adhesions?.map((a) => [<strong>{a.annee}</strong>, a.formule, euros(a.montant), `${dateFr(a.debut)} – ${dateFr(a.fin)}`, a.recu_url ? <a href={a.recu_url} target="_blank" rel="noreferrer" style={lien}>Télécharger</a> : <span style={{ color: C.mute }}>—</span>]) ?? null}
+                fichier={["mes-adhesions.csv", (adhesions ?? []).map((a) => [a.annee, a.formule, a.montant, a.debut, a.fin, a.recu_url])]} />
+            <Tableau2 titre="Inscriptions et achats" entetes={["Date", "Objet", "Montant", "Statut"]} vide="Aucune inscription ni achat pour l’instant."
+                lignes={valides?.map((r) => [dateFr(r.cree_le), r.formulaire, euros(r.montant), pastille(r.statut)]) ?? null}
+                fichier={["mes-inscriptions.csv", (valides ?? []).map((r) => [r.cree_le, r.formulaire, r.montant, STATUTS[r.statut], r.reference])]} />
+            <Tableau2 titre="Mes dons" entetes={["Date", "Montant", "Reçu fiscal"]} vide="Aucun don enregistré. Merci à celles et ceux qui soutiennent l’association !"
+                lignes={dons?.map((d) => [dateFr(d.le), euros(d.montant), d.recu_url ? <a href={d.recu_url} target="_blank" rel="noreferrer" style={lien}>Télécharger</a> : "—"]) ?? null} />
+        </div>
+    )
+}
+
+function Messages() {
+    const messages = useTable("messages", "envoye_le")
+    const [ouvert, setOuvert] = React.useState<string | null>(null)
+    return (
+        <div style={box}>
+            <h3 style={{ ...h2, fontSize: 20 }}>Messages de l’association <span style={{ color: C.mute, fontWeight: 400 }}>({messages?.length ?? "…"})</span></h3>
+            <p style={{ ...muted, marginBottom: 16 }}>Les messages envoyés aux adhérents, aussi reçus par e-mail. Ils sont conservés deux ans.</p>
+            {messages && messages.length === 0 && <p style={muted}>Aucun message pour l’instant.</p>}
+            {(messages ?? []).map((m) => (
+                <div key={m.id} style={{ borderTop: `1px solid ${C.line}` }}>
+                    <button onClick={() => setOuvert(ouvert === m.id ? null : m.id)} style={{ width: "100%", display: "flex", justifyContent: "space-between", gap: 12, background: "transparent", border: "none", color: C.txt, font: "inherit", padding: "14px 0", cursor: "pointer", textAlign: "left" }}>
+                        <span style={{ fontWeight: 600 }}>{m.sujet}</span>
+                        <span style={{ color: C.mute, fontSize: 13, whiteSpace: "nowrap" }}>{dateFr(m.envoye_le, true)} {ouvert === m.id ? "▴" : "▾"}</span>
+                    </button>
+                    {ouvert === m.id && <div style={{ whiteSpace: "pre-wrap", color: C.txt, opacity: 0.9, padding: "0 0 18px", lineHeight: 1.65 }}>{m.contenu}</div>}
+                </div>
+            ))}
         </div>
     )
 }
@@ -214,9 +370,34 @@ const CHAMPS_ADH: Champ[] = [
     { k: "code_postal", t: "Code postal", type: "text" },
     { k: "ville", t: "Commune", type: "text", aide: "Place automatiquement l’adhérent sur la carte de l’annuaire." },
     { k: "annuaire", t: "Apparaît dans l’annuaire des adhérents", type: "bool" },
-    { k: "cotisation_annee", t: "Cotisation payée pour l’année", type: "number" },
+    { k: "fonction_bureau", t: "Fonction au bureau", type: "text", place: "Président, Secrétaire…", aide: "Laisser vide si la personne n’est pas au bureau." },
+    { k: "ordre_bureau", t: "Ordre d’affichage dans le bureau", type: "number" },
+    { k: "email_bureau", t: "E-mail de contact du bureau (si différent)", type: "text" },
+    { k: "cotisation_annee", t: "Cotisation payée pour l’année", type: "number", aide: "Mise à jour automatiquement quand une adhésion est enregistrée." },
     { k: "role", t: "Administrateur (peut gérer le site)", type: "admin" },
     { k: "actif", t: "Peut se connecter", type: "bool" },
+]
+
+const CHAMPS_ADHESION: Champ[] = [
+    { k: "email", t: "E-mail de l’adhérent", type: "text", requis: true },
+    { k: "annee", t: "Année", type: "number", requis: true },
+    { k: "formule", t: "Formule", type: "text", place: "Année complète pour un couple" },
+    { k: "montant", t: "Montant (€)", type: "number" },
+    { k: "debut", t: "Début", type: "date" },
+    { k: "fin", t: "Fin", type: "date" },
+    { k: "source", t: "Moyen de paiement", type: "text", place: "Chèque, espèces, HelloAsso…" },
+    { k: "recu_url", t: "Reçu (PDF)", type: "fichier", dossier: "recus", accept: "application/pdf" },
+]
+const CHAMPS_INSCR: Champ[] = [
+    { k: "email", t: "E-mail de l’adhérent", type: "text", requis: true },
+    { k: "formulaire", t: "Objet", type: "text", requis: true, place: "Sortie du 16 mai, T-shirt ACS 10 ans…" },
+    { k: "montant", t: "Montant (€)", type: "number" },
+    { k: "statut", t: "Statut (valide, en_attente, abandonne, rembourse)", type: "text" },
+    { k: "reference", t: "Référence de paiement", type: "text" },
+]
+const CHAMPS_MSG: Champ[] = [
+    { k: "sujet", t: "Sujet", type: "text", requis: true, place: "Troc plantes le 27 septembre" },
+    { k: "contenu", t: "Message", type: "textarea", requis: true },
 ]
 
 function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer, avant }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null; avant?: (row: any, ancien: any) => Promise<void> }) {
@@ -429,7 +610,7 @@ function Annuaire() {
     const infos = survol ? communes.get(survol) : null
 
     const carte = (
-        <div style={{ position: etroit ? "relative" : "sticky", top: 90, flex: etroit ? "none" : "1.15 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>
+        <div style={{ position: etroit ? "relative" : "sticky", top: etroit ? undefined : 90, flex: etroit ? "none" : "1.15 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>
             <div style={{ width: "100%", aspectRatio: "272 / 196", position: "relative" }}>
             <svg viewBox="-24 -4 272 196" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", overflow: "visible" }} role="img" aria-label="Carte des adhérents en Bretagne">
                 <path d={COTE} fill="none" stroke={C.txt} strokeOpacity={0.75} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />

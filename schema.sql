@@ -100,6 +100,117 @@ revoke all on function public.choisir_annuaire(boolean) from public, anon;
 grant execute on function public.choisir_annuaire(boolean) to authenticated;
 
 -- ---------------------------------------------------------------------
+-- Espace personnel : bureau, profil, adhésions, inscriptions, dons, messages
+-- ---------------------------------------------------------------------
+alter table public.adherents add column if not exists fonction_bureau text;   -- « Président », « Secrétaire »… vide = pas au bureau
+alter table public.adherents add column if not exists ordre_bureau    int;
+alter table public.adherents add column if not exists email_bureau    text;   -- adresse de contact affichée, si différente
+alter table public.adherents add column if not exists recoit_emails   boolean not null default true;
+
+create table if not exists public.adhesions (
+  id        uuid primary key default gen_random_uuid(),
+  email     text not null,
+  annee     int  not null,
+  formule   text not null default 'Année complète',   -- « Année complète pour un couple »…
+  montant   numeric(8,2) not null default 20,
+  debut     date,
+  fin       date,
+  recu_url  text,
+  source    text,                                     -- « HelloAsso », « Chèque », « Espèces au salon »…
+  cree_le   timestamptz not null default now()
+);
+create table if not exists public.inscriptions (
+  id         uuid primary key default gen_random_uuid(),
+  email      text not null,
+  formulaire text not null,                           -- « Sortie du 16 mai », « Commande boutique »…
+  montant    numeric(8,2) not null default 0,
+  statut     text not null default 'valide' check (statut in ('valide', 'en_attente', 'abandonne', 'rembourse')),
+  reference  text,                                    -- n° de transaction du prestataire de paiement
+  detail     text,
+  cree_le    timestamptz not null default now()
+);
+create table if not exists public.dons (
+  id       uuid primary key default gen_random_uuid(),
+  email    text not null,
+  montant  numeric(8,2) not null,
+  le       date not null default current_date,
+  recu_url text,
+  cree_le  timestamptz not null default now()
+);
+create table if not exists public.messages (
+  id        uuid primary key default gen_random_uuid(),
+  sujet     text not null,
+  contenu   text not null,
+  envoye_le timestamptz not null default now(),
+  auteur    text,
+  cree_le   timestamptz not null default now()
+);
+
+alter table public.adhesions    enable row level security;
+alter table public.inscriptions enable row level security;
+alter table public.dons         enable row level security;
+alter table public.messages     enable row level security;
+
+drop policy if exists adhesion_lecture on public.adhesions;
+create policy adhesion_lecture on public.adhesions for select using (lower(email) = mon_email() or est_admin());
+drop policy if exists adhesion_gestion on public.adhesions;
+create policy adhesion_gestion on public.adhesions for all using (est_admin()) with check (est_admin());
+drop policy if exists inscription_lecture on public.inscriptions;
+create policy inscription_lecture on public.inscriptions for select using (lower(email) = mon_email() or est_admin());
+drop policy if exists inscription_gestion on public.inscriptions;
+create policy inscription_gestion on public.inscriptions for all using (est_admin()) with check (est_admin());
+drop policy if exists don_lecture on public.dons;
+create policy don_lecture on public.dons for select using (lower(email) = mon_email() or est_admin());
+drop policy if exists don_gestion on public.dons;
+create policy don_gestion on public.dons for all using (est_admin()) with check (est_admin());
+-- Messages : conservés 2 ans pour les adhérents
+drop policy if exists message_lecture on public.messages;
+create policy message_lecture on public.messages for select using ((est_membre() and envoye_le > now() - interval '2 years') or est_admin());
+drop policy if exists message_gestion on public.messages;
+create policy message_gestion on public.messages for all using (est_admin()) with check (est_admin());
+
+-- Une adhésion enregistrée met à jour l'année de cotisation de l'adhérent
+create or replace function public.apres_adhesion() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  update adherents set cotisation_annee = greatest(coalesce(cotisation_annee, 0), new.annee)
+  where email = lower(new.email);
+  return new;
+end $$;
+drop trigger if exists adhesion_cotisation on public.adhesions;
+create trigger adhesion_cotisation after insert or update on public.adhesions
+  for each row execute function public.apres_adhesion();
+
+-- Le bureau, visible des adhérents connectés
+create or replace function public.bureau()
+returns table (prenom text, nom text, fonction text, email text, telephone text)
+language sql stable security definer set search_path = public as $$
+  select prenom, nom, fonction_bureau, coalesce(email_bureau, email), telephone
+  from adherents where actif and fonction_bureau is not null and est_membre()
+  order by ordre_bureau nulls last, nom
+$$;
+revoke all on function public.bureau() from public, anon;
+grant execute on function public.bureau() to authenticated;
+
+-- Chacun met à jour ses propres coordonnées et préférences (jamais son rôle ni sa cotisation)
+create or replace function public.maj_profil(p jsonb)
+returns void language sql security definer set search_path = public as $$
+  update adherents set
+    conjoint      = coalesce(p->>'conjoint', conjoint),
+    telephone     = coalesce(p->>'telephone', telephone),
+    adresse       = coalesce(p->>'adresse', adresse),
+    code_postal   = coalesce(p->>'code_postal', code_postal),
+    ville         = coalesce(p->>'ville', ville),
+    lat           = coalesce((p->>'lat')::double precision, lat),
+    lon           = coalesce((p->>'lon')::double precision, lon),
+    annuaire      = coalesce((p->>'annuaire')::boolean, annuaire),
+    recoit_emails = coalesce((p->>'recoit_emails')::boolean, recoit_emails)
+  where email = mon_email()
+$$;
+revoke all on function public.maj_profil(jsonb) from public, anon;
+grant execute on function public.maj_profil(jsonb) to authenticated;
+
+-- ---------------------------------------------------------------------
 -- 5. Règles d'accès (RLS) : appliquées par la base, pas seulement par l'écran
 -- ---------------------------------------------------------------------
 alter table public.adherents  enable row level security;
