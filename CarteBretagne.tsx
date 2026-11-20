@@ -50,8 +50,12 @@ function Carte({ encre, accent, fond, avecVilles = true }) {
                     </g>
                 )
             })}
+            {avecVilles && (
+                <>
             <circle cx={bx} cy={by} r={6.5} fill="none" stroke={accent} strokeWidth={0.7} />
             <circle cx={bx} cy={by} r={2.8} fill={accent} />
+                </>
+            )}
             {avecVilles && (
                 <>
             <text x={bx - 9} y={by - 4} textAnchor="end" fontFamily={serif} fontSize={10} fontWeight={600} fill={accent} stroke={fond} strokeWidth={2.4} strokeLinejoin="round" paintOrder="stroke">Bédée</text>
