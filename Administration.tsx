@@ -118,6 +118,7 @@ function AdherentsAdmin({ moi }: { moi: string }) {
     const [cle, setCle] = React.useState(0)
     return <>
         <Administrateurs moi={moi} changer={() => setCle((x) => x + 1)} />
+        <CodesConnexion moi={moi} />
         <Aide>Seules les adresses de cette liste peuvent se connecter. Pour le bureau, remplissez « Fonction au bureau » : la personne apparaît alors dans les contacts du bureau.</Aide>
         <ImportAdherents />
         <Editeur key={cle} table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.fonction_bureau ? " · " + r.fonction_bureau : ""}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} />
@@ -163,6 +164,60 @@ function Administrateurs({ moi, changer }: { moi: string; changer: () => void })
                     {tous.filter((a) => a.role !== "admin" && a.actif).map((a) => <option key={a.id} value={a.id}>{nom(a)}{a.prenom || a.nom ? ` (${a.email})` : ""}</option>)}
                 </select>
                 <button style={btn()} disabled={!choix} onClick={() => { const a = tous.find((x) => x.id === choix); if (a) definir(a, "admin") }}>Ajouter</button>
+            </div>
+            <Msg text={msg.t} err={msg.err} />
+        </div>
+    )
+}
+
+// ---------- Codes personnels de connexion ----------
+async function envoyerCodes(emails: string[]): Promise<{ ok: number; erreurs: string[] }> {
+    let ok = 0; const erreurs: string[] = []
+    for (let k = 0; k < emails.length; k += 20) {
+        const { data, error } = await sb().functions.invoke("codes", { body: { emails: emails.slice(k, k + 20) } })
+        if (error) {
+            let t = error.message; try { const j = await error.context.json(); t = j.erreur || t } catch (e) {}
+            if (/Failed to send|not found|404/i.test(t)) t = "La fonction d’envoi des codes n’est pas encore installée."
+            erreurs.push(t); break
+        }
+        for (const r of data.resultats) r.ok ? ok++ : erreurs.push(`${r.email} : ${r.erreur}`)
+    }
+    return { ok, erreurs }
+}
+
+function CodesConnexion({ moi }: { moi: string }) {
+    const client = sb()
+    const [liste, setListe] = React.useState<any[]>([])
+    const [choix, setChoix] = React.useState("")
+    const [occupe, setOccupe] = React.useState("")
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const charger = React.useCallback(async () => {
+        const { data } = await client.from("adherents").select("id,email,prenom,nom,actif,code_envoye_le").eq("actif", true).order("nom")
+        setListe(data ?? [])
+    }, [])
+    React.useEffect(() => { charger() }, [charger])
+    const sans = liste.filter((a) => !a.code_envoye_le)
+    const nom = (a: any) => [a.prenom, a.nom].filter(Boolean).join(" ") || a.email
+    const lancer = async (emails: string[], quoi: string) => {
+        setOccupe(quoi); setMsg({ t: "", err: false })
+        const r = await envoyerCodes(emails)
+        setOccupe(""); charger()
+        setMsg({ t: `${r.ok} code(s) envoyé(s).${r.erreurs.length ? " Problèmes : " + r.erreurs.slice(0, 5).join(" ; ") + (r.erreurs.length > 5 ? "…" : "") : ""}`, err: r.erreurs.length > 0 })
+    }
+    return (
+        <div style={box}>
+            <h3 style={{ ...h2, fontSize: 20 }}>Codes de connexion</h3>
+            <p style={{ ...muted, fontSize: 14, marginBottom: 14 }}>Chaque adhérent reçoit par e-mail un code personnel pour se connecter, qu’il peut ensuite changer dans son profil. Envoyer un nouveau code remplace l’ancien. {liste.length ? `${liste.length - sans.length} adhérent(s) sur ${liste.length} ont déjà reçu un code.` : ""}</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button style={btn(false)} disabled={!!occupe} onClick={() => lancer([moi], "test")}>{occupe === "test" ? "Envoi…" : "M’envoyer mon code (essai)"}</button>
+                <button style={btn()} disabled={!!occupe || !sans.length} onClick={() => { if (window.confirm(`Envoyer un code personnel par e-mail à ${sans.length} adhérent(s) qui n’en ont pas encore reçu ?`)) lancer(sans.map((a) => a.email), "tous") }}>{occupe === "tous" ? "Envoi en cours…" : `Envoyer aux ${sans.length} sans code`}</button>
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+                <select style={{ ...input, flex: "1 1 240px", width: "auto" }} value={choix} onChange={(e) => setChoix(e.target.value)}>
+                    <option value="">Envoyer un nouveau code à…</option>
+                    {liste.map((a) => <option key={a.id} value={a.email}>{nom(a)}{a.code_envoye_le ? ` · code envoyé le ${dateFr(a.code_envoye_le)}` : " · pas encore de code"}</option>)}
+                </select>
+                <button style={btn(false)} disabled={!choix || !!occupe} onClick={() => { const a = liste.find((x) => x.email === choix); if (a && window.confirm(`Envoyer un nouveau code à ${nom(a)} ? L’ancien ne fonctionnera plus.`)) lancer([choix], "un") }}>{occupe === "un" ? "Envoi…" : "Envoyer"}</button>
             </div>
             <Msg text={msg.t} err={msg.err} />
         </div>

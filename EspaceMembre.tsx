@@ -78,47 +78,71 @@ addPropertyControls(EspaceMembre, {
 // ---------- Connexion : e-mail puis code à 6 chiffres ----------
 function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) => void }) {
     const client = sb()!
-    const [etape, setEtape] = React.useState<"email" | "code">("email")
+    // "code" : e-mail + code personnel ; "lien" : recevoir un e-mail de connexion ; "otp" : saisir le code reçu par e-mail
+    const [etape, setEtape] = React.useState<"code" | "lien" | "otp">("code")
     const [code, setCode] = React.useState("")
+    const [otp, setOtp] = React.useState("")
     const [msg, setMsg] = React.useState({ t: "", err: false })
     const [busy, setBusy] = React.useState(false)
+    const em = () => email.trim().toLowerCase()
+    const valide = () => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em())
 
-    const envoyer = async (e?: React.FormEvent) => {
+    const parCode = async (e?: React.FormEvent) => {
         e?.preventDefault()
-        const em = email.trim().toLowerCase()
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return setMsg({ t: "Adresse e-mail invalide.", err: true })
+        if (!valide()) return setMsg({ t: "Adresse e-mail invalide.", err: true })
         setBusy(true); setMsg({ t: "", err: false })
-        const { error } = await client.auth.signInWithOtp({ email: em, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname } })
+        const { error } = await client.auth.signInWithPassword({ email: em(), password: code.trim().toUpperCase() })
+        setBusy(false)
+        if (error) setMsg({ t: "Adresse ou code incorrect. Si vous n’avez pas encore de code, ou si vous l’avez oublié, recevez un e-mail de connexion.", err: true })
+    }
+    const envoyerLien = async (e?: React.FormEvent) => {
+        e?.preventDefault()
+        if (!valide()) return setMsg({ t: "Adresse e-mail invalide.", err: true })
+        setBusy(true); setMsg({ t: "", err: false })
+        const { error } = await client.auth.signInWithOtp({ email: em(), options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname } })
         setBusy(false)
         if (error) return setMsg({ t: /adh[ée]rent|403|not allowed|signup/i.test(error.message) ? "Cette adresse ne figure pas dans la liste des adhérents." : "Envoi impossible : " + error.message, err: true })
-        setEtape("code"); setMsg({ t: "E-mail envoyé. Pensez à regarder dans les indésirables.", err: false })
+        setEtape("otp"); setMsg({ t: "E-mail envoyé. Pensez à regarder dans les indésirables.", err: false })
     }
-    const verifier = async (e?: React.FormEvent) => {
+    const verifierOtp = async (e?: React.FormEvent) => {
         e?.preventDefault()
         setBusy(true); setMsg({ t: "", err: false })
-        const { error } = await client.auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: "email" })
+        const { error } = await client.auth.verifyOtp({ email: em(), token: otp.trim(), type: "email" })
         setBusy(false)
         if (error) setMsg({ t: "Code incorrect ou expiré.", err: true })
     }
+    const lienTexte = (t: string, f: () => void) => <button type="button" onClick={() => { setMsg({ t: "", err: false }); f() }} style={{ background: "none", border: "none", padding: 0, color: C.accent, font: "inherit", fontSize: 14, cursor: "pointer", textDecoration: "underline", textAlign: "left" }}>{t}</button>
+    const champEmail = <><span style={label}>Adresse e-mail</span><input style={input} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@exemple.fr" /></>
 
     return (
         <div style={{ ...box, maxWidth: 460 }}>
             <h2 style={h2}>Connexion adhérent</h2>
-            {etape === "email" ? (
-                <form onSubmit={envoyer}>
-                    <p style={{ ...muted, marginBottom: 20 }}>Saisissez l’adresse e-mail donnée lors de votre adhésion : vous recevrez un e-mail de connexion.</p>
-                    <span style={label}>Adresse e-mail</span>
-                    <input style={input} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@exemple.fr" />
-                    <div style={{ marginTop: 18 }}><button style={btn()} disabled={busy} type="submit">{busy ? "Envoi…" : "Recevoir l’e-mail de connexion"}</button></div>
+            {etape === "code" && (
+                <form onSubmit={parCode}>
+                    <p style={{ ...muted, marginBottom: 20 }}>Votre adresse e-mail et votre code personnel, reçu par e-mail de l’association.</p>
+                    {champEmail}
+                    <span style={{ ...label, marginTop: 16 }}>Code personnel</span>
+                    <input style={{ ...input, letterSpacing: "0.12em", textTransform: "uppercase" }} type="password" autoComplete="current-password" value={code} onChange={(e) => setCode(e.target.value)} placeholder="XXXX-XXXX" />
+                    <div style={{ marginTop: 18 }}><button style={btn()} disabled={busy || !code} type="submit">{busy ? "Connexion…" : "Se connecter"}</button></div>
+                    <div style={{ marginTop: 16 }}>{lienTexte("Pas encore de code, ou code oublié ? Recevoir un e-mail de connexion", () => setEtape("lien"))}</div>
                 </form>
-            ) : (
-                <form onSubmit={verifier}>
-                    <p style={{ ...muted, marginBottom: 20 }}>Un e-mail a été envoyé à <strong style={{ color: C.txt }}>{email}</strong>. Cliquez sur le lien qu’il contient, ou tapez ici le code à 6 chiffres s’il y en a un.</p>
-                    <span style={label}>Code reçu</span>
-                    <input style={{ ...input, letterSpacing: "0.4em", fontSize: 22, textAlign: "center" }} inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="••••••" />
+            )}
+            {etape === "lien" && (
+                <form onSubmit={envoyerLien}>
+                    <p style={{ ...muted, marginBottom: 20 }}>Vous recevrez un e-mail avec un lien et un code à usage unique. Une fois connecté, vous pourrez choisir votre code personnel dans votre profil.</p>
+                    {champEmail}
+                    <div style={{ marginTop: 18 }}><button style={btn()} disabled={busy} type="submit">{busy ? "Envoi…" : "Recevoir l’e-mail de connexion"}</button></div>
+                    <div style={{ marginTop: 16 }}>{lienTexte("J’ai un code personnel", () => setEtape("code"))}</div>
+                </form>
+            )}
+            {etape === "otp" && (
+                <form onSubmit={verifierOtp}>
+                    <p style={{ ...muted, marginBottom: 20 }}>Un e-mail a été envoyé à <strong style={{ color: C.txt }}>{email}</strong>. Cliquez sur le lien qu’il contient, ou tapez ici le code qu’il indique.</p>
+                    <span style={label}>Code reçu par e-mail</span>
+                    <input style={{ ...input, letterSpacing: "0.4em", fontSize: 22, textAlign: "center" }} inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="••••••" />
                     <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <button style={btn()} disabled={busy || code.length < 6} type="submit">{busy ? "Vérification…" : "Se connecter"}</button>
-                        <button style={btn(false)} type="button" onClick={() => { setEtape("email"); setCode(""); setMsg({ t: "", err: false }) }}>Changer d’adresse</button>
+                        <button style={btn()} disabled={busy || otp.length < 6} type="submit">{busy ? "Vérification…" : "Se connecter"}</button>
+                        <button style={btn(false)} type="button" onClick={() => { setEtape("code"); setOtp(""); setMsg({ t: "", err: false }) }}>Retour</button>
                     </div>
                 </form>
             )}
@@ -328,6 +352,34 @@ function Profil({ moi }: { moi: any }) {
                 <button style={btn()} onClick={enregistrer}>Enregistrer mes choix</button>
                 <Msg text={msg.t} err={msg.err} />
             </div>
+            <MonCode />
+        </div>
+    )
+}
+
+function MonCode() {
+    const client = sb()!
+    const [a, setA] = React.useState("")
+    const [b, setB] = React.useState("")
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const changer = async () => {
+        const c = a.trim().toUpperCase()
+        if (c.length < 8) return setMsg({ t: "Le code doit faire au moins 8 caractères.", err: true })
+        if (c !== b.trim().toUpperCase()) return setMsg({ t: "Les deux saisies ne sont pas identiques.", err: true })
+        const { error } = await client.auth.updateUser({ password: c })
+        if (error) return setMsg({ t: /same|different/i.test(error.message) ? "C’est déjà votre code actuel." : error.message, err: true })
+        setA(""); setB(""); setMsg({ t: "Votre nouveau code est enregistré.", err: false })
+    }
+    return (
+        <div style={{ ...box, gridColumn: "1 / -1" }}>
+            <h3 style={{ ...h2, fontSize: 20 }}>Mon code de connexion</h3>
+            <p style={{ ...muted, marginBottom: 16 }}>Choisissez un code facile à retenir pour vous, d’au moins 8 caractères (lettres et chiffres, sans distinction de majuscules). En cas d’oubli, vous pourrez toujours recevoir un e-mail de connexion.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, alignItems: "end" }}>
+                <div><span style={label}>Nouveau code</span><input style={{ ...input, textTransform: "uppercase" }} type="password" autoComplete="new-password" value={a} onChange={(e) => setA(e.target.value)} /></div>
+                <div><span style={label}>Confirmer</span><input style={{ ...input, textTransform: "uppercase" }} type="password" autoComplete="new-password" value={b} onChange={(e) => setB(e.target.value)} /></div>
+                <div><button style={btn()} onClick={changer}>Changer mon code</button></div>
+            </div>
+            <Msg text={msg.t} err={msg.err} />
         </div>
     )
 }

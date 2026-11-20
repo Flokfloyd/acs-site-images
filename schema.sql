@@ -432,3 +432,8 @@ begin
   end if;
 end $$;
 grant execute on function public.destinataires(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 10. Codes personnels de connexion (mot de passe Supabase géré par la fonction « codes »)
+-- ---------------------------------------------------------------------
+alter table public.adherents add column if not exists code_envoye_le timestamptz;
