@@ -182,6 +182,8 @@ export default function Semestriels(props: { hauteurMax: number }) {
 
     const btn = (plein_: boolean): React.CSSProperties => ({ font: `600 14px ${FONT}`, color: plein_ ? "#1d1612" : "#f6f0e6", background: plein_ ? "#9bbd8a" : "transparent", border: `1px solid ${plein_ ? "#9bbd8a" : "rgba(246,240,230,0.3)"}`, borderRadius: 0, padding: "0 14px", height: 44, minWidth: 44, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" })
     const largeurLivre = simple ? pw : 2 * pw
+    const sCible = flip ? s + flip.dir : s
+    const decal = simple ? 0 : sCible <= 0 ? -pw / 2 : R(sCible) === null ? pw / 2 : 0 // couverture et dernière page centrées
 
     return (
         <div ref={ref} style={{ width: "100%", fontFamily: FONT, opacity: pret ? 1 : 0, transition: "opacity 300ms" }}>
@@ -220,7 +222,7 @@ export default function Semestriels(props: { hauteurMax: number }) {
                     </div>
                 )}
                 {/* le livre */}
-                <div onPointerDown={onDown} onPointerUp={onUp} style={{ position: "relative", width: largeurLivre, height: ph, perspective: 2600, cursor: "pointer", userSelect: "none", touchAction: "pan-y" }}>
+                <div onPointerDown={onDown} onPointerUp={onUp} style={{ position: "relative", width: largeurLivre, height: ph, perspective: 2600, cursor: "pointer", userSelect: "none", touchAction: "pan-y", transform: `translateX(${decal}px)`, transition: "transform 700ms cubic-bezier(.45,.05,.3,1)" }}>
                     {/* pages fixes */}
                     {!simple && <div style={{ position: "absolute", left: 0, top: 0, width: pw, height: ph, boxShadow: baseL ? "0 18px 40px rgba(0,0,0,0.45)" : "none" }}><Page it={it} p={baseL} style={pageStyle} />{baseL && <div style={reflet("g", 1)} />}</div>}
                     <div style={{ position: "absolute", left: simple ? 0 : pw, top: 0, width: pw, height: ph, boxShadow: baseR ? "0 18px 40px rgba(0,0,0,0.45)" : "none" }}><Page it={it} p={baseR} style={pageStyle} />{baseR && !simple && <div style={reflet("d", 1)} />}</div>
