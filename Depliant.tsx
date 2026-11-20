@@ -12,7 +12,7 @@ const RATIO = 280.63 / 595.28
 const ETAPES = [
     { titre: "La couverture", vus: ["C"] },
     { titre: "Le salon en chiffres", vus: ["D", "A"] },
-    { titre: "Les exposants et le plan", vus: ["D", "E", "F"] },
+    { titre: "Les exposants", vus: ["D", "E", "F"] },
     { titre: "Adhérer", vus: ["B"] },
 ]
 const NOMS: Record<string, string> = { C: "Couverture", D: "Intérieur, volet gauche", A: "Le salon en chiffres", E: "Intérieur, volet central", F: "Intérieur, volet droit", B: "Adhérer" }
