@@ -3,9 +3,15 @@
 
 const data: Record<string, any[]> = {
     adherents: [
-        { id: "1", email: "admin@exemple.fr", prenom: "Camille", nom: "Martin", role: "admin", cotisation_annee: 2026, actif: true },
-        { id: "2", email: "marie.durand@exemple.fr", prenom: "Marie", nom: "Durand", role: "membre", cotisation_annee: 2025, actif: true },
-        { id: "3", email: "paul.le-goff@exemple.fr", prenom: "Paul", nom: "Le Goff", role: "membre", cotisation_annee: 2026, actif: true },
+        { id: "1", email: "admin@exemple.fr", prenom: "Camille", nom: "Martin", role: "admin", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 01", code_postal: "35137", ville: "Bédée", lat: 48.18, lon: -1.95 },
+        { id: "2", email: "marie.durand@exemple.fr", prenom: "Marie", nom: "Durand", conjoint: "Yann Durand", role: "membre", cotisation_annee: 2025, actif: true, annuaire: true, telephone: "06 00 00 00 02", code_postal: "29200", ville: "Brest", lat: 48.39, lon: -4.49 },
+        { id: "3", email: "paul.le-goff@exemple.fr", prenom: "Paul", nom: "Le Goff", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "22300", ville: "Lannion", lat: 48.73, lon: -3.46 },
+        { id: "4", email: "anne.riou@exemple.fr", prenom: "Anne", nom: "Riou", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 04", code_postal: "56000", ville: "Vannes", lat: 47.66, lon: -2.76 },
+        { id: "5", email: "luc.bernard@exemple.fr", prenom: "Luc", nom: "Bernard", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "44000", ville: "Nantes", lat: 47.22, lon: -1.55 },
+        { id: "6", email: "sophie.hamon@exemple.fr", prenom: "Sophie", nom: "Hamon", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "35000", ville: "Rennes", lat: 48.11, lon: -1.68 },
+        { id: "7", email: "jean.morel@exemple.fr", prenom: "Jean", nom: "Morel", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, telephone: "06 00 00 00 07", code_postal: "35000", ville: "Rennes", lat: 48.11, lon: -1.68 },
+        { id: "8", email: "claire.petit@exemple.fr", prenom: "Claire", nom: "Petit", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "85270", ville: "Saint-Hilaire-de-Riez", lat: 46.74, lon: -1.98 },
+        { id: "9", email: "hugo.leroy@exemple.fr", prenom: "Hugo", nom: "Leroy", role: "membre", cotisation_annee: 2026, actif: true, annuaire: true, code_postal: "29900", ville: "Concarneau", lat: 47.89, lon: -3.9 },
     ],
     evenements: [
         { id: "e1", date_debut: "2027-06-01", date_label: "Juin 2027", titre: "Salon de l’A.C.S. à Bédée", lieu: "Bédée (35)", description: "Environ 40 exposants", reserve_membres: false, publie: true },
@@ -53,6 +59,11 @@ export function demoClient(etat: "connexion" | "admin" | "membre") {
             signOut: () => { email = null; notify(); return Promise.resolve({}) },
         },
         from: (t: string) => new Q(t),
+        rpc: (nom: string, args: any) => {
+            if (nom === "choisir_annuaire") { const r = data.adherents.find((a) => a.email === email); if (r) r.annuaire = args.visible; return Promise.resolve({ data: null, error: null }) }
+            if (nom === "annuaire") return Promise.resolve({ data: [...data.adherents].filter((a) => a.actif && a.annuaire !== false).sort((a, b) => (a.nom > b.nom ? 1 : -1)), error: null })
+            return Promise.resolve({ data: null, error: null })
+        },
         storage: { from: () => ({ upload: () => Promise.resolve({ error: null }), getPublicUrl: (n: string) => ({ data: { publicUrl: "https://exemple.fr/" + n } }) }) },
     }
 }

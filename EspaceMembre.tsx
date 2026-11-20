@@ -3,12 +3,13 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb as sbReel, C, font, serif } from "./AcsBase.tsx"
 import { demoClient } from "./AcsDemo.tsx"
+import { COTE, pt } from "./CarteBretagne.tsx"
 
 // En mode démo (aperçu dans l’éditeur), toutes les fonctions utilisent un faux client en mémoire
 let clientDemo: any = null
 const sb = (): any => clientDemo ?? sbReel()
 
-type Adherent = { id: string; email: string; prenom?: string; nom?: string; role: "membre" | "admin"; cotisation_annee?: number; actif: boolean }
+type Adherent = { id: string; email: string; prenom?: string; nom?: string; role: "membre" | "admin"; cotisation_annee?: number; actif: boolean; annuaire?: boolean }
 
 // ---------- petits éléments d'interface (angles droits, palette du site) ----------
 const box: React.CSSProperties = { background: C.panel, border: `1px solid ${C.line}`, padding: 28, color: C.txt, ...font }
@@ -118,9 +119,11 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
     const client = sb()!
     const annee = new Date().getFullYear()
     const aJour = (moi.cotisation_annee ?? 0) >= annee
-    const [onglet, setOnglet] = React.useState<"accueil" | "agenda" | "semestriels" | "adherents">("accueil")
+    const [onglet, setOnglet] = React.useState<"accueil" | "annuaire" | "agenda" | "semestriels" | "adherents">("accueil")
     const admin = moi.role === "admin"
-    const tabs: [typeof onglet, string][] = admin ? [["accueil", "Mon espace"], ["agenda", "Agenda"], ["semestriels", "Semestriels"], ["adherents", "Adhérents"]] : []
+    const [visible, setVisible] = React.useState(moi.annuaire !== false)
+    const basculer = async (v: boolean) => { setVisible(v); const { error } = await client.rpc("choisir_annuaire", { visible: v }); if (error) setVisible(!v) }
+    const tabs: [typeof onglet, string][] = [["accueil", "Mon espace"], ["annuaire", "Annuaire"], ...(admin ? ([["agenda", "Agenda"], ["semestriels", "Semestriels"], ["adherents", "Adhérents"]] as [typeof onglet, string][]) : [])]
 
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -131,7 +134,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                 </div>
                 <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
             </div>
-            {admin && (
+            {(
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${C.line}` }}>
                     {tabs.map(([k, t]) => (
                         <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>
@@ -150,14 +153,22 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                         <p style={{ ...muted, marginBottom: 16 }}>Tous les numéros sont à lire en ligne.</p>
                         <a href={lienSemestriels} style={{ ...btn(), display: "inline-block", textDecoration: "none" }}>Lire les semestriels</a>
                     </div>
+                    <div style={box}>
+                        <span style={label}>Annuaire</span>
+                        <p style={{ ...muted, marginBottom: 14 }}>Les autres adhérents voient votre nom, votre commune, votre e-mail et votre téléphone. Votre adresse postale reste visible du seul bureau.</p>
+                        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                            <input type="checkbox" checked={visible} onChange={(e) => basculer(e.target.checked)} style={{ width: 18, height: 18, accentColor: C.accent }} />Apparaître dans l’annuaire
+                        </label>
+                    </div>
                 </div>
             )}
+            {onglet === "annuaire" && <Annuaire />}
             {onglet === "agenda" && <><Aide>Ajoutez une sortie, une réunion ou le salon. S’il n’y a pas encore de date précise, laissez la date vide et écrivez par exemple « Juin 2027 ».</Aide>
                 <Editeur table="evenements" ordre="date_debut" titre="Événements" champs={CHAMPS_AGENDA} fixes={{ publie: true }} preparer={preparerEvenement} resume={(r) => `${r.date_label} — ${r.titre}${r.reserve_membres ? " · adhérents" : ""}`} /></>}
             {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la visionneuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
             {onglet === "adherents" && <><Aide>Seules les adresses de cette liste peuvent se connecter. Pour un renouvellement, modifiez l’année de cotisation.</Aide><ImportAdherents />
-                <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} nouveau={() => ({ cotisation_annee: annee })} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} /></>}
+                <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} nouveau={() => ({ cotisation_annee: annee })} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} /></>}
         </div>
     )
 }
@@ -197,12 +208,18 @@ const CHAMPS_ADH: Champ[] = [
     { k: "email", t: "E-mail", type: "text", requis: true },
     { k: "prenom", t: "Prénom", type: "text" },
     { k: "nom", t: "Nom", type: "text" },
+    { k: "conjoint", t: "Conjoint ou second adhérent du foyer", type: "text" },
+    { k: "telephone", t: "Téléphone", type: "text" },
+    { k: "adresse", t: "Adresse postale (visible du bureau seulement)", type: "text" },
+    { k: "code_postal", t: "Code postal", type: "text" },
+    { k: "ville", t: "Commune", type: "text", aide: "Place automatiquement l’adhérent sur la carte de l’annuaire." },
+    { k: "annuaire", t: "Apparaît dans l’annuaire des adhérents", type: "bool" },
     { k: "cotisation_annee", t: "Cotisation payée pour l’année", type: "number" },
     { k: "role", t: "Administrateur (peut gérer le site)", type: "admin" },
     { k: "actif", t: "Peut se connecter", type: "bool" },
 ]
 
-function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null }) {
+function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer, avant }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null; avant?: (row: any, ancien: any) => Promise<void> }) {
     const client = sb()!
     const [lignes, setLignes] = React.useState<any[]>([])
     const [edit, setEdit] = React.useState<any | null>(null)
@@ -216,7 +233,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, pr
     }, [table])
     React.useEffect(() => { charger() }, [charger])
 
-    const vide = () => ({ ...Object.fromEntries(champs.map((c) => [c.k, c.type === "bool" ? c.k === "actif" : c.type === "admin" ? "membre" : c.type === "sommaire" ? [] : ""])), ...(nouveau ? nouveau(lignes) : {}) })
+    const vide = () => ({ ...Object.fromEntries(champs.map((c) => [c.k, c.type === "bool" ? (c.k === "actif" || c.k === "annuaire") : c.type === "admin" ? "membre" : c.type === "sommaire" ? [] : ""])), ...(nouveau ? nouveau(lignes) : {}) })
 
     const enregistrer = async () => {
         for (const c of champs) if (c.requis && (edit[c.k] === "" || edit[c.k] == null)) return setMsg({ t: `« ${c.t} » est obligatoire.`, err: true })
@@ -229,6 +246,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, pr
             row[c.k] = v
         }
         if (preparer) { row.__auto = edit.__auto; const err = preparer(row); delete row.__auto; if (err) return setMsg({ t: err, err: true }) }
+        if (avant) await avant(row, lignes.find((l) => l.id === edit.id) || {})
         const q = edit.id ? client.from(table).update(row).eq("id", edit.id) : client.from(table).insert(row)
         const { error } = await q
         if (error) return setMsg({ t: error.message.includes("duplicate") ? "Cette entrée existe déjà." : error.message, err: true })
@@ -338,8 +356,10 @@ function ImportAdherents() {
     const annee = new Date().getFullYear()
     const importer = async () => {
         const rows = txt.split("\n").map((l) => l.split(/[;,\t]/).map((s) => s.trim())).filter((p) => /@/.test(p[0] || ""))
-            .map(([email, prenom, nom]) => ({ email: email.toLowerCase(), prenom: prenom || null, nom: nom || null, cotisation_annee: annee }))
+            .map(([email, prenom, nom, telephone, code_postal, ville]) => ({ email: email.toLowerCase(), prenom: prenom || null, nom: nom || null, telephone: telephone || null, code_postal: code_postal || null, ville: ville || null, cotisation_annee: annee } as any))
         if (!rows.length) return setMsg({ t: "Aucune adresse trouvée.", err: true })
+        setMsg({ t: "Placement des communes sur la carte…", err: false })
+        for (const r of rows) if (r.ville) { await localiserAdherent(r, {}); await new Promise((ok) => setTimeout(ok, 120)) }
         const { error } = await client.from("adherents").upsert(rows, { onConflict: "email", ignoreDuplicates: true })
         if (error) setMsg({ t: error.message, err: true }); else { setMsg({ t: `${rows.length} adresse(s) traitée(s). Rechargez l’onglet pour voir la liste.`, err: false }); setTxt("") }
     }
@@ -347,13 +367,132 @@ function ImportAdherents() {
     return (
         <div style={box}>
             <h3 style={{ ...h2, fontSize: 20 }}>Importer des adhérents</h3>
-            <p style={{ ...muted, marginBottom: 12 }}>Une ligne par personne : e-mail ; prénom ; nom. Copier-coller depuis Excel fonctionne aussi. Les adresses déjà présentes sont ignorées ; la cotisation est notée pour {annee}.</p>
+            <p style={{ ...muted, marginBottom: 12 }}>Une ligne par personne : e-mail ; prénom ; nom ; téléphone ; code postal ; commune (les quatre derniers sont facultatifs). Copier-coller depuis Excel fonctionne aussi. Les adresses déjà présentes sont ignorées ; la cotisation est notée pour {annee}.</p>
             <textarea style={{ ...input, minHeight: 160 }} value={txt} onChange={(e) => setTxt(e.target.value)} placeholder={"marie.durand@exemple.fr ; Marie ; Durand"} />
             <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
                 <button style={btn()} onClick={importer}>Importer</button>
                 <button style={btn(false)} onClick={() => setOuvert(false)}>Fermer</button>
             </div>
             <Msg text={msg.t} err={msg.err} />
+        </div>
+    )
+}
+
+// ---------- Localisation d'une commune (Base Adresse Nationale, seule la commune est envoyée) ----------
+async function localiserAdherent(row: any, ancien: any) {
+    if (!row.ville) { row.lat = null; row.lon = null; return }
+    if (row.ville === ancien.ville && row.code_postal === ancien.code_postal && ancien.lat != null) return
+    try {
+        const u = "https://api-adresse.data.gouv.fr/search/?type=municipality&limit=1&q=" + encodeURIComponent(row.ville) + (row.code_postal ? "&postcode=" + row.code_postal : "")
+        const f = (await (await fetch(u)).json()).features?.[0]
+        if (f) { row.lon = f.geometry.coordinates[0]; row.lat = f.geometry.coordinates[1] }
+    } catch (e) {}
+}
+
+// ---------- Annuaire des adhérents : carte de la Bretagne + liste ----------
+type Fiche = { id: string; prenom?: string; nom?: string; conjoint?: string; email: string; telephone?: string; code_postal?: string; ville?: string; lat?: number; lon?: number }
+const DEPTS_BZH = ["22", "29", "35", "44", "56"]
+const NOM_DEPT: Record<string, string> = { "22": "Côtes-d’Armor", "29": "Finistère", "35": "Ille-et-Vilaine", "44": "Loire-Atlantique", "56": "Morbihan", "49": "Maine-et-Loire", "50": "Manche", "53": "Mayenne", "72": "Sarthe", "85": "Vendée", "14": "Calvados", "76": "Seine-Maritime" }
+const sansAccent = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+
+function Annuaire() {
+    const client = sb()!
+    const [liste, setListe] = React.useState<Fiche[] | null>(null)
+    const [err, setErr] = React.useState("")
+    const [q, setQ] = React.useState("")
+    const [commune, setCommune] = React.useState<string | null>(null)
+    const [survol, setSurvol] = React.useState<string | null>(null)
+    const ref = React.useRef<HTMLDivElement>(null)
+    const [w, setW] = React.useState(900)
+    React.useEffect(() => { client.rpc("annuaire").then(({ data, error }: any) => { if (error) setErr(error.message); else setListe(data ?? []) }) }, [])
+    React.useEffect(() => { const el = ref.current; if (!el) return; const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth); return () => ro.disconnect() }, [liste])
+
+    if (err) return <div style={box}><p style={{ ...muted, color: C.danger }}>{err}</p></div>
+    if (!liste) return <div style={box}><p style={muted}>Chargement de l’annuaire…</p></div>
+
+    const cle = (f: Fiche) => `${f.code_postal || ""} ${f.ville || ""}`
+    const bzh = (f: Fiche) => DEPTS_BZH.includes((f.code_postal || "").slice(0, 2))
+    const cherche = (f: Fiche) => !q || sansAccent([f.prenom, f.nom, f.conjoint, f.ville, f.code_postal].join(" ")).includes(sansAccent(q))
+    const communes = new Map<string, { ville: string; x: number; y: number; n: number }>()
+    for (const f of liste) if (bzh(f) && f.lat != null && f.lon != null) {
+        const k = cle(f), c = communes.get(k)
+        if (c) c.n++; else { const [x, y] = pt(f.lon, f.lat); communes.set(k, { ville: f.ville || "", x, y, n: 1 }) }
+    }
+    const filtres = liste.filter(cherche)
+    const enBzh = filtres.filter((f) => bzh(f) && (!commune || cle(f) === commune))
+    const hors = filtres.filter((f) => !bzh(f))
+    const parDept = new Map<string, Fiche[]>()
+    for (const f of hors) { const d = (f.code_postal || "??").slice(0, 2); parDept.set(d, [...(parDept.get(d) || []), f]) }
+    const etroit = w < 820
+    const allumees = new Set(filtres.filter(bzh).map(cle))
+    const infos = survol ? communes.get(survol) : null
+
+    const carte = (
+        <div style={{ position: etroit ? "relative" : "sticky", top: 90, flex: etroit ? "none" : "1.15 1 0", minWidth: 0 }}>
+            <svg viewBox="-24 -4 272 196" style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }} role="img" aria-label="Carte des adhérents en Bretagne">
+                <path d={COTE} fill="none" stroke={C.txt} strokeOpacity={0.75} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                {[...communes.entries()].map(([k, c]) => {
+                    const actif = commune === k, eteint = !allumees.has(k)
+                    return (
+                        <g key={k} style={{ cursor: "pointer" }} onClick={() => setCommune(actif ? null : k)} onMouseEnter={() => setSurvol(k)} onMouseLeave={() => setSurvol(null)}>
+                            <circle cx={c.x} cy={c.y} r={7} fill="transparent" />
+                            <circle cx={c.x} cy={c.y} r={1.9 + 0.9 * Math.sqrt(c.n - 1)} fill={actif ? "#d9805f" : C.accent} fillOpacity={eteint ? 0.2 : 0.95} stroke={C.bg} strokeWidth={0.5} />
+                        </g>
+                    )
+                })}
+                {infos && <text x={infos.x + 4} y={infos.y - 4} fontFamily="Poppins, sans-serif" fontSize={6} fontWeight={600} fill={C.txt} stroke={C.bg} strokeWidth={2} paintOrder="stroke">{infos.ville}{infos.n > 1 ? ` · ${infos.n}` : ""}</text>}
+            </svg>
+            <p style={{ ...muted, fontSize: 13, marginTop: 10 }}>{communes.size} communes · cliquez sur un point pour voir qui y habite. Les points sont placés au centre de la commune.</p>
+        </div>
+    )
+
+    const fiche = (f: Fiche) => (
+        <div key={f.id} style={{ padding: "14px 0", borderTop: `1px solid ${C.line}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
+                <span style={{ fontFamily: serif, fontSize: 18, fontWeight: 600 }}>{[f.prenom, f.nom].filter(Boolean).join(" ")}{f.conjoint ? <span style={{ fontFamily: "inherit", fontWeight: 400, color: C.mute, fontSize: 15 }}> et {f.conjoint}</span> : null}</span>
+                <span style={{ color: C.mute, fontSize: 13 }}>{f.ville}{f.code_postal ? ` (${f.code_postal.slice(0, 2)})` : ""}</span>
+            </div>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 4, fontSize: 14 }}>
+                <a href={`mailto:${f.email}`} style={{ color: C.accent, textDecoration: "none", wordBreak: "break-all" }}>{f.email}</a>
+                {f.telephone && <a href={`tel:${f.telephone.replace(/\s/g, "")}`} style={{ color: C.txt, textDecoration: "none" }}>{f.telephone}</a>}
+            </div>
+        </div>
+    )
+
+    const listeEl = (
+        <div style={{ flex: "1 1 0", minWidth: 0 }}>
+            <input style={input} placeholder="Rechercher un nom ou une commune…" value={q} onChange={(e) => { setQ(e.target.value); setCommune(null) }} />
+            {commune && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 10 }}>
+                <span style={label}>{communes.get(commune)?.ville}</span>
+                <button style={small()} onClick={() => setCommune(null)}>Voir tout le monde</button>
+            </div>}
+            <div style={{ marginTop: 12 }}>
+                <span style={label}>En Bretagne · {enBzh.length}</span>
+                {enBzh.map(fiche)}
+                {enBzh.length === 0 && <p style={{ ...muted, padding: "10px 0" }}>Personne ne correspond.</p>}
+            </div>
+            {!commune && hors.length > 0 && (
+                <div style={{ marginTop: 28 }}>
+                    <span style={label}>Hors secteur · {hors.length}</span>
+                    {[...parDept.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([d, fs]) => (
+                        <div key={d} style={{ marginTop: 10 }}>
+                            <div style={{ color: C.mute, fontSize: 13, padding: "6px 0" }}>{NOM_DEPT[d] || "Département"} ({d})</div>
+                            {fs.map(fiche)}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+
+    return (
+        <div ref={ref} style={box}>
+            <h3 style={{ ...h2, fontSize: 22 }}>Annuaire des adhérents <span style={{ color: C.mute, fontWeight: 400 }}>({liste.length})</span></h3>
+            <p style={{ ...muted, marginBottom: 22 }}>Pour échanger des plantes, covoiturer vers une sortie ou trouver un adhérent près de chez vous. Ces coordonnées sont réservées aux adhérents : merci de ne pas les diffuser.</p>
+            <div style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 24 : 40, alignItems: "flex-start" }}>
+                {etroit ? carte : listeEl}
+                {etroit ? listeEl : carte}
+            </div>
         </div>
     )
 }
