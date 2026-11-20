@@ -31,7 +31,7 @@ const ZONES: { titre: string; liste: Exp[] }[] = [
         { n: "18", nom: "Les Succulentes de Locqui", dep: "22", spe: "Haworthias, aeoniums et succulentes" },
         { n: "19", nom: "Dionée", spe: "Plantes carnivores", type: "asso" },
         { n: "20", nom: "Fleurs et Ânes d’Armor", dep: "22", spe: "Plantes carnivores" },
-        { n: "21", nom: "A.C.S., l’association organisatrice", spe: "Adhésion, conseils, plantes, gravier et substrat", type: "asso" },
+        { n: "21", nom: "A.C.S., organisateur du salon", spe: "Adhésion, conseils, plantes et substrat", type: "asso" },
     ] },
     { titre: "Terrain de sport", liste: [
         { n: "22", nom: "Éric M.", spe: "Cactées, aloès", type: "amateur" },
