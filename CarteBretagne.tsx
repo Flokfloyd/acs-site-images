@@ -52,8 +52,12 @@ function Carte({ encre, accent, fond, avecVilles = true }) {
             })}
             <circle cx={bx} cy={by} r={6.5} fill="none" stroke={accent} strokeWidth={0.7} />
             <circle cx={bx} cy={by} r={2.8} fill={accent} />
+            {avecVilles && (
+                <>
             <text x={bx - 9} y={by - 4} textAnchor="end" fontFamily={serif} fontSize={10} fontWeight={600} fill={accent} stroke={fond} strokeWidth={2.4} strokeLinejoin="round" paintOrder="stroke">Bédée</text>
             <text x={bx - 9} y={by + 3.5} textAnchor="end" fontFamily={sans} fontSize={4.6} letterSpacing={0.6} fill={encre} fillOpacity={0.75} stroke={fond} strokeWidth={2} strokeLinejoin="round" paintOrder="stroke">SALON DES PLANTES</text>
+                        </>
+            )}
         </svg>
     )
 }
