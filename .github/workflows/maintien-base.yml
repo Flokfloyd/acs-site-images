@@ -1,0 +1,35 @@
+# Garde la base Supabase de l'ACS active : sur l'offre gratuite, Supabase met en pause
+# un projet sans activité pendant 7 jours. Cette tâche lit une ligne de l'agenda public
+# tous les 3 jours (avec la clé publique « anon », déjà visible dans le site).
+# Une fois par mois, elle met aussi à jour maintien-base.txt : GitHub désactive les tâches
+# planifiées d'un dépôt public resté 60 jours sans modification.
+name: Maintien de la base Supabase
+on:
+  schedule:
+    - cron: "17 5 */3 * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Lire l'agenda public
+        env:
+          URL: https://ofpouorpbhnnxwuihyyu.supabase.co
+          ANON: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcG91b3JwYmhubnh3dWloeXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxOTIzMzYsImV4cCI6MjExMDc2ODMzNn0.Mo5s56R7lIQZT-kPa6I6hAYey87GlGmw_6t2EXPFevc
+        run: |
+          code=$(curl -s -o /tmp/r.json -w "%{http_code}" "$URL/rest/v1/evenements?select=id&limit=1" -H "apikey: $ANON" -H "Authorization: Bearer $ANON")
+          echo "Réponse HTTP $code"; cat /tmp/r.json; echo
+          test "$code" = "200"
+      - uses: actions/checkout@v4
+        if: ${{ github.event_name == 'workflow_dispatch' || format('{0}', github.event.schedule) != '' }}
+      - name: Signe de vie mensuel
+        run: |
+          if [ "$(date +%d)" -le 3 ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            date -u +"%Y-%m-%d %H:%M UTC" > maintien-base.txt
+            git config user.name "maintien-acs"; git config user.email "actions@users.noreply.github.com"
+            git add maintien-base.txt
+            git commit -m "Maintien de la base : signe de vie" || true
+            git push || true
+          fi
