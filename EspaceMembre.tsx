@@ -115,18 +115,19 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
+const ONGLETS = ["accueil", "profil", "evenements", "annuaire", "gestion"] as const
+type O = typeof ONGLETS[number]
+const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
+
 function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: string }) {
     const client = sb()!
-    type O = "accueil" | "profil" | "historique" | "messages" | "annuaire" | "agenda" | "semestriels" | "adherents" | "paiements" | "envoi"
-    const [onglet, setOnglet] = React.useState<O>("accueil")
+    const [onglet, setO] = React.useState<O>(lireHash())
     const admin = moi.role === "admin"
-    const perso: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Mon profil"], ["historique", "Adhésions et achats"], ["messages", "Messages"], ["annuaire", "Annuaire"]]
-    const gestion: [O, string][] = [["agenda", "Agenda"], ["semestriels", "Semestriels"], ["adherents", "Adhérents"], ["paiements", "Paiements"], ["envoi", "Écrire aux adhérents"]]
-    const annee = new Date().getFullYear()
-    const tabBtn = (k: O, t: string) => <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 14px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>
-
+    React.useEffect(() => { const f = () => setO(lireHash()); window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f) }, [])
+    const setOnglet = (o: O) => { setO(o); try { history.replaceState(null, "", o === "accueil" ? location.pathname : "#" + o) } catch (e) {} }
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["annuaire", "Annuaire"], ...(admin ? ([["gestion", "Gestion"]] as [O, string][]) : [])]
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div>
                     <h2 style={{ ...h2, marginBottom: 2 }}>Bonjour{moi.prenom ? " " + moi.prenom : ""}</h2>
@@ -134,84 +135,133 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                 </div>
                 <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${C.line}` }}>
-                {perso.map(([k, t]) => tabBtn(k, t))}
+            <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
+                {tabs.map(([k, t]) => <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: k === "gestion" ? "auto" : 0 }}>{t}</button>)}
             </div>
-            {admin && <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0, borderBottom: `1px solid ${C.line}`, marginTop: -8 }}>
-                <span style={{ ...label, margin: "0 6px 0 0", color: C.mute }}>Gestion</span>
-                {gestion.map(([k, t]) => tabBtn(k, t))}
-            </div>}
-            {onglet === "accueil" && <VueEnsemble moi={moi} lienSemestriels={lienSemestriels} aller={setOnglet} />}
-            {onglet === "profil" && <Profil moi={moi} />}
-            {onglet === "historique" && <Historique moi={moi} />}
-            {onglet === "messages" && <Messages />}
+            {onglet === "accueil" && <VueEnsemble moi={moi} aller={setOnglet} />}
+            {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
+            {onglet === "evenements" && <Evenements />}
             {onglet === "annuaire" && <Annuaire />}
-            {onglet === "agenda" && <><Aide>Ajoutez une sortie, une réunion ou le salon. S’il n’y a pas encore de date précise, laissez la date vide et écrivez par exemple « Juin 2027 ».</Aide>
-                <Editeur table="evenements" ordre="date_debut" titre="Événements" champs={CHAMPS_AGENDA} fixes={{ publie: true }} preparer={preparerEvenement} resume={(r) => `${r.date_label} — ${r.titre}${r.reserve_membres ? " · adhérents" : ""}`} /></>}
-            {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la visionneuse du site.</Aide>
+            {onglet === "gestion" && admin && <Gestion moi={moi} />}
+        </div>
+    )
+}
+
+function Gestion({ moi }: { moi: Adherent }) {
+    const [s, setS] = React.useState<"agenda" | "semestriels" | "adherents" | "paiements" | "messages">("agenda")
+    const annee = new Date().getFullYear()
+    const pills: [typeof s, string][] = [["agenda", "Agenda et inscriptions"], ["adherents", "Adhérents"], ["paiements", "Paiements"], ["messages", "Écrire aux adhérents"], ["semestriels", "Semestriels"]]
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {pills.map(([k, t]) => <button key={k} onClick={() => setS(k)} style={{ ...small(), padding: "8px 14px", fontSize: 14, background: s === k ? C.accent : "transparent", color: s === k ? C.accentDark : C.txt, borderColor: s === k ? C.accent : C.line, fontWeight: 600 }}>{t}</button>)}
+            </div>
+            {s === "agenda" && <><Aide>Ajoutez une sortie, une réunion ou le salon. Cochez « Inscriptions ouvertes » pour que les adhérents puissent s’inscrire depuis leur espace ; les inscrits apparaissent dans « Paiements ».</Aide>
+                <Editeur table="evenements" ordre="date_debut" titre="Événements" champs={CHAMPS_AGENDA} fixes={{ publie: true }} preparer={preparerEvenement} resume={(r) => `${r.date_label} — ${r.titre}${r.inscription_ouverte ? " · inscriptions ouvertes" : ""}${r.reserve_membres ? " · adhérents" : ""}`} /></>}
+            {s === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
-            {onglet === "adherents" && <><Aide>Seules les adresses de cette liste peuvent se connecter. Pour le bureau, remplissez « Fonction au bureau » : la personne apparaît alors dans les contacts du bureau.</Aide><ImportAdherents />
+            {s === "adherents" && <><Aide>Seules les adresses de cette liste peuvent se connecter. Pour le bureau, remplissez « Fonction au bureau » : la personne apparaît alors dans les contacts du bureau.</Aide><ImportAdherents />
                 <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.fonction_bureau ? " · " + r.fonction_bureau : ""}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} /></>}
-            {onglet === "paiements" && <><Aide>Les paiements en ligne s’enregistrent seuls une fois le paiement connecté. Ici, notez les adhésions réglées par chèque ou en espèces, et les inscriptions aux sorties : l’adhérent les retrouve dans son espace.</Aide>
+            {s === "paiements" && <><Aide>Les paiements en ligne s’enregistreront seuls une fois le paiement branché. Ici, notez les adhésions réglées par chèque ou en espèces, et passez en « valide » les inscriptions réglées.</Aide>
                 <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => ({ annee, montant: 20, formule: "Année complète", debut: `${annee}-01-01`, fin: `${annee}-12-31`, source: "Chèque" })} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
-                <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide" })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
-            {onglet === "envoi" && <><Aide>Le message apparaît dans l’onglet « Messages » de chaque adhérent pendant deux ans. Il est aussi envoyé par e-mail à ceux qui l’acceptent, une fois l’envoi d’e-mails branché.</Aide>
+                <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
+            {s === "messages" && <><Aide>Le message apparaît dans l’espace de chaque adhérent pendant deux ans. Il est aussi envoyé par e-mail à ceux qui l’acceptent, une fois l’envoi d’e-mails branché.</Aide>
                 <Editeur table="messages" ordre="envoye_le" desc titre="Messages envoyés" champs={CHAMPS_MSG} fixes={{ auteur: moi.email }} resume={(r) => `${dateFr(r.envoye_le)} — ${r.sujet}`} /></>}
         </div>
     )
 }
 
-// ---------- Espace personnel ----------
-const euros = (n: any) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
-const dateFr = (d: any, heure = false) => { if (!d) return "—"; const x = new Date(d); return heure ? x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + " à " + x.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) }
-const STATUTS: Record<string, string> = { valide: "Validé", en_attente: "En attente", abandonne: "Abandonné", rembourse: "Remboursé" }
-const lien: React.CSSProperties = { color: C.accent, textDecoration: "none" }
-function useTable(table: string, ordre: string) {
-    const [rows, setRows] = React.useState<any[] | null>(null)
-    React.useEffect(() => { sb()!.from(table).select("*").order(ordre, { ascending: false }).then(({ data }: any) => setRows(data ?? [])) }, [table])
-    return rows
-}
-function useRpc(nom: string) {
-    const [rows, setRows] = React.useState<any[] | null>(null)
-    React.useEffect(() => { sb()!.rpc(nom).then(({ data }: any) => setRows(data ?? [])) }, [nom])
-    return rows
-}
-function exporter(nom: string, entetes: string[], lignes: any[][]) {
-    const csv = "\ufeff" + [entetes, ...lignes].map((l) => l.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n")
-    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = nom; a.click()
+// ---------- Événements : s'inscrire aux sorties de l'agenda ----------
+function Evenements() {
+    const client = sb()!
+    const [evts, setEvts] = React.useState<any[] | null>(null)
+    const [mes, setMes] = React.useState<any[]>([])
+    const [prises, setPrises] = React.useState<Record<string, number>>({})
+    const [nb, setNb] = React.useState<Record<string, number>>({})
+    const [msg, setMsg] = React.useState<Record<string, { t: string; err: boolean }>>({})
+    const charger = React.useCallback(async () => {
+        const auj = new Date().toISOString().slice(0, 10)
+        const { data } = await client.from("evenements").select("*").order("date_debut", { ascending: true, nullsFirst: false })
+        const futurs = (data ?? []).filter((e: any) => e.publie !== false && (!e.date_debut || e.date_debut >= auj))
+        setEvts(futurs)
+        const { data: m } = await client.from("inscriptions").select("*").order("cree_le", { ascending: false })
+        setMes((m ?? []).filter((r: any) => r.evenement_id && r.statut !== "abandonne"))
+        const p: Record<string, number> = {}
+        for (const e of futurs) if (e.inscription_ouverte && e.places) { const { data: n } = await client.rpc("places_prises", { evt: e.id }); p[e.id] = n ?? 0 }
+        setPrises(p)
+    }, [])
+    React.useEffect(() => { charger() }, [charger])
+    const inscrire = async (e: any) => {
+        const { data, error } = await client.rpc("s_inscrire", { evt: e.id, nb: nb[e.id] ?? 1 })
+        const t = error ? error.message : data === "ok" ? (e.prix > 0 ? "Inscription enregistrée, règlement à prévoir." : "Vous êtes inscrit, à bientôt !") : data
+        setMsg({ ...msg, [e.id]: { t, err: !!error || data !== "ok" } }); charger()
+    }
+    const desinscrire = async (e: any) => { if (!window.confirm("Annuler votre inscription ?")) return; await client.rpc("se_desinscrire", { evt: e.id }); setMsg({ ...msg, [e.id]: { t: "Inscription annulée.", err: false } }); charger() }
+    if (!evts) return <div style={box}><p style={muted}>Chargement…</p></div>
+    return (
+        <div style={{ display: "grid", gap: 16 }}>
+            {evts.length === 0 && <div style={box}><p style={muted}>Aucune sortie annoncée pour le moment.</p></div>}
+            {evts.map((e) => {
+                const moiInscrit = mes.find((r) => r.evenement_id === e.id)
+                const restantes = e.places ? Math.max(0, e.places - (prises[e.id] ?? 0)) : null
+                return (
+                    <div key={e.id} style={{ ...box, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 20, alignItems: "start" }}>
+                        <div>
+                            <span style={label}>{e.date_label}</span>
+                            <h3 style={{ ...h2, fontSize: 22, margin: "2px 0 6px" }}>{e.titre}</h3>
+                            {e.lieu && <p style={{ ...muted, marginBottom: 6 }}>{e.lieu}</p>}
+                            {e.description && <p style={{ margin: "0 0 10px", whiteSpace: "pre-wrap", opacity: 0.9 }}>{e.description}</p>}
+                            <p style={{ ...muted, fontSize: 14 }}>{e.prix > 0 ? `${euros(e.prix)} par personne` : "Gratuit"}{restantes != null ? ` · ${restantes} place${restantes > 1 ? "s" : ""} restante${restantes > 1 ? "s" : ""}` : ""}</p>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, minWidth: 180 }}>
+                            {!e.inscription_ouverte ? <span style={{ ...muted, fontSize: 14 }}>Inscriptions bientôt</span> : <>
+                                {moiInscrit && <span style={{ fontSize: 13, padding: "3px 10px", border: `1px solid ${C.accent}`, color: C.accent }}>Inscrit · {moiInscrit.nb_personnes} pers.{moiInscrit.statut === "en_attente" ? " · à régler" : ""}</span>}
+                                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: C.mute }}>Personnes
+                                    <select value={nb[e.id] ?? moiInscrit?.nb_personnes ?? 1} onChange={(x) => setNb({ ...nb, [e.id]: Number(x.target.value) })} style={{ ...input, width: 70, padding: "8px 10px" }}>{[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n}</option>)}</select>
+                                </label>
+                                <button style={btn()} onClick={() => inscrire(e)}>{moiInscrit ? "Modifier" : "S’inscrire"}</button>
+                                {moiInscrit && <button style={small(true)} onClick={() => desinscrire(e)}>Annuler mon inscription</button>}
+                            </>}
+                            {msg[e.id] && <Msg text={msg[e.id].t} err={msg[e.id].err} />}
+                        </div>
+                    </div>
+                )
+            })}
+            <p style={{ ...muted, fontSize: 13 }}>Les sorties payantes se règlent pour l’instant sur place ou par chèque ; le paiement en ligne arrivera prochainement. Vos inscriptions passées sont dans Profil.</p>
+        </div>
+    )
 }
 
-function VueEnsemble({ moi, lienSemestriels, aller }: { moi: Adherent; lienSemestriels: string; aller: (o: any) => void }) {
+function VueEnsemble({ moi, aller }: { moi: Adherent; aller: (o: any) => void }) {
     const adhesions = useTable("adhesions", "annee")
-    const messages = useTable("messages", "envoye_le")
+    const inscr = useTable("inscriptions", "cree_le")
     const bureau = useRpc("bureau")
     const annee = new Date().getFullYear()
     const aJour = (moi.cotisation_annee ?? 0) >= annee
     const derniere = adhesions?.[0]
+    const prochaines = (inscr ?? []).filter((r) => r.evenement_id && r.statut !== "abandonne").slice(0, 3)
     return (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-            <div style={box}>
-                <span style={label}>Mon adhésion</span>
-                <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 600, color: aJour ? C.txt : C.danger }}>{aJour ? `À jour pour ${annee}` : "À renouveler"}</p>
-                <p style={muted}>{derniere ? `${derniere.formule} · du ${dateFr(derniere.debut)} au ${dateFr(derniere.fin)}` : `Dernière cotisation : ${moi.cotisation_annee ?? "—"}.`}</p>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-                    {!aJour && <a href="/#adhesion" style={{ ...btn(), textDecoration: "none" }}>Renouveler · 20 €</a>}
-                    {derniere?.recu_url && <a href={derniere.recu_url} target="_blank" rel="noreferrer" style={{ ...btn(false), textDecoration: "none" }}>Reçu {derniere.annee}</a>}
-                    <button style={btn(false)} onClick={() => aller("historique")}>Historique</button>
+        <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+                <div style={box}>
+                    <span style={label}>Mon adhésion</span>
+                    <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 600, color: aJour ? C.txt : C.danger }}>{aJour ? `À jour pour ${annee}` : "À renouveler"}</p>
+                    <p style={muted}>{derniere ? `${derniere.formule} · du ${dateFr(derniere.debut)} au ${dateFr(derniere.fin)}` : `Dernière cotisation : ${moi.cotisation_annee ?? "—"}.`}</p>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+                        {!aJour && <a href="/#adhesion" style={{ ...btn(), textDecoration: "none" }}>Renouveler · 20 €</a>}
+                        {derniere?.recu_url && <a href={derniere.recu_url} target="_blank" rel="noreferrer" style={{ ...btn(false), textDecoration: "none" }}>Reçu {derniere.annee}</a>}
+                        <button style={btn(false)} onClick={() => aller("profil")}>Mon profil</button>
+                    </div>
+                </div>
+                <div style={box}>
+                    <span style={label}>Mes prochaines sorties</span>
+                    {inscr === null ? <p style={muted}>…</p> : prochaines.length === 0 ? <p style={muted}>Aucune inscription en cours.</p> :
+                        prochaines.map((r) => <div key={r.id} style={{ padding: "8px 0", borderTop: `1px solid ${C.line}` }}><div style={{ fontWeight: 600 }}>{r.formulaire}</div><div style={{ ...muted, fontSize: 13 }}>{r.nb_personnes} pers.{r.statut === "en_attente" ? " · à régler" : ""}</div></div>)}
+                    <button style={{ ...btn(false), marginTop: 12 }} onClick={() => aller("evenements")}>Voir les sorties</button>
                 </div>
             </div>
+            <Messages />
             <div style={box}>
-                <span style={label}>Derniers messages</span>
-                {messages === null ? <p style={muted}>…</p> : messages.length === 0 ? <p style={muted}>Aucun message pour l’instant.</p> :
-                    messages.slice(0, 3).map((m) => <div key={m.id} style={{ padding: "8px 0", borderTop: `1px solid ${C.line}` }}><div style={{ fontWeight: 600 }}>{m.sujet}</div><div style={{ ...muted, fontSize: 13 }}>{dateFr(m.envoye_le)}</div></div>)}
-                <button style={{ ...btn(false), marginTop: 12 }} onClick={() => aller("messages")}>Tous les messages</button>
-            </div>
-            <div style={box}>
-                <span style={label}>Semestriels</span>
-                <p style={{ ...muted, marginBottom: 16 }}>Tous les numéros sont à lire en ligne.</p>
-                <a href={lienSemestriels} style={{ ...btn(), display: "inline-block", textDecoration: "none" }}>Lire les semestriels</a>
-            </div>
-            <div style={{ ...box, gridColumn: "1 / -1" }}>
                 <span style={label}>Le bureau de l’association {annee}</span>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginTop: 8 }}>
                     {(bureau ?? []).map((b) => (
@@ -311,12 +361,13 @@ function Historique({ moi }: { moi: Adherent }) {
 function Messages() {
     const messages = useTable("messages", "envoye_le")
     const [ouvert, setOuvert] = React.useState<string | null>(null)
+    const [tout, setTout] = React.useState(false)
     return (
         <div style={box}>
             <h3 style={{ ...h2, fontSize: 20 }}>Messages de l’association <span style={{ color: C.mute, fontWeight: 400 }}>({messages?.length ?? "…"})</span></h3>
             <p style={{ ...muted, marginBottom: 16 }}>Les messages envoyés aux adhérents, aussi reçus par e-mail. Ils sont conservés deux ans.</p>
             {messages && messages.length === 0 && <p style={muted}>Aucun message pour l’instant.</p>}
-            {(messages ?? []).map((m) => (
+            {(messages ?? []).slice(0, tout ? 999 : 5).map((m) => (
                 <div key={m.id} style={{ borderTop: `1px solid ${C.line}` }}>
                     <button onClick={() => setOuvert(ouvert === m.id ? null : m.id)} style={{ width: "100%", display: "flex", justifyContent: "space-between", gap: 12, background: "transparent", border: "none", color: C.txt, font: "inherit", padding: "14px 0", cursor: "pointer", textAlign: "left" }}>
                         <span style={{ fontWeight: 600 }}>{m.sujet}</span>
@@ -325,6 +376,7 @@ function Messages() {
                     {ouvert === m.id && <div style={{ whiteSpace: "pre-wrap", color: C.txt, opacity: 0.9, padding: "0 0 18px", lineHeight: 1.65 }}>{m.contenu}</div>}
                 </div>
             ))}
+            {!tout && (messages?.length ?? 0) > 5 && <button style={{ ...btn(false), marginTop: 12 }} onClick={() => setTout(true)}>Voir les {messages!.length} messages</button>}
         </div>
     )
 }
@@ -350,6 +402,9 @@ const CHAMPS_AGENDA: Champ[] = [
     { k: "lieu", t: "Lieu", type: "text", place: "Bédée (35)" },
     { k: "description", t: "Description", type: "textarea" },
     { k: "reserve_membres", t: "Visible seulement par les adhérents connectés", type: "bool" },
+    { k: "inscription_ouverte", t: "Inscriptions ouvertes aux adhérents", type: "bool" },
+    { k: "prix", t: "Prix par personne (€, 0 = gratuit)", type: "number" },
+    { k: "places", t: "Nombre de places (vide = illimité)", type: "number" },
 ]
 const CHAMPS_SEM: Champ[] = [
     { k: "numero", t: "Numéro", type: "number", requis: true },
@@ -392,6 +447,7 @@ const CHAMPS_INSCR: Champ[] = [
     { k: "email", t: "E-mail de l’adhérent", type: "text", requis: true },
     { k: "formulaire", t: "Objet", type: "text", requis: true, place: "Sortie du 16 mai, T-shirt ACS 10 ans…" },
     { k: "montant", t: "Montant (€)", type: "number" },
+    { k: "nb_personnes", t: "Nombre de personnes", type: "number" },
     { k: "statut", t: "Statut (valide, en_attente, abandonne, rembourse)", type: "text" },
     { k: "reference", t: "Référence de paiement", type: "text" },
 ]
@@ -610,7 +666,7 @@ function Annuaire() {
     const infos = survol ? communes.get(survol) : null
 
     const carte = (
-        <div style={{ position: etroit ? "relative" : "sticky", top: etroit ? undefined : 90, flex: etroit ? "none" : "1.15 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>
+        <div style={{ position: "relative", flex: etroit ? "none" : "1.3 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>
             <div style={{ width: "100%", aspectRatio: "272 / 196", position: "relative" }}>
             <svg viewBox="-24 -4 272 196" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", overflow: "visible" }} role="img" aria-label="Carte des adhérents en Bretagne">
                 <path d={COTE} fill="none" stroke={C.txt} strokeOpacity={0.75} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
@@ -627,57 +683,45 @@ function Annuaire() {
                 {infos && <text x={infos.x + 4} y={infos.y - 4} fontFamily="Poppins, sans-serif" fontSize={6} fontWeight={600} fill={C.txt} stroke={C.bg} strokeWidth={2} paintOrder="stroke">{infos.ville}{infos.n > 1 ? ` · ${infos.n}` : ""}</text>}
             </svg>
             </div>
-            <p style={{ ...muted, fontSize: 13, marginTop: 10 }}>{communes.size} communes · cliquez sur un point pour voir qui y habite. Les points sont placés au centre de la commune.</p>
         </div>
     )
 
     const fiche = (f: Fiche) => (
-        <div key={f.id} style={{ padding: "14px 0", borderTop: `1px solid ${C.line}` }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
-                <span style={{ fontFamily: serif, fontSize: 18, fontWeight: 600 }}>{[f.prenom, f.nom].filter(Boolean).join(" ")}{f.conjoint ? <span style={{ fontFamily: "inherit", fontWeight: 400, color: C.mute, fontSize: 15 }}> et {f.conjoint}</span> : null}</span>
-                <span style={{ color: C.mute, fontSize: 13 }}>{f.ville}{f.code_postal ? ` (${f.code_postal.slice(0, 2)})` : ""}</span>
-            </div>
-            <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 4, fontSize: 14 }}>
-                <a href={`mailto:${f.email}`} style={{ color: C.accent, textDecoration: "none", wordBreak: "break-all" }}>{f.email}</a>
-                {f.telephone && <a href={`tel:${f.telephone.replace(/\s/g, "")}`} style={{ color: C.txt, textDecoration: "none" }}>{f.telephone}</a>}
-            </div>
+        <div key={f.id} style={{ background: C.bg, border: `1px solid ${C.line}`, padding: "16px 18px", display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+            <span style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, lineHeight: 1.25 }}>{[f.prenom, f.nom].filter(Boolean).join(" ")}</span>
+            {f.conjoint && <span style={{ color: C.mute, fontSize: 13 }}>et {f.conjoint}</span>}
+            <span style={{ color: C.accent, fontSize: 13, letterSpacing: "0.02em" }}>{f.ville}{f.code_postal ? ` (${f.code_postal.slice(0, 2)})` : ""}</span>
+            <a href={`mailto:${f.email}`} style={{ color: C.txt, textDecoration: "none", fontSize: 14, wordBreak: "break-all", marginTop: 6 }}>{f.email}</a>
+            {f.telephone && <a href={`tel:${f.telephone.replace(/\s/g, "")}`} style={{ color: C.txt, textDecoration: "none", fontSize: 14, opacity: 0.85 }}>{f.telephone}</a>}
         </div>
     )
+    const grille = (fs: Fiche[]) => <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 12 }}>{fs.map(fiche)}</div>
+    const parDeptBzh = new Map<string, Fiche[]>()
+    for (const f of enBzh) { const d = (f.code_postal || "").slice(0, 2); parDeptBzh.set(d, [...(parDeptBzh.get(d) || []), f]) }
+    const titreGroupe = (t: string, n: number) => <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "26px 0 12px", borderBottom: `1px solid ${C.line}`, paddingBottom: 8 }}><span style={{ fontFamily: serif, fontSize: 20, fontWeight: 600 }}>{t}</span><span style={{ color: C.mute, fontSize: 13 }}>{n} adhérent{n > 1 ? "s" : ""}</span></div>
 
-    const listeEl = (
-        <div style={{ flex: "1 1 0", minWidth: 0 }}>
+    const cote = (
+        <div style={{ flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", gap: 14 }}>
+            <h3 style={{ ...h2, fontSize: 24, margin: 0 }}>Annuaire des adhérents</h3>
+            <p style={muted}>Pour échanger des plantes, covoiturer vers une sortie ou trouver un adhérent près de chez vous. Ces coordonnées sont réservées aux adhérents : merci de ne pas les diffuser.</p>
             <input style={input} placeholder="Rechercher un nom ou une commune…" value={q} onChange={(e) => { setQ(e.target.value); setCommune(null) }} />
-            {commune && <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, gap: 10 }}>
-                <span style={label}>{communes.get(commune)?.ville}</span>
-                <button style={small()} onClick={() => setCommune(null)}>Voir tout le monde</button>
-            </div>}
-            <div style={{ marginTop: 12 }}>
-                <span style={label}>En Bretagne · {enBzh.length}</span>
-                {enBzh.map(fiche)}
-                {enBzh.length === 0 && <p style={{ ...muted, padding: "10px 0" }}>Personne ne correspond.</p>}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1, background: C.line, border: `1px solid ${C.line}` }}>
+                {[[liste.length, "adhérents"], [liste.filter(bzh).length, "en Bretagne"], [communes.size, "communes"]].map(([n, t]) => <div key={t as string} style={{ background: C.panel, padding: "12px 14px" }}><div style={{ fontFamily: serif, fontSize: 24, fontWeight: 600 }}>{n}</div><div style={{ color: C.mute, fontSize: 12 }}>{t}</div></div>)}
             </div>
-            {!commune && hors.length > 0 && (
-                <div style={{ marginTop: 28 }}>
-                    <span style={label}>Hors secteur · {hors.length}</span>
-                    {[...parDept.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([d, fs]) => (
-                        <div key={d} style={{ marginTop: 10 }}>
-                            <div style={{ color: C.mute, fontSize: 13, padding: "6px 0" }}>{NOM_DEPT[d] || "Département"} ({d})</div>
-                            {fs.map(fiche)}
-                        </div>
-                    ))}
-                </div>
-            )}
+            {commune ? <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><span style={{ ...label, margin: 0 }}>Commune : {communes.get(commune)?.ville}</span><button style={small()} onClick={() => setCommune(null)}>Voir tout le monde</button></div>
+                : <p style={{ ...muted, fontSize: 13 }}>Cliquez sur un point de la carte pour voir qui habite dans la commune.</p>}
         </div>
     )
 
     return (
         <div ref={ref} style={box}>
-            <h3 style={{ ...h2, fontSize: 22 }}>Annuaire des adhérents <span style={{ color: C.mute, fontWeight: 400 }}>({liste.length})</span></h3>
-            <p style={{ ...muted, marginBottom: 22 }}>Pour échanger des plantes, covoiturer vers une sortie ou trouver un adhérent près de chez vous. Ces coordonnées sont réservées aux adhérents : merci de ne pas les diffuser.</p>
-            <div style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 24 : 40, alignItems: etroit ? "stretch" : "flex-start" }}>
-                {etroit ? carte : listeEl}
-                {etroit ? listeEl : carte}
+            <div style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 20 : 40, alignItems: etroit ? "stretch" : "center" }}>
+                {cote}
+                {carte}
             </div>
+            {[...parDeptBzh.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([d, fs]) => <div key={d}>{titreGroupe(NOM_DEPT[d] || d, fs.length)}{grille(fs)}</div>)}
+            {enBzh.length === 0 && <p style={{ ...muted, marginTop: 20 }}>Personne ne correspond.</p>}
+            {!commune && hors.length > 0 && <div>{titreGroupe("Hors secteur", hors.length)}{grille(hors)}</div>}
         </div>
     )
 }

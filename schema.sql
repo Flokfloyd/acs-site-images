@@ -304,3 +304,46 @@ grant usage on schema public to anon, authenticated;
 grant select on public.evenements, public.semestriels to anon;
 grant select, insert, update, delete on public.adherents, public.adhesions, public.inscriptions, public.dons, public.messages, public.evenements, public.semestriels to authenticated;
 grant execute on function public.mon_email(), public.est_membre(), public.est_admin() to anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- 8. Inscriptions aux événements de l'agenda
+-- ---------------------------------------------------------------------
+alter table public.evenements   add column if not exists inscription_ouverte boolean not null default false;
+alter table public.evenements   add column if not exists prix   numeric(8,2) not null default 0;   -- par personne
+alter table public.evenements   add column if not exists places int;                               -- vide = illimité
+alter table public.inscriptions add column if not exists evenement_id uuid references public.evenements(id) on delete set null;
+alter table public.inscriptions add column if not exists nb_personnes int not null default 1;
+
+-- Nombre d'inscrits par événement (visible des adhérents)
+create or replace function public.places_prises(evt uuid) returns int
+language sql stable security definer set search_path = public as $$
+  select coalesce(sum(nb_personnes), 0)::int from inscriptions where evenement_id = evt and statut in ('valide', 'en_attente')
+$$;
+grant execute on function public.places_prises(uuid) to authenticated;
+
+-- S'inscrire (ou modifier le nombre de personnes)
+create or replace function public.s_inscrire(evt uuid, nb int, note text default null) returns text
+language plpgsql security definer set search_path = public as $$
+declare e record; deja int; libres int;
+begin
+  if not est_membre() then return 'Réservé aux adhérents.'; end if;
+  select * into e from evenements where id = evt and publie and inscription_ouverte;
+  if not found then return 'Les inscriptions ne sont pas ouvertes.'; end if;
+  if nb < 1 or nb > 10 then return 'Nombre de personnes invalide.'; end if;
+  select coalesce(sum(nb_personnes), 0) into deja from inscriptions where evenement_id = evt and email = mon_email() and statut in ('valide', 'en_attente');
+  if e.places is not null then
+    libres := e.places - places_prises(evt) + deja;
+    if nb > libres then return 'Plus assez de places (' || greatest(libres, 0) || ' restante(s)).'; end if;
+  end if;
+  delete from inscriptions where evenement_id = evt and email = mon_email() and statut in ('valide', 'en_attente');
+  insert into inscriptions (email, formulaire, montant, statut, evenement_id, nb_personnes, detail)
+  values (mon_email(), e.titre || ' · ' || e.date_label, e.prix * nb, case when e.prix > 0 then 'en_attente' else 'valide' end, evt, nb, note);
+  return 'ok';
+end $$;
+grant execute on function public.s_inscrire(uuid, int, text) to authenticated;
+
+create or replace function public.se_desinscrire(evt uuid) returns void
+language sql security definer set search_path = public as $$
+  update inscriptions set statut = 'abandonne' where evenement_id = evt and email = mon_email() and statut in ('valide', 'en_attente')
+$$;
+grant execute on function public.se_desinscrire(uuid) to authenticated;
