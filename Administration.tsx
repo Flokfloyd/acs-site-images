@@ -2,6 +2,7 @@
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { C, font, serif } from "./AcsBase.tsx"
+import * as XLSX from "https://esm.sh/xlsx@0.18.5"
 import {
     sb, box, input, label, btn, small, h2, muted, euros, dateFr, STATUTS, exporter, UI,
     localiserAdherent, preparerEvenement, JOURS_MOIS,
@@ -74,7 +75,8 @@ export default function Administration(props: { pageMembre: string }) {
                 </div>
             )}
             {onglet === "agenda" && <Agenda moi={email} ouvrirCampagne={ouvrirCampagne} etroit={etroit} />}
-            {onglet === "paiements" && <><Aide>Notez ici les adhésions réglées par chèque ou en espèces, et passez en « valide » les inscriptions réglées. Les paiements en ligne s’enregistreront seuls une fois branchés.</Aide>
+            {onglet === "paiements" && <><Aide>Les paiements encaissés sur AssoConnect (en ligne ou au salon avec l’appli) s’ajoutent ici en important un export AssoConnect, par exemple une fois par mois. Notez à la main les adhésions réglées par chèque ou en espèces hors AssoConnect.</Aide>
+                <ImportAssoConnect />
                 <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => { const a = new Date().getFullYear(); return { annee: a, montant: 20, formule: "Année complète", debut: `${a}-01-01`, fin: `${a}-12-31`, source: "Chèque" } }} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
                 <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
             {onglet === "adherents" && <AdherentsAdmin moi={email} />}
@@ -165,6 +167,129 @@ function Administrateurs({ moi, changer }: { moi: string; changer: () => void })
                 </select>
                 <button style={btn()} disabled={!choix} onClick={() => { const a = tous.find((x) => x.id === choix); if (a) definir(a, "admin") }}>Ajouter</button>
             </div>
+            <Msg text={msg.t} err={msg.err} />
+        </div>
+    )
+}
+
+// ---------- Import des exports AssoConnect (adhésions, contacts, dons) ----------
+type Plan = { type: string; nouveauxAdh: any[]; maj: any[]; reactives: any[]; adhesions: any[]; dons: any[]; ignores: number }
+const _em = (v: any) => String(v ?? "").trim().toLowerCase()
+const _iso = (v: any) => { if (!v) return null; if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`; const m = String(v).match(/^(\d{2})\/(\d{2})\/(\d{4})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : null }
+const _tel = (v: any) => { if (v == null || v === "") return null; let d = String(v).replace(/\D/g, ""); if (d.length === 9) d = "0" + d; if (d.startsWith("33") && d.length === 11) d = "0" + d.slice(2); return d.replace(/(\d{2})(?=\d)/g, "$1 ").trim() }
+const _cp = (v: any) => (v == null || v === "" ? null : String(v).padStart(5, "0"))
+
+function ImportAssoConnect() {
+    const client = sb()
+    const [plan, setPlan] = React.useState<Plan | null>(null)
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const [occupe, setOccupe] = React.useState(false)
+    const [ouvert, setOuvert] = React.useState(false)
+
+    const analyser = async (f: File) => {
+        setMsg({ t: "Lecture du fichier…", err: false }); setPlan(null)
+        try {
+            const wb = XLSX.read(await f.arrayBuffer(), { type: "array", cellDates: true })
+            const lignes: any[] = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: null })
+            if (!lignes.length) return setMsg({ t: "Ce fichier ne contient aucune ligne (seulement les en-têtes). Vérifiez les filtres dans AssoConnect avant d’exporter.", err: true })
+            const h = Object.keys(lignes[0])
+            const type = h.includes("Id Transaction") ? "adhesions" : h.includes("Date d’adhésion la plus récente") ? "contacts" : h.includes("Montant donné") ? "dons" : ""
+            if (!type) return setMsg({ t: "Export non reconnu. Utilisez l’export des adhésions, des contacts adhérents ou des donateurs d’AssoConnect.", err: true })
+            const { data: adh } = await client.from("adherents").select("id,email,actif,prenom,nom,telephone,adresse,code_postal,ville")
+            const parEmail = new Map<string, any>((adh ?? []).map((a: any) => [a.email, a]))
+            const an = new Date().getFullYear()
+            const p: Plan = { type, nouveauxAdh: [], maj: [], reactives: [], adhesions: [], dons: [], ignores: 0 }
+            const contact = (r: any, actif: boolean) => {
+                const email = _em(r["Email"]); if (!email) return null
+                const c = { email, prenom: r["Prénom"] || null, nom: r["Nom"] || null, telephone: _tel(r["Téléphone mobile"]) || _tel(r["Téléphone fixe"]), adresse: [r["Adresse postale"], r["Complément d’adresse"]].filter(Boolean).join(", ") || null, code_postal: _cp(r["Code Postal"]), ville: r["Ville"] || null }
+                const ex = parEmail.get(email)
+                if (!ex) { if (!p.nouveauxAdh.some((x) => x.email === email)) p.nouveauxAdh.push({ ...c, actif, annuaire: actif }) }
+                else {
+                    const vide: any = {}
+                    for (const k of ["prenom", "nom", "telephone", "adresse", "code_postal", "ville"]) if (!ex[k] && (c as any)[k]) vide[k] = (c as any)[k]
+                    if (Object.keys(vide).length && !p.maj.some((x) => x.id === ex.id)) p.maj.push({ id: ex.id, ...vide })
+                    if (actif && !ex.actif && !p.reactives.includes(ex.id)) p.reactives.push(ex.id)
+                }
+                return email
+            }
+            if (type === "adhesions") {
+                const { data: exist } = await client.from("adhesions").select("email,annee,montant")
+                const cle = new Set((exist ?? []).map((x: any) => `${x.email}|${x.annee}|${Number(x.montant)}`))
+                for (const r of lignes) {
+                    if (r["Statut du paiement"] !== "Paiement reçu") { p.ignores++; continue }
+                    const col = String(r["Nom de la collecte d’adhésion associée"] || "")
+                    const debut = _iso(r["Date de début d’adhésion"])
+                    const annee = Number((col.match(/20\d\d/) || [])[0] || (debut || "").slice(0, 4))
+                    const email = contact(r, annee >= an); if (!email || !annee) { p.ignores++; continue }
+                    const montant = Number(r["Montant de l’opération"] || 0)
+                    const k = `${email}|${annee}|${montant}`; if (cle.has(k)) continue; cle.add(k)
+                    const moy = String(r["Moyen de paiement utilisé"] || "")
+                    p.adhesions.push({ email, annee, montant, debut, fin: _iso(r["Date de fin d’adhésion"]), formule: /1\/2/.test(col) ? "Demi-année" : /bedee|salon/i.test(col) ? "Avec l’inscription au salon" : "Année complète", source: moy === "En ligne" ? "En ligne (AssoConnect)" : moy === "Carte bancaire (externe au logiciel)" ? "Carte bancaire" : moy || "AssoConnect", cree_le: (_iso(r["Date de l’opération"]) || debut || new Date().toISOString().slice(0, 10)) + "T12:00:00Z" })
+                }
+            } else if (type === "contacts") {
+                for (const r of lignes) { const d = _iso(r["Date d’adhésion la plus récente"]); if (!contact(r, !!d && Number(d.slice(0, 4)) >= an)) p.ignores++ }
+            } else {
+                const { data: exist } = await client.from("dons").select("email,montant,le")
+                const cle = new Set((exist ?? []).map((x: any) => `${x.email}|${Number(x.montant)}|${x.le}`))
+                for (const r of lignes) {
+                    const email = contact(r, false); if (!email) { p.ignores++; continue }
+                    const der = _iso(r["Date du dernier don"]) || `${an}-01-01`, prem = _iso(r["Date du premier don"]) || der
+                    const a26 = Number(r[`Montant donné sur ${an}`] || 0), a25 = Number(r[`Montant donné sur ${an - 1}`] || 0), reste = Math.round((Number(r["Montant donné"] || 0) - a26 - a25) * 100) / 100
+                    const lignesDon: [number, string][] = []
+                    if (a26) lignesDon.push([a26, der.startsWith(String(an)) ? der : `${an}-01-01`])
+                    if (a25) lignesDon.push([a25, der.startsWith(String(an - 1)) ? der : prem.startsWith(String(an - 1)) ? prem : `${an - 1}-06-30`])
+                    if (reste > 0) lignesDon.push([reste, Number(prem.slice(0, 4)) < an - 1 ? prem : `${an - 2}-12-31`])
+                    for (const [montant, le] of lignesDon) { const k = `${email}|${montant}|${le}`; if (!cle.has(k)) { cle.add(k); p.dons.push({ email, montant, le }) } }
+                }
+            }
+            setPlan(p); setMsg({ t: "", err: false })
+        } catch (e) { setMsg({ t: "Lecture impossible : " + String((e as Error).message || e), err: true }) }
+    }
+
+    const importer = async () => {
+        if (!plan) return
+        setOccupe(true); setMsg({ t: "Import en cours…", err: false })
+        try {
+            for (const a of plan.nouveauxAdh) { if (a.ville) await localiserAdherent(a, {}) }
+            const ops: any[] = []
+            if (plan.nouveauxAdh.length) ops.push(client.from("adherents").upsert(plan.nouveauxAdh, { onConflict: "email", ignoreDuplicates: true }))
+            for (const m of plan.maj) { const { id, ...v } = m; ops.push(client.from("adherents").update(v).eq("id", id)) }
+            if (plan.reactives.length) ops.push(client.from("adherents").update({ actif: true, annuaire: true }).in("id", plan.reactives))
+            for (const r of await Promise.all(ops)) if (r.error) throw r.error
+            for (let k = 0; k < plan.adhesions.length; k += 200) { const { error } = await client.from("adhesions").insert(plan.adhesions.slice(k, k + 200)); if (error) throw error }
+            if (plan.dons.length) { const { error } = await client.from("dons").insert(plan.dons); if (error) throw error }
+            setMsg({ t: `Import terminé : ${plan.adhesions.length} adhésion(s), ${plan.dons.length} don(s), ${plan.nouveauxAdh.length} nouvelle(s) fiche(s), ${plan.maj.length} fiche(s) complétée(s), ${plan.reactives.length} réactivée(s). Rechargez la page pour voir les listes à jour.`, err: false })
+            setPlan(null)
+        } catch (e) { setMsg({ t: "Erreur pendant l’import : " + String((e as any).message || e), err: true }) }
+        setOccupe(false)
+    }
+
+    if (!ouvert) return <div><button style={btn(false)} onClick={() => setOuvert(true)}>Importer un export AssoConnect</button></div>
+    const rien = plan && !plan.adhesions.length && !plan.dons.length && !plan.nouveauxAdh.length && !plan.maj.length && !plan.reactives.length
+    return (
+        <div style={box}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                <h3 style={{ ...h2, fontSize: 20, margin: 0 }}>Importer un export AssoConnect</h3>
+                <button style={small()} onClick={() => { setOuvert(false); setPlan(null); setMsg({ t: "", err: false }) }}>Fermer</button>
+            </div>
+            <p style={{ ...muted, fontSize: 14, margin: "10px 0 14px" }}>Dans AssoConnect, exportez au format Excel la liste des <strong style={{ color: C.txt }}>adhésions</strong> (paiements), des <strong style={{ color: C.txt }}>contacts adhérents</strong> ou des <strong style={{ color: C.txt }}>donateurs</strong>, puis choisissez le fichier ici. Rien n’est enregistré avant votre validation, et ce qui existe déjà n’est pas ajouté deux fois.</p>
+            <input type="file" accept=".xlsx,.xls,.csv" disabled={occupe} onChange={(e) => e.target.files?.[0] && analyser(e.target.files[0])} style={{ color: C.mute, font: "inherit" }} />
+            {plan && (
+                <div style={{ marginTop: 16, borderTop: `1px solid ${C.line}`, paddingTop: 14 }}>
+                    <span style={label}>{plan.type === "adhesions" ? "Export des adhésions" : plan.type === "contacts" ? "Export des contacts adhérents" : "Export des donateurs"}</span>
+                    {rien ? <p style={muted}>Tout est déjà à jour : rien à importer.</p> : (
+                        <ul style={{ margin: "4px 0 14px", paddingLeft: 18, color: C.txt, lineHeight: 1.8 }}>
+                            {plan.adhesions.length > 0 && <li>{plan.adhesions.length} nouvelle(s) adhésion(s), pour {euros(plan.adhesions.reduce((s, a) => s + a.montant, 0))}</li>}
+                            {plan.dons.length > 0 && <li>{plan.dons.length} don(s), pour {euros(plan.dons.reduce((s, a) => s + a.montant, 0))}</li>}
+                            {plan.nouveauxAdh.length > 0 && <li>{plan.nouveauxAdh.length} nouvelle(s) fiche(s) : {plan.nouveauxAdh.slice(0, 6).map((a) => [a.prenom, a.nom].filter(Boolean).join(" ") || a.email).join(", ")}{plan.nouveauxAdh.length > 6 ? "…" : ""}</li>}
+                            {plan.reactives.length > 0 && <li>{plan.reactives.length} ancien(s) adhérent(s) de retour, réactivé(s)</li>}
+                            {plan.maj.length > 0 && <li>{plan.maj.length} fiche(s) complétée(s) (téléphone, adresse… seulement là où c’était vide)</li>}
+                            {plan.ignores > 0 && <li style={{ color: C.mute }}>{plan.ignores} ligne(s) ignorée(s) (paiement non reçu ou sans e-mail)</li>}
+                        </ul>
+                    )}
+                    {!rien && <button style={btn()} disabled={occupe} onClick={importer}>{occupe ? "Import…" : "Importer"}</button>}
+                </div>
+            )}
             <Msg text={msg.t} err={msg.err} />
         </div>
     )
