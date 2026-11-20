@@ -295,3 +295,12 @@ on conflict (numero) do nothing;
 -- Premier administrateur : remplacer l'adresse puis exécuter
 -- insert into public.adherents (email, prenom, role, cotisation_annee)
 -- values ('votre.adresse@exemple.fr', 'Prénom', 'admin', 2026);
+
+-- ---------------------------------------------------------------------
+-- 7. Droits d'accès du site (les nouveaux projets Supabase ne les donnent plus par défaut).
+--    Les règles RLS ci-dessus limitent ensuite ce que chacun voit.
+-- ---------------------------------------------------------------------
+grant usage on schema public to anon, authenticated;
+grant select on public.evenements, public.semestriels to anon;
+grant select, insert, update, delete on public.adherents, public.adhesions, public.inscriptions, public.dons, public.messages, public.evenements, public.semestriels to authenticated;
+grant execute on function public.mon_email(), public.est_membre(), public.est_admin() to anon, authenticated;
