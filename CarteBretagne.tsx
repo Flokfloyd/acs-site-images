@@ -14,13 +14,13 @@ const BEDEE = pt(-1.952, 48.183)
 // nom, longitude, latitude, distance, temps, placement de l'étiquette (dx, dy, ancre)
 const VILLES: [string, number, number, string, string, number, number, "start" | "middle" | "end"][] = [
     ["Rennes", -1.68, 48.11, "27 km", "25 min", 4, 2.4, "start"],
-    ["Saint-Malo", -2.0, 48.65, "70 km", "50 min", 0, 9, "middle"],
+    ["Saint-Malo", -2.0, 48.65, "70 km", "50 min", -3, -3.5, "end"],
     ["Saint-Brieuc", -2.76, 48.51, "80 km", "55 min", 0, 9, "middle"],
     ["Vannes", -2.76, 47.66, "110 km", "1 h 20", 0, -5, "middle"],
     ["Nantes", -1.55, 47.22, "130 km", "1 h 25", 4, 2.4, "start"],
-    ["Lorient", -3.37, 47.75, "150 km", "1 h 40", 0, -5, "middle"],
+    ["Lorient", -3.37, 47.75, "150 km", "1 h 40", -3.5, 6.5, "end"],
     ["Quimper", -4.1, 48.0, "200 km", "2 h 10", 4, 2.4, "start"],
-    ["Brest", -4.49, 48.39, "225 km", "2 h 20", 4, 2.4, "start"],
+    ["Brest", -4.49, 48.39, "225 km", "2 h 20", 3, -3.5, "start"],
 ]
 
 const ACCES: [string, string][] = [
@@ -32,7 +32,7 @@ const ACCES: [string, string][] = [
 const serif = "'Fraunces', Georgia, serif"
 const sans = "'Poppins', system-ui, sans-serif"
 
-function Carte({ encre, accent, avecVilles = true }) {
+function Carte({ encre, accent, fond, avecVilles = true }) {
     const [bx, by] = BEDEE
     return (
         <svg viewBox="-24 -4 272 196" style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }} role="img" aria-label="Carte de la Bretagne : le salon a lieu à Bédée, à l’ouest de Rennes">
@@ -46,14 +46,14 @@ function Carte({ encre, accent, avecVilles = true }) {
                 return (
                     <g key={n}>
                         <circle cx={x} cy={y} r={1.5} fill={encre} />
-                        <text x={x + dx} y={y + dy} textAnchor={a} fontFamily={sans} fontSize={5.6} fontWeight={500} letterSpacing={0.5} fill={encre}>{n.toUpperCase()}</text>
+                        <text x={x + dx} y={y + dy} textAnchor={a} fontFamily={sans} fontSize={5.6} fontWeight={500} letterSpacing={0.5} fill={encre} stroke={fond} strokeWidth={2.4} strokeLinejoin="round" paintOrder="stroke">{n.toUpperCase()}</text>
                     </g>
                 )
             })}
             <circle cx={bx} cy={by} r={6.5} fill="none" stroke={accent} strokeWidth={0.7} />
             <circle cx={bx} cy={by} r={2.8} fill={accent} />
-            <text x={bx - 9} y={by - 4} textAnchor="end" fontFamily={serif} fontSize={10} fontWeight={600} fill={accent}>Bédée</text>
-            <text x={bx - 9} y={by + 3.5} textAnchor="end" fontFamily={sans} fontSize={4.6} letterSpacing={0.6} fill={encre} opacity={0.7}>SALON DES PLANTES</text>
+            <text x={bx - 9} y={by - 4} textAnchor="end" fontFamily={serif} fontSize={10} fontWeight={600} fill={accent} stroke={fond} strokeWidth={2.4} strokeLinejoin="round" paintOrder="stroke">Bédée</text>
+            <text x={bx - 9} y={by + 3.5} textAnchor="end" fontFamily={sans} fontSize={4.6} letterSpacing={0.6} fill={encre} fillOpacity={0.75} stroke={fond} strokeWidth={2} strokeLinejoin="round" paintOrder="stroke">SALON DES PLANTES</text>
         </svg>
     )
 }
@@ -63,7 +63,7 @@ function Carte({ encre, accent, avecVilles = true }) {
  * @framerSupportedLayoutHeight auto
  */
 export default function CarteBretagne(props) {
-    const { mode = "Carte du salon", encre = "#1d1612", accent = "#b5543a" } = props
+    const { mode = "Carte du salon", encre = "#1d1612", accent = "#b5543a", fond = "#efe6d6" } = props
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(1000)
     React.useEffect(() => {
@@ -75,7 +75,7 @@ export default function CarteBretagne(props) {
         return () => ro.disconnect()
     }, [])
 
-    if (mode === "Silhouette") return <div ref={ref} style={{ width: "100%" }}><Carte encre={encre} accent={accent} avecVilles={false} /></div>
+    if (mode === "Silhouette") return <div ref={ref} style={{ width: "100%" }}><Carte encre={encre} accent={accent} fond={fond} avecVilles={false} /></div>
 
     const etroit = w < 760
     const textes = (
@@ -104,7 +104,7 @@ export default function CarteBretagne(props) {
     )
     const carte = (
         <div style={{ flex: etroit ? "none" : "1.35 1 0", minWidth: 0, width: etroit ? "100%" : undefined }}>
-            <Carte encre={encre} accent={accent} />
+            <Carte encre={encre} accent={accent} fond={fond} />
         </div>
     )
     return (
@@ -119,4 +119,5 @@ addPropertyControls(CarteBretagne, {
     mode: { type: ControlType.Enum, title: "Affichage", options: ["Carte du salon", "Silhouette"], defaultValue: "Carte du salon" },
     encre: { type: ControlType.Color, title: "Encre", defaultValue: "#1d1612" },
     accent: { type: ControlType.Color, title: "Point Bédée", defaultValue: "#b5543a" },
+    fond: { type: ControlType.Color, title: "Fond de section", defaultValue: "#efe6d6" },
 })
