@@ -47,7 +47,7 @@ export default function BoutonMembre(props: { page: string; compact: boolean; ad
     const nomMembre = moi ? [moi.prenom, moi.nom].filter(Boolean).join(" ") : ""
     const plein: React.CSSProperties = { ...style, background: accent, border: `1px solid ${accent}`, color: "#16120f" }
     const adh = !props.adhesion ? null
-        : connecte && aJour ? <a href={page + "#profil"} title={`Adhésion ${annee} à jour`} style={plein}>{nomMembre || "Adhérent"} <span aria-hidden>✓</span></a>
+        : connecte && aJour ? <a href={page + "#profil"} title={`Adhésion ${annee} à jour`} style={plein}>{nomMembre || "Adhérent"}</a>
         : connecte && moi ? <a href="/#adhesion" style={plein}>Renouveler · 20 €</a>
         : <a href="/#adhesion" style={plein}>Adhérer · 20 €</a>
 
@@ -68,6 +68,8 @@ export default function BoutonMembre(props: { page: string; compact: boolean; ad
                             <a key={t} href={page + h} onClick={() => setOuvert(false)} style={{ display: "block", padding: "11px 16px", color: "#f6f0e6", textDecoration: "none", font: "500 14px Poppins, sans-serif", borderBottom: "1px solid rgba(246,240,230,0.08)" }}
                                 onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(155,189,138,0.14)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{t}</a>
                         ))}
+                        <button onClick={() => { setOuvert(false); sb()?.auth.signOut().finally(() => { window.location.href = "/" }) }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 16px", color: "rgba(246,240,230,0.7)", background: "transparent", border: "none", borderRadius: 0, font: "500 14px Poppins, sans-serif", cursor: "pointer" }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(155,189,138,0.14)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>Se déconnecter</button>
                     </div>
                 </div>
             )}
