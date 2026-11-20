@@ -65,6 +65,7 @@ export default function Administration(props: { pageMembre: string }) {
 
     return wrap(
         <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <Sauvegarde />
             {etroit ? (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ ...small(), padding: "9px 12px", fontSize: 14, fontWeight: 600, background: onglet === k ? C.accent : "transparent", color: onglet === k ? C.accentDark : C.txt, borderColor: onglet === k ? C.accent : C.line }}>{t}</button>)}
@@ -114,6 +115,43 @@ const CHAMPS_ECR: Champ[] = [
     { k: "note", t: "Note", type: "textarea" },
 ]
 const CIBLES: [string, string][] = [["tous", "Tous les adhérents"], ["a_jour", "Adhérents à jour de cotisation"], ["retard", "Cotisation à renouveler"], ["bureau", "Membres du bureau"], ["evenement", "Inscrits à un événement"]]
+
+// ---------- Sauvegarde complète (classeur Excel, une feuille par table) ----------
+const TABLES_SAUVEGARDE: [string, string][] = [["adherents", "nom"], ["adhesions", "cree_le"], ["inscriptions", "cree_le"], ["dons", "le"], ["evenements", "date_debut"], ["ecritures", "le"], ["produits", "ordre"], ["campagnes", "cree_le"], ["messages", "envoye_le"], ["sondages", "cree_le"], ["reponses", "cree_le"], ["semestriels", "numero"]]
+function Sauvegarde() {
+    const [derniere, setDerniere] = React.useState<string | null>(null)
+    const [etat, setEtat] = React.useState("")
+    React.useEffect(() => { try { setDerniere(localStorage.getItem("acs-derniere-sauvegarde")) } catch (e) {} }, [])
+    const jours = derniere ? Math.floor((Date.now() - new Date(derniere).getTime()) / 86400000) : null
+    const enRetard = jours == null || jours > 35
+    const telecharger = async () => {
+        setEtat("Préparation…")
+        try {
+            const wb = XLSX.utils.book_new()
+            for (const [t, ordre] of TABLES_SAUVEGARDE) {
+                let lignes: any[] = []
+                for (let k = 0; ; k += 1000) {
+                    const { data, error } = await sb().from(t).select("*").order(ordre, { ascending: true, nullsFirst: true }).range(k, k + 999)
+                    if (error) throw new Error(`${t} : ${error.message}`)
+                    lignes = lignes.concat(data ?? [])
+                    if (!data || data.length < 1000) break
+                }
+                const plat = lignes.map((r) => Object.fromEntries(Object.entries(r).map(([c, v]) => [c, v != null && typeof v === "object" ? JSON.stringify(v) : v])))
+                XLSX.utils.book_append_sheet(wb, plat.length ? XLSX.utils.json_to_sheet(plat) : XLSX.utils.aoa_to_sheet([["(vide)"]]), t.slice(0, 31))
+            }
+            const d = new Date(); const j = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+            XLSX.writeFile(wb, `sauvegarde-acs-${j}.xlsx`)
+            try { localStorage.setItem("acs-derniere-sauvegarde", d.toISOString()) } catch (e) {}
+            setDerniere(d.toISOString()); setEtat("")
+        } catch (e) { setEtat("Échec : " + String((e as Error).message || e)) }
+    }
+    return (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "10px 14px", border: `1px solid ${enRetard ? C.accent : C.line}`, background: enRetard ? "rgba(155,189,138,0.08)" : "transparent", fontSize: 14 }}>
+            <span style={{ color: enRetard ? C.txt : C.mute }}>{etat || (derniere ? `Dernière sauvegarde depuis cet appareil : ${dateFr(derniere)}${enRetard ? " — pensez à en refaire une (une fois par mois)." : "."}` : "Aucune sauvegarde depuis cet appareil. Téléchargez-en une chaque mois et rangez-la dans un dossier du bureau.")}</span>
+            <button style={small()} onClick={telecharger}>Télécharger une sauvegarde complète (Excel)</button>
+        </div>
+    )
+}
 
 // ---------- Adhérents ----------
 function AdherentsAdmin({ moi }: { moi: string }) {
