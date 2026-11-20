@@ -175,7 +175,7 @@ export default function CarteMonde(props) {
                     )}
                     <div style={{ fontSize: 13, marginTop: 12, lineHeight: 1.5 }}>
                         <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: 9, background: accent, opacity: 0.6, marginRight: 8 }} />
-                        {infos.obs.toLocaleString("fr-FR")} observations dans la nature sur iNaturalist{infos.pts.length ? `, dont ${infos.pts.length} affichées sur la carte` : ""}.
+                        {infos.obs.toLocaleString("fr-FR")} observations sur iNaturalist{infos.pts.length ? ` ; les points clairs montrent ${infos.pts.length} observations validées de plantes sauvages` : ""}.
                     </div>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 14 }}>
                         <a href={`https://www.inaturalist.org/taxa/${infos.id}`} target="_blank" rel="noopener" style={{ ...puce(true), textDecoration: "none" }}>Fiche iNaturalist</a>
