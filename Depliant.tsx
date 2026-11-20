@@ -24,11 +24,12 @@ export default function Depliant(props: { hauteurMax: number; fondClair: boolean
     const [vh, setVh] = React.useState(900)
     const [etape, setEtape] = React.useState(0)
     const [loupe, setLoupe] = React.useState<number | null>(null)
+    const [pret, setPret] = React.useState(false)
     React.useEffect(() => {
         const el = ref.current
         if (!el) return
         const ro = new ResizeObserver(() => { setW(el.clientWidth); setVh(window.innerHeight) })
-        ro.observe(el); setW(el.clientWidth); setVh(window.innerHeight)
+        ro.observe(el); setW(el.clientWidth); setVh(window.innerHeight); setPret(true)
         return () => ro.disconnect()
     }, [])
     React.useEffect(() => { [..."ABCDEF"].forEach((k) => { const i = new Image(); i.src = img(k) }) }, [])
@@ -61,7 +62,7 @@ export default function Depliant(props: { hauteurMax: number; fondClair: boolean
 
     return (
         <div ref={ref} style={{ width: "100%", fontFamily: FONT, color: coul.txt, userSelect: "none" }}>
-            <div onClick={suivant} title="Cliquer pour déplier" style={{ position: "relative", width: "100%", height: H, perspective: 2400, cursor: "pointer", transition: "height 950ms cubic-bezier(.62,.04,.24,1)" }}>
+            <div onClick={suivant} title="Cliquer pour déplier" style={{ position: "relative", width: "100%", height: H, perspective: 2400, cursor: "pointer", opacity: pret ? 1 : 0, transition: "height 950ms cubic-bezier(.62,.04,.24,1), opacity 400ms" }}>
                 {/* la feuille : 3 volets côte à côte, centrée sur le volet du milieu */}
                 <div style={{ position: "absolute", left: "50%", top: 0, width: 3 * pw0, height: ph0, marginLeft: -1.5 * pw0, transformStyle: "preserve-3d", transformOrigin: "50% 0", transform: `scale(${echelle}) translateX(${decal}px) rotateY(${retourne ? 180 : 0}deg)`, transition: anim }}>
                     {/* volet central : E (intérieur) / B (dos) */}
