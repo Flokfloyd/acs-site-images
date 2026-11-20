@@ -392,6 +392,7 @@ async function localiserAdherent(row: any, ancien: any) {
 // ---------- Annuaire des adhérents : carte de la Bretagne + liste ----------
 type Fiche = { id: string; prenom?: string; nom?: string; conjoint?: string; email: string; telephone?: string; code_postal?: string; ville?: string; lat?: number; lon?: number }
 const DEPTS_BZH = ["22", "29", "35", "44", "56"]
+const REPERES: [string, number, number][] = [["Rennes", -1.68, 48.05], ["Nantes", -1.55, 47.16], ["Brest", -4.49, 48.33], ["Vannes", -2.76, 47.6], ["Saint-Brieuc", -2.76, 48.45]]
 const NOM_DEPT: Record<string, string> = { "22": "Côtes-d’Armor", "29": "Finistère", "35": "Ille-et-Vilaine", "44": "Loire-Atlantique", "56": "Morbihan", "49": "Maine-et-Loire", "50": "Manche", "53": "Mayenne", "72": "Sarthe", "85": "Vendée", "14": "Calvados", "76": "Seine-Maritime" }
 const sansAccent = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
@@ -428,15 +429,16 @@ function Annuaire() {
     const infos = survol ? communes.get(survol) : null
 
     const carte = (
-        <div style={{ position: etroit ? "relative" : "sticky", top: 90, flex: etroit ? "none" : "1.15 1 0", minWidth: 0 }}>
+        <div style={{ position: etroit ? "relative" : "sticky", top: 90, flex: etroit ? "none" : "1.15 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>
             <svg viewBox="-24 -4 272 196" style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }} role="img" aria-label="Carte des adhérents en Bretagne">
                 <path d={COTE} fill="none" stroke={C.txt} strokeOpacity={0.75} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                {REPERES.map(([n, lo, la]) => { const [x, y] = pt(lo, la); return <text key={n} x={x} y={y + 1.6} textAnchor="middle" fontFamily="Poppins, sans-serif" fontSize={4.4} letterSpacing={0.6} fill={C.txt} fillOpacity={0.35}>{n.toUpperCase()}</text> })}
                 {[...communes.entries()].map(([k, c]) => {
                     const actif = commune === k, eteint = !allumees.has(k)
                     return (
                         <g key={k} style={{ cursor: "pointer" }} onClick={() => setCommune(actif ? null : k)} onMouseEnter={() => setSurvol(k)} onMouseLeave={() => setSurvol(null)}>
                             <circle cx={c.x} cy={c.y} r={7} fill="transparent" />
-                            <circle cx={c.x} cy={c.y} r={1.9 + 0.9 * Math.sqrt(c.n - 1)} fill={actif ? "#d9805f" : C.accent} fillOpacity={eteint ? 0.2 : 0.95} stroke={C.bg} strokeWidth={0.5} />
+                            <circle cx={c.x} cy={c.y} r={2.4 + 1 * Math.sqrt(c.n - 1)} fill={actif ? "#d9805f" : C.accent} fillOpacity={eteint ? 0.2 : 0.95} stroke={C.bg} strokeWidth={0.5} />
                         </g>
                     )
                 })}
@@ -489,7 +491,7 @@ function Annuaire() {
         <div ref={ref} style={box}>
             <h3 style={{ ...h2, fontSize: 22 }}>Annuaire des adhérents <span style={{ color: C.mute, fontWeight: 400 }}>({liste.length})</span></h3>
             <p style={{ ...muted, marginBottom: 22 }}>Pour échanger des plantes, covoiturer vers une sortie ou trouver un adhérent près de chez vous. Ces coordonnées sont réservées aux adhérents : merci de ne pas les diffuser.</p>
-            <div style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 24 : 40, alignItems: "flex-start" }}>
+            <div style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 24 : 40, alignItems: etroit ? "stretch" : "flex-start" }}>
                 {etroit ? carte : listeEl}
                 {etroit ? listeEl : carte}
             </div>
