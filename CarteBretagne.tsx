@@ -51,7 +51,6 @@ const lisse = (pts: number[][]) => {
     return a
 }
 const D = lisse(CONTOUR.map(pt)).map((c, i) => (i ? "L" : "M") + c.map((v) => v.toFixed(1)).join(" ")).join("") + "Z"
-const D_BRUT = CONTOUR.map((c, i) => (i ? "L" : "M") + pt(c).map((v) => v.toFixed(1)).join(" ")).join("") + "Z"
 
 const serif = "'Fraunces', Georgia, serif"
 const sans = "'Poppins', system-ui, sans-serif"
@@ -79,23 +78,23 @@ export default function CarteBretagne(props) {
 
     return (
         <div style={{ width: "100%", fontFamily: sans, color: texte }}>
-            <svg viewBox={`-6 -6 ${W + 12} ${H + 12}`} style={{ width: "100%", height: "auto", display: "block" }} role="img" aria-label="Carte de la Bretagne : le salon a lieu à Bédée, à l’ouest de Rennes">
-                <path d={D} fill={remplissage} stroke={trait} strokeWidth={1.2} strokeLinejoin="round" />
+            <svg viewBox={`-6 -6 ${W + 12} ${H + 12}`} style={{ width: "100%", maxWidth: 680, height: "auto", display: "block", margin: "0 auto" }} role="img" aria-label="Carte de la Bretagne : le salon a lieu à Bédée, à l’ouest de Rennes">
+                <path d={D} fill={remplissage} stroke={trait} strokeWidth={1.1} strokeLinejoin="round" />
                 {VILLES.map((v) => {
                     const [x, y] = pt(v.p)
                     const g = v.ancre === "g"
                     return (
                         <g key={v.nom}>
-                            <circle cx={x} cy={y} r={3.2} fill={texte} />
-                            <text x={g ? x - 7 : x + 7} y={y + 4} textAnchor={g ? "end" : "start"} fontSize={12} fontFamily={sans} fill={texte}>{v.nom}</text>
+                            <circle cx={x} cy={y} r={2.2} fill={texte} />
+                            <text x={g ? x - 4.5 : x + 4.5} y={y + 2.6} textAnchor={g ? "end" : "start"} fontSize={7.5} fontFamily={sans} fill={texte}>{v.nom}</text>
                         </g>
                     )
                 })}
-                <circle cx={bx} cy={by} r={13} fill="none" stroke={accent} strokeWidth={1.5} opacity={0.6} />
-                <circle cx={bx} cy={by} r={6} fill={accent} />
-                <text x={bx - 10} y={by - 12} textAnchor="end" fontSize={15} fontWeight={700} fontFamily={sans} fill={accent}>Bédée · le salon</text>
+                <circle cx={bx} cy={by} r={7.5} fill="none" stroke={accent} strokeWidth={1} opacity={0.6} />
+                <circle cx={bx} cy={by} r={3.6} fill={accent} />
+                <text x={bx - 6} y={by - 9} textAnchor="end" fontSize={9} fontWeight={700} fontFamily={sans} fill={accent}>Bédée · le salon</text>
             </svg>
-            <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 1, background: "rgba(29,22,18,0.12)", border: "1px solid rgba(29,22,18,0.12)" }}>
+            <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 1, background: "rgba(29,22,18,0.12)", border: "1px solid rgba(29,22,18,0.12)" }}>
                 {VILLES.map((v) => (
                     <div key={v.nom} style={{ background: "#fbf7f0", padding: "10px 12px" }}>
                         <div style={{ fontFamily: serif, fontSize: 16, fontWeight: 600 }}>{v.nom}</div>
