@@ -75,10 +75,10 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
         const em = email.trim().toLowerCase()
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return setMsg({ t: "Adresse e-mail invalide.", err: true })
         setBusy(true); setMsg({ t: "", err: false })
-        const { error } = await client.auth.signInWithOtp({ email: em, options: { shouldCreateUser: true } })
+        const { error } = await client.auth.signInWithOtp({ email: em, options: { shouldCreateUser: true, emailRedirectTo: window.location.origin + window.location.pathname } })
         setBusy(false)
         if (error) return setMsg({ t: /adh[ée]rent|403|not allowed|signup/i.test(error.message) ? "Cette adresse ne figure pas dans la liste des adhérents." : "Envoi impossible : " + error.message, err: true })
-        setEtape("code"); setMsg({ t: "Code envoyé. Pensez à regarder dans les indésirables.", err: false })
+        setEtape("code"); setMsg({ t: "E-mail envoyé. Pensez à regarder dans les indésirables.", err: false })
     }
     const verifier = async (e?: React.FormEvent) => {
         e?.preventDefault()
@@ -93,14 +93,14 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
             <h2 style={h2}>Connexion adhérent</h2>
             {etape === "email" ? (
                 <form onSubmit={envoyer}>
-                    <p style={{ ...muted, marginBottom: 20 }}>Saisissez l’adresse e-mail donnée lors de votre adhésion : vous recevrez un code de connexion.</p>
+                    <p style={{ ...muted, marginBottom: 20 }}>Saisissez l’adresse e-mail donnée lors de votre adhésion : vous recevrez un e-mail de connexion.</p>
                     <span style={label}>Adresse e-mail</span>
                     <input style={input} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="prenom.nom@exemple.fr" />
-                    <div style={{ marginTop: 18 }}><button style={btn()} disabled={busy} type="submit">{busy ? "Envoi…" : "Recevoir un code"}</button></div>
+                    <div style={{ marginTop: 18 }}><button style={btn()} disabled={busy} type="submit">{busy ? "Envoi…" : "Recevoir l’e-mail de connexion"}</button></div>
                 </form>
             ) : (
                 <form onSubmit={verifier}>
-                    <p style={{ ...muted, marginBottom: 20 }}>Code envoyé à <strong style={{ color: C.txt }}>{email}</strong>.</p>
+                    <p style={{ ...muted, marginBottom: 20 }}>Un e-mail a été envoyé à <strong style={{ color: C.txt }}>{email}</strong>. Cliquez sur le lien qu’il contient, ou tapez ici le code à 6 chiffres s’il y en a un.</p>
                     <span style={label}>Code reçu</span>
                     <input style={{ ...input, letterSpacing: "0.4em", fontSize: 22, textAlign: "center" }} inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} placeholder="••••••" />
                     <div style={{ marginTop: 18, display: "flex", gap: 10, flexWrap: "wrap" }}>

@@ -6,8 +6,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4"
 type SupabaseClient = any
 
-export const SUPABASE_URL = "" // ex. "https://abcdefgh.supabase.co"
-export const SUPABASE_ANON_KEY = "" // ex. "eyJhbGciOi..."
+export const SUPABASE_URL = "https://ofpouorpbhnnxwuihyyu.supabase.co"
+export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mcG91b3JwYmhubnh3dWloeXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxOTIzMzYsImV4cCI6MjExMDc2ODMzNn0.Mo5s56R7lIQZT-kPa6I6hAYey87GlGmw_6t2EXPFevc"
 
 let client: SupabaseClient | null = null
 export function sb(): SupabaseClient | null {
