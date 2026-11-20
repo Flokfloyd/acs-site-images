@@ -11,7 +11,7 @@ const STATIQUES: Issue[] = [
     { n: 1, date: "Mars 2025", resume: "Le programme du salon, débuter en cactées, l’étiquetage, Astrophytum, Pleiospilos et un voyage en Espagne.", ch: [["Salon", 4], ["Programme", 5], ["Débuter", 6], ["Histoire d’une passion", 7], ["Étiquetage", 8], ["Astrophytum", 11], ["Pleiospilos", 12], ["Espagne", 13], ["AG", 15]], couv: GH + "1-couvertures/couverture-n1.jpg", total: 16 },
     { n: 2, date: "Juillet 2025", resume: "Le retour sur le salon, le portrait de Yannick, les substrats et les Aeonium d’Arabie.", ch: [["Salon", 4], ["Yannick", 7], ["Substrats", 9], ["Aeonium d’Arabie", 12], ["Agenda", 16]], couv: GH + "1-couvertures/couverture-n2.jpg", total: 16 },
     { n: 3, date: "Février 2026", resume: "Les Epiphyllum, les semis et le caisson à semis, un voyage à Madère et l’agenda.", ch: [["Epiphyllum", 4], ["Semis", 7], ["Caisson", 9], ["Madère", 10], ["AG / agenda", 16]], couv: GH + "1-couvertures/couverture-n3.jpg", total: 16 },
-    { n: 4, date: "Septembre 2026", resume: "L’Ouest américain, le guide des Echeveria, le jardin Majorelle, le bilan du 10ᵉ salon et le Gerrardanthus.", ch: [["Édito", 2], ["Printemps", 4], ["Echeveria", 6], ["Ouest américain", 9], ["Majorelle", 12], ["Bilan du salon", 15], ["Gerrardanthus", 16]], couv: GH + "1-couvertures/couverture-n4.jpg", total: 16 },
+    { n: 4, date: "Septembre 2026", resume: "L’Ouest américain, le guide des Echeveria, le jardin Majorelle, le bilan du 10ᵉ salon et le Gerrardanthus.", ch: [["L’édito", 2], ["Un printemps et un été haut en couleur", 4], ["Echeveria, débuter leur culture", 6], ["L’Ouest américain", 9], ["Majorelle, jardin d’exception", 12], ["Compte rendu du salon", 15], ["Les fiches : Gerrardanthus", 16]], couv: GH + "1-couvertures/couverture-n4.jpg", total: 16 },
 ]
 const RATIO_IMG = 910 / 1287
 const srcImg = (n: number, p: number) => GH + "4-pages/n" + n + "/p-" + String(p).padStart(2, "0") + ".jpg"
@@ -64,14 +64,16 @@ export default function Semestriels(props: { hauteurMax: number }) {
     const [toc, setToc] = React.useState(false)
     const [plein, setPlein] = React.useState(false)
     const [ratioPdf, setRatioPdf] = React.useState<Record<string, number>>({})
+    const [bord, setBord] = React.useState({ g: 0, l: 0 }) // décalage gauche et largeur de la fenêtre, pour un fond pleine largeur
     const issuesRef = React.useRef(issues); issuesRef.current = issues
 
     React.useEffect(() => {
         const el = ref.current; if (!el) return
-        const ro = new ResizeObserver(() => { setW(el.clientWidth); setVh(window.innerHeight) })
-        ro.observe(el); setW(el.clientWidth); setVh(window.innerHeight); setPret(true)
+        const maj = () => { setW(el.clientWidth); setVh(window.innerHeight); const r = el.getBoundingClientRect(); setBord({ g: r.left, l: document.documentElement.clientWidth }) }
+        const ro = new ResizeObserver(maj)
+        ro.observe(el); maj(); setPret(true); window.addEventListener("resize", maj)
         const fs = () => setPlein(!!document.fullscreenElement); document.addEventListener("fullscreenchange", fs)
-        return () => { ro.disconnect(); document.removeEventListener("fullscreenchange", fs) }
+        return () => { ro.disconnect(); window.removeEventListener("resize", maj); document.removeEventListener("fullscreenchange", fs) }
     }, [])
 
     // numéros de la base (ajoutés par les admins)
@@ -207,7 +209,7 @@ export default function Semestriels(props: { hauteurMax: number }) {
             </div>
 
             {/* la liseuse */}
-            <div ref={lecteur} onMouseEnter={() => (actif.current = true)} onMouseLeave={() => (actif.current = false)} style={{ marginTop: W < 500 ? 36 : 56, background: "#1f1915", padding: plein ? "16px" : W < 500 ? "18px 10px 14px" : "32px 24px 20px", scrollMarginTop: 90, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, color: "#f6f0e6", height: plein ? "100vh" : "auto", boxSizing: "border-box", justifyContent: plein ? "center" : "flex-start" }}>
+            <div ref={lecteur} onMouseEnter={() => (actif.current = true)} onMouseLeave={() => (actif.current = false)} style={{ marginTop: W < 500 ? 36 : 56, background: "#1f1915", marginLeft: plein || !bord.l ? 0 : -bord.g, width: plein || !bord.l ? "auto" : bord.l, padding: plein ? "16px" : W < 500 ? "24px 10px 28px" : "48px 24px 56px", scrollMarginTop: 90, display: "flex", flexDirection: "column", alignItems: "center", gap: 16, color: "#f6f0e6", height: plein ? "100vh" : "auto", boxSizing: "border-box", justifyContent: plein ? "center" : "flex-start" }}>
                 <div style={{ width: "100%", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", maxWidth: Math.max(largeurLivre, 320) }}>
                     <div style={{ font: `600 22px/1.2 ${SERIF}` }}>Semestriel N°{it.n} <span style={{ font: `500 14px ${FONT}`, color: "#b9ab98" }}>· {it.date}</span></div>
                     <div style={{ display: "flex", gap: 8 }}>
