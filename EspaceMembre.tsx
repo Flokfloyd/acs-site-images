@@ -152,7 +152,7 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
-const ONGLETS = ["accueil", "profil", "evenements", "annuaire"] as const
+const ONGLETS = ["accueil", "profil", "evenements", "sondages", "annuaire"] as const
 type O = typeof ONGLETS[number]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
 
@@ -162,7 +162,9 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
     const admin = moi.role === "admin"
     React.useEffect(() => { const f = () => setO(lireHash()); window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f) }, [])
     const setOnglet = (o: O) => { setO(o); try { history.replaceState(null, "", o === "accueil" ? location.pathname : "#" + o) } catch (e) {} }
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["annuaire", "Annuaire"]]
+    const [aRepondre, setARepondre] = React.useState(0)
+    React.useEffect(() => { compterSondages().then(setARepondre) }, [onglet])
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["annuaire", "Annuaire"]]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -181,7 +183,153 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
             {onglet === "accueil" && <VueEnsemble moi={moi} aller={setOnglet} />}
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
             {onglet === "evenements" && <Evenements />}
+            {onglet === "sondages" && <Sondages moi={moi} />}
             {onglet === "annuaire" && <Annuaire />}
+        </div>
+    )
+}
+
+// ---------- Sondages : les adhérents répondent ----------
+export type Question = { id: string; intitule: string; type: "unique" | "multiple" | "nombre" | "texte"; options?: string[]; obligatoire?: boolean }
+const ouvertAujourdhui = (s: any) => s.ouvert && (!s.cloture_le || s.cloture_le >= new Date().toISOString().slice(0, 10))
+async function compterSondages(): Promise<number> {
+    const c = sb(); if (!c) return 0
+    const [{ data: so }, { data: re }] = await Promise.all([c.from("sondages").select("id,ouvert,cloture_le"), c.from("reponses").select("sondage_id")])
+    const faits = new Set((re ?? []).map((r: any) => r.sondage_id))
+    return (so ?? []).filter((x: any) => ouvertAujourdhui(x) && !faits.has(x.id)).length
+}
+
+function SondagesEnCours({ aller }: { aller: (o: any) => void }) {
+    const [n, setN] = React.useState(0)
+    React.useEffect(() => { compterSondages().then(setN) }, [])
+    if (!n) return null
+    return (
+        <div style={{ ...box, borderColor: C.accent, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+            <div><span style={label}>Sondage</span><p style={{ margin: 0, fontSize: 17 }}>{n > 1 ? `${n} sondages attendent votre réponse.` : "Un sondage attend votre réponse."}</p></div>
+            <button style={btn()} onClick={() => aller("sondages")}>Répondre</button>
+        </div>
+    )
+}
+
+function Sondages({ moi }: { moi: Adherent }) {
+    const client = sb()!
+    const [liste, setListe] = React.useState<any[] | null>(null)
+    const [mes, setMes] = React.useState<Record<string, any>>({})
+    const [evts, setEvts] = React.useState<Record<string, any>>({})
+    const [ouvert, setOuvert] = React.useState<string | null>(null)
+    const charger = React.useCallback(async () => {
+        const [{ data: so }, { data: re }] = await Promise.all([client.from("sondages").select("*").order("cree_le", { ascending: false }), client.from("reponses").select("*")])
+        const l = (so ?? []).filter(ouvertAujourdhui)
+        setListe(l); setMes(Object.fromEntries((re ?? []).map((r: any) => [r.sondage_id, r])))
+        const ids = l.map((x: any) => x.evenement_id).filter(Boolean)
+        if (ids.length) { const { data: ev } = await client.from("evenements").select("id,titre,date_label").in("id", ids); setEvts(Object.fromEntries((ev ?? []).map((e: any) => [e.id, e]))) }
+    }, [])
+    React.useEffect(() => { charger() }, [charger])
+    if (!liste) return <div style={box}><p style={muted}>Chargement…</p></div>
+    if (!liste.length) return <div style={box}><p style={muted}>Aucun sondage en cours pour le moment.</p></div>
+    return (
+        <div style={{ display: "grid", gap: 16 }}>
+            {liste.map((so) => {
+                const rep = mes[so.id]
+                const evt = so.evenement_id && evts[so.evenement_id]
+                const deplie = ouvert === so.id || (!rep && liste.length === 1)
+                return (
+                    <div key={so.id} style={{ ...box, borderColor: rep ? C.line : C.accent }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                            <div style={{ minWidth: 0 }}>
+                                {evt && <span style={label}>{evt.date_label} · {evt.titre}</span>}
+                                <h3 style={{ ...h2, fontSize: 22, margin: "2px 0 6px" }}>{so.titre}</h3>
+                                {so.description && <p style={{ margin: "0 0 6px", whiteSpace: "pre-wrap", opacity: 0.9 }}>{so.description}</p>}
+                                <p style={{ ...muted, fontSize: 13 }}>{so.cloture_le ? `Réponses jusqu’au ${dateFr(so.cloture_le)}. ` : ""}{rep ? `Vous avez répondu le ${dateFr(rep.maj_le)}.` : "Vous n’avez pas encore répondu."}</p>
+                            </div>
+                            {!deplie && <button style={btn(!rep)} onClick={() => setOuvert(so.id)}>{rep ? "Modifier ma réponse" : "Répondre"}</button>}
+                        </div>
+                        {deplie && <FormulaireSondage so={so} rep={rep} moi={moi} fini={() => { setOuvert(null); charger() }} />}
+                        {so.resultats_visibles && rep && !deplie && <ResultatsSondage so={so} />}
+                    </div>
+                )
+            })}
+        </div>
+    )
+}
+
+function FormulaireSondage({ so, rep, moi, fini }: { so: any; rep: any; moi: Adherent; fini: () => void }) {
+    const client = sb()!
+    const questions: Question[] = so.questions || []
+    const [v, setV] = React.useState<Record<string, any>>(rep?.valeurs || {})
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const [occupe, setOccupe] = React.useState(false)
+    const set = (id: string, x: any) => setV({ ...v, [id]: x })
+    const envoyer = async () => {
+        for (const q of questions) {
+            const x = v[q.id]
+            if (q.obligatoire && (x == null || x === "" || (Array.isArray(x) && !x.length))) return setMsg({ t: `Merci de répondre à « ${q.intitule} ».`, err: true })
+            if (q.type === "nombre" && x !== undefined && x !== "" && !/^\d+([.,]\d+)?$/.test(String(x))) return setMsg({ t: `« ${q.intitule} » attend un nombre.`, err: true })
+        }
+        setOccupe(true)
+        const { error } = await client.from("reponses").upsert({ sondage_id: so.id, email: moi.email.toLowerCase(), valeurs: v, maj_le: new Date().toISOString() }, { onConflict: "sondage_id,email" })
+        setOccupe(false)
+        if (error) return setMsg({ t: /row-level|policy/i.test(error.message) ? "Ce sondage est clos." : error.message, err: true })
+        fini()
+    }
+    const choix = (q: Question, o: string) => {
+        const multi = q.type === "multiple"
+        const actif = multi ? (v[q.id] || []).includes(o) : v[q.id] === o
+        return (
+            <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", padding: "8px 12px", border: `1px solid ${actif ? C.accent : C.line}`, background: actif ? "rgba(155,189,138,0.12)" : "transparent" }}>
+                <input type={multi ? "checkbox" : "radio"} name={so.id + q.id} checked={actif} onChange={() => set(q.id, multi ? (actif ? (v[q.id] || []).filter((y: string) => y !== o) : [...(v[q.id] || []), o]) : o)} style={{ width: 18, height: 18, accentColor: C.accent }} />{o}
+            </label>
+        )
+    }
+    return (
+        <div style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 18, display: "grid", gap: 20 }}>
+            {questions.map((q) => (
+                <div key={q.id}>
+                    <span style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>{q.intitule}{q.obligatoire ? " *" : ""}{q.type === "multiple" ? <span style={{ color: C.mute, fontWeight: 400, fontSize: 13 }}> (plusieurs choix possibles)</span> : null}</span>
+                    {(q.type === "unique" || q.type === "multiple") && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8 }}>{(q.options || []).map((o) => choix(q, o))}</div>}
+                    {q.type === "nombre" && <input style={{ ...input, maxWidth: 160 }} inputMode="decimal" value={v[q.id] ?? ""} onChange={(e) => set(q.id, e.target.value)} />}
+                    {q.type === "texte" && <textarea style={{ ...input, minHeight: 80, resize: "vertical" }} value={v[q.id] ?? ""} onChange={(e) => set(q.id, e.target.value)} />}
+                </div>
+            ))}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button style={btn()} disabled={occupe} onClick={envoyer}>{occupe ? "Envoi…" : rep ? "Enregistrer ma réponse" : "Envoyer ma réponse"}</button>
+                {rep && <button style={btn(false)} onClick={fini}>Annuler</button>}
+            </div>
+            <Msg text={msg.t} err={msg.err} />
+        </div>
+    )
+}
+
+function ResultatsSondage({ so, detail }: { so: any; detail?: boolean }) {
+    const [r, setR] = React.useState<any>(null)
+    const [err, setErr] = React.useState("")
+    React.useEffect(() => { sb()!.rpc("resultats_sondage", { s: so.id }).then(({ data, error }: any) => error ? setErr(error.message) : setR(data)) }, [so.id, so.questions])
+    if (err) return <p style={{ ...muted, fontSize: 13, marginTop: 12 }}>{err}</p>
+    if (!r) return null
+    const qs: Question[] = so.questions || []
+    return (
+        <div style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 14, display: "grid", gap: 16, maxWidth: 720 }}>
+            <span style={{ ...label, margin: 0 }}>Résultats · {r.participants} réponse{r.participants > 1 ? "s" : ""}</span>
+            {qs.map((q) => {
+                const t = r.questions?.[q.id] || {}
+                if (q.type === "unique" || q.type === "multiple") {
+                    const max = Math.max(1, ...(q.options || []).map((o) => t[o] || 0))
+                    return (
+                        <div key={q.id}>
+                            <div style={{ fontWeight: 600, marginBottom: 6 }}>{q.intitule}</div>
+                            {(q.options || []).map((o) => (
+                                <div key={o} style={{ display: "grid", gridTemplateColumns: "minmax(90px, 160px) 1fr 40px", alignItems: "center", gap: 10, fontSize: 14, margin: "4px 0" }}>
+                                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o}</span>
+                                    <span style={{ height: 10, background: C.line }}><span style={{ display: "block", height: "100%", width: `${((t[o] || 0) / max) * 100}%`, background: C.accent }} /></span>
+                                    <span style={{ textAlign: "right" }}>{t[o] || 0}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )
+                }
+                if (q.type === "nombre") return <div key={q.id}><span style={{ fontWeight: 600 }}>{q.intitule}</span> : total <strong>{(t.total ?? 0).toLocaleString("fr-FR")}</strong> <span style={{ color: C.mute, fontSize: 13 }}>({t.reponses ?? 0} réponse(s))</span></div>
+                return detail ? null : <div key={q.id} style={{ color: C.mute, fontSize: 14 }}>{q.intitule} : {t.reponses ?? 0} réponse(s) écrite(s), consultables par le bureau.</div>
+            })}
         </div>
     )
 }
@@ -194,6 +342,8 @@ function Evenements() {
     const [prises, setPrises] = React.useState<Record<string, number>>({})
     const [nb, setNb] = React.useState<Record<string, number>>({})
     const [msg, setMsg] = React.useState<Record<string, { t: string; err: boolean }>>({})
+    const [sondagesEvt, setSondagesEvt] = React.useState<Record<string, boolean>>({})
+    React.useEffect(() => { client.from("sondages").select("evenement_id").not("evenement_id", "is", null).then(({ data }: any) => setSondagesEvt(Object.fromEntries((data ?? []).map((x: any) => [x.evenement_id, true])))) }, [])
     const charger = React.useCallback(async () => {
         const auj = new Date().toISOString().slice(0, 10)
         const { data } = await client.from("evenements").select("*").order("date_debut", { ascending: true, nullsFirst: false })
@@ -226,6 +376,7 @@ function Evenements() {
                             <h3 style={{ ...h2, fontSize: 22, margin: "2px 0 6px" }}>{e.titre}</h3>
                             {e.lieu && <p style={{ ...muted, marginBottom: 6 }}>{e.lieu}</p>}
                             {e.description && <p style={{ margin: "0 0 10px", whiteSpace: "pre-wrap", opacity: 0.9 }}>{e.description}</p>}
+                            {sondagesEvt[e.id] && <a href="#sondages" style={{ ...lien, display: "inline-block", fontSize: 14, marginBottom: 8 }}>Un sondage accompagne cette sortie : y répondre →</a>}
                             <p style={{ ...muted, fontSize: 14 }}>{e.prix > 0 ? `${euros(e.prix)} par personne` : "Gratuit"}{restantes != null ? ` · ${restantes} place${restantes > 1 ? "s" : ""} restante${restantes > 1 ? "s" : ""}` : ""}</p>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, minWidth: 180 }}>
@@ -296,6 +447,7 @@ function VueEnsemble({ moi, aller }: { moi: Adherent; aller: (o: any) => void })
                     <button style={{ ...btn(false), marginTop: 12 }} onClick={() => aller("evenements")}>Voir les sorties</button>
                 </div>
             </div>
+            <SondagesEnCours aller={aller} />
             <Messages />
             <div style={box}>
                 <span style={label}>Le bureau de l’association {annee}</span>
@@ -793,4 +945,4 @@ function Annuaire() {
 }
 
 // Composants partagés avec l’administration (regroupés pour ne pas apparaître comme composants séparés dans Framer)
-export const UI = { Msg, Aide, Editeur, ChampForm, ImportAdherents }
+export const UI = { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage }

@@ -3,7 +3,7 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb } from "./AcsBase.tsx"
 
-const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Annuaire", "#annuaire"]]
+const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Sondages", "#sondages"], ["Annuaire", "#annuaire"]]
 const POLICE = "Poppins, sans-serif"
 
 function Deroulant({ titre, href, liens, compact, style, deconnexion, admin }: { titre: string; href: string; liens: [string, string][]; compact: boolean; style: React.CSSProperties; deconnexion?: boolean; admin?: string }) {

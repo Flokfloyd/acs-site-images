@@ -8,8 +8,8 @@ import {
     localiserAdherent, preparerEvenement, JOURS_MOIS,
     CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR,
 } from "./EspaceMembre.tsx"
-import type { Champ } from "./EspaceMembre.tsx"
-const { Msg, Aide, Editeur, ChampForm, ImportAdherents } = UI
+import type { Champ, Question } from "./EspaceMembre.tsx"
+const { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage } = UI
 
 // Largeur disponible (pour passer en affichage mobile) : renvoie un « ref » à poser sur le conteneur
 function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
@@ -24,7 +24,7 @@ function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
     return [setEl, etroit]
 }
 
-const ONGLETS = [["agenda", "Agenda"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["semestriels", "Semestriels"]] as const
+const ONGLETS = [["agenda", "Agenda"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["semestriels", "Semestriels"]] as const
 type O = (typeof ONGLETS)[number][0]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.some(([k]) => k === h) ? h : "agenda" }
 
@@ -84,6 +84,7 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "boutique" && <><Aide>Les articles cochés « En vente » apparaissent sur la page Boutique du site, dans l’ordre indiqué. Laissez le stock vide si vous ne le suivez pas.</Aide>
                 <Editeur table="produits" ordre="ordre" titre="Articles" champs={CHAMPS_PROD} nouveau={(l) => ({ actif: true, ordre: (l.length + 1) * 10 })} resume={(r) => `${r.categorie ? r.categorie + " · " : ""}${r.nom} · ${euros(r.prix)}${r.stock != null ? ` · stock ${r.stock}` : ""}${r.actif ? "" : " (retiré)"}`} /></>}
             {onglet === "campagnes" && <Campagnes moi={email} ouverte={campagneOuverte} setOuverte={setCampagneOuverte} />}
+            {onglet === "sondages" && <SondagesAdmin moi={email} ouvrirCampagne={ouvrirCampagne} />}
             {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
         </div>
@@ -641,6 +642,185 @@ function Compta() {
             </div>
             <div onClick={() => setTimeout(() => setCle((x) => x + 1), 1500)}>
                 <Editeur table="ecritures" ordre="le" desc titre="Recettes et dépenses saisies" champs={CHAMPS_ECR} nouveau={() => ({ le: new Date().toISOString().slice(0, 10), sens: "depense" })} resume={(r) => `${dateFr(r.le)} · ${r.sens === "recette" ? "+" : "−"}${euros(r.montant)} · ${r.libelle}${r.categorie ? " · " + r.categorie : ""}`} />
+            </div>
+        </div>
+    )
+}
+
+// ---------- Sondages ----------
+const TYPES_Q: [Question["type"], string][] = [["unique", "Un seul choix"], ["multiple", "Plusieurs choix"], ["nombre", "Nombre"], ["texte", "Réponse libre"]]
+const nid = () => Math.random().toString(36).slice(2, 8)
+const etatSondage = (s: any) => (!s.ouvert ? "Brouillon" : s.cloture_le && s.cloture_le < new Date().toISOString().slice(0, 10) ? "Clos" : "Ouvert")
+
+function SondagesAdmin({ moi, ouvrirCampagne }: { moi: string; ouvrirCampagne: (id: string) => void }) {
+    const client = sb()
+    const [liste, setListe] = React.useState<any[]>([])
+    const [nb, setNb] = React.useState<Record<string, number>>({})
+    const [evts, setEvts] = React.useState<any[]>([])
+    const [produits, setProduits] = React.useState<any[]>([])
+    const [sel, setSel] = React.useState<any | null>(null)
+    const [vue, setVue] = React.useState<"edition" | "resultats">("edition")
+    const charger = React.useCallback(async () => {
+        const [{ data: so }, { data: re }] = await Promise.all([client.from("sondages").select("*").order("cree_le", { ascending: false }), client.from("reponses").select("sondage_id")])
+        setListe(so ?? [])
+        const c: Record<string, number> = {}; for (const r of re ?? []) c[r.sondage_id] = (c[r.sondage_id] || 0) + 1; setNb(c)
+    }, [])
+    React.useEffect(() => {
+        charger()
+        const auj = new Date().toISOString().slice(0, 10)
+        client.from("evenements").select("id,titre,date_label,date_debut").or(`date_debut.gte.${auj},date_debut.is.null`).order("date_debut", { ascending: true, nullsFirst: false }).then(({ data }: any) => setEvts(data ?? []))
+        client.from("produits").select("nom").eq("actif", true).order("ordre").then(({ data }: any) => setProduits(data ?? []))
+    }, [charger])
+    const modeles: [string, () => any][] = [
+        ["Vide", () => ({ titre: "", description: "", questions: [{ id: nid(), intitule: "", type: "unique", options: ["Oui", "Non"], obligatoire: true }] })],
+        ["Repas d’une sortie", () => ({ titre: "Qui vient au repas ?", description: "Pour réserver le bon nombre de places au restaurant.", questions: [{ id: nid(), intitule: "Serez-vous au repas ?", type: "unique", options: ["Oui", "Non"], obligatoire: true }, { id: nid(), intitule: "Nombre de personnes (vous compris)", type: "nombre", obligatoire: false }, { id: nid(), intitule: "Régime ou allergie à signaler", type: "texte", obligatoire: false }] })],
+        ["Précommande boutique", () => ({ titre: "Précommande boutique", description: "Indiquez ce que vous souhaitez : nous préparons les commandes pour la prochaine rencontre.", questions: [{ id: nid(), intitule: "Articles souhaités", type: "multiple", options: produits.length ? produits.map((p) => p.nom) : ["Tee-shirt", "Ponce", "Chabasite"], obligatoire: true }, { id: nid(), intitule: "Taille du tee-shirt", type: "unique", options: ["S", "M", "L", "XL", "XXL"], obligatoire: false }, { id: nid(), intitule: "Quantités et précisions", type: "texte", obligatoire: false }] })],
+        ["Choix d’une date", () => ({ titre: "Quelle date vous convient ?", description: "", questions: [{ id: nid(), intitule: "Dates possibles", type: "multiple", options: ["Samedi …", "Dimanche …"], obligatoire: true }] })],
+    ]
+    const nouveau = (m: () => any) => { setVue("edition"); setSel({ ...m(), evenement_id: "", cloture_le: "", ouvert: false, resultats_visibles: false }) }
+
+    if (sel) return sel.id && vue === "resultats"
+        ? <ResultatsAdmin so={sel} retour={() => setSel(null)} editer={() => setVue("edition")} moi={moi} ouvrirCampagne={ouvrirCampagne} />
+        : <EditeurSondage so={sel} setSo={setSel} evts={evts} retour={() => { setSel(null); charger() }} voirResultats={() => setVue("resultats")} />
+
+    return (
+        <div style={{ display: "grid", gap: 16 }}>
+            <Aide>Créez un sondage pour les adhérents : qui vient au repas d’une sortie, précommandes de la boutique, choix d’une date… Il apparaît dans leur espace membre tant qu’il est ouvert, et peut être lié à un événement.</Aide>
+            <div style={box}>
+                <span style={label}>Nouveau sondage</span>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                    {modeles.map(([t, m]) => <button key={t} style={t === "Vide" ? btn() : btn(false)} onClick={() => nouveau(m)}>{t === "Vide" ? "Sondage vierge" : "Modèle : " + t}</button>)}
+                </div>
+            </div>
+            <div style={box}>
+                <h3 style={{ ...h2, fontSize: 20 }}>Sondages <span style={{ color: C.mute, fontWeight: 400 }}>({liste.length})</span></h3>
+                {liste.length === 0 && <p style={muted}>Aucun sondage pour l’instant.</p>}
+                {liste.map((so) => (
+                    <div key={so.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "12px 0", borderTop: `1px solid ${C.line}`, flexWrap: "wrap" }}>
+                        <span style={{ flex: "1 1 220px", minWidth: 0 }}>{so.titre}<span style={{ color: etatSondage(so) === "Ouvert" ? C.accent : C.mute, fontSize: 13 }}> · {etatSondage(so)}{so.cloture_le ? ` jusqu’au ${dateFr(so.cloture_le)}` : ""} · {nb[so.id] || 0} réponse(s)</span></span>
+                        <span style={{ display: "flex", gap: 8 }}>
+                            <button style={small()} onClick={() => { setVue("resultats"); setSel(so) }}>Résultats</button>
+                            <button style={small()} onClick={() => { setVue("edition"); setSel(so) }}>Modifier</button>
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+function EditeurSondage({ so, setSo, evts, retour, voirResultats }: { so: any; setSo: (s: any) => void; evts: any[]; retour: () => void; voirResultats: () => void }) {
+    const client = sb()
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const qs: Question[] = so.questions || []
+    const setQ = (k: number, q: Partial<Question>) => setSo({ ...so, questions: qs.map((x, i) => (i === k ? { ...x, ...q } : x)) })
+    const deplacer = (k: number, d: number) => { const l = [...qs]; const [x] = l.splice(k, 1); l.splice(k + d, 0, x); setSo({ ...so, questions: l }) }
+    const enregistrer = async () => {
+        if (!so.titre) return setMsg({ t: "Le titre est obligatoire.", err: true })
+        if (!qs.length || qs.some((q) => !q.intitule)) return setMsg({ t: "Chaque question doit avoir un intitulé.", err: true })
+        if (qs.some((q) => (q.type === "unique" || q.type === "multiple") && !(q.options || []).filter(Boolean).length)) return setMsg({ t: "Les questions à choix ont besoin d’au moins une réponse possible.", err: true })
+        const row = { titre: so.titre, description: so.description || null, questions: qs.map((q) => ({ ...q, options: q.type === "unique" || q.type === "multiple" ? (q.options || []).map((o) => o.trim()).filter(Boolean) : undefined })), evenement_id: so.evenement_id || null, cloture_le: so.cloture_le || null, ouvert: !!so.ouvert, resultats_visibles: !!so.resultats_visibles }
+        const { data, error } = so.id ? await client.from("sondages").update(row).eq("id", so.id).select().single() : await client.from("sondages").insert(row).select().single()
+        if (error) return setMsg({ t: error.message, err: true })
+        setSo(data); setMsg({ t: data.ouvert ? "Enregistré : le sondage est visible des adhérents." : "Enregistré en brouillon (pas encore visible des adhérents).", err: false })
+    }
+    const supprimer = async () => {
+        if (!window.confirm(`Supprimer le sondage « ${so.titre} » et toutes ses réponses ?`)) return
+        await client.from("sondages").delete().eq("id", so.id); retour()
+    }
+    const coche = (k: string, t: string, aide?: string) => <label style={{ display: "flex", gap: 10, cursor: "pointer", alignItems: "flex-start" }}><input type="checkbox" checked={!!so[k]} onChange={(e) => setSo({ ...so, [k]: e.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent, marginTop: 2 }} /><span>{t}{aide && <span style={{ display: "block", color: C.mute, fontSize: 13 }}>{aide}</span>}</span></label>
+    return (
+        <div style={box}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+                <h3 style={{ ...h2, fontSize: 22, margin: 0 }}>{so.id ? "Modifier le sondage" : "Nouveau sondage"}</h3>
+                <span style={{ display: "flex", gap: 8 }}>{so.id && <button style={small()} onClick={voirResultats}>Voir les résultats</button>}<button style={small()} onClick={retour}>Retour à la liste</button></span>
+            </div>
+            <div style={{ display: "grid", gap: 16 }}>
+                <div><span style={label}>Titre *</span><input style={input} value={so.titre} onChange={(e) => setSo({ ...so, titre: e.target.value })} placeholder="Qui vient au repas du 14 juin ?" /></div>
+                <div><span style={label}>Présentation</span><textarea style={{ ...input, minHeight: 70, resize: "vertical" }} value={so.description || ""} onChange={(e) => setSo({ ...so, description: e.target.value })} /></div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+                    <div><span style={label}>Lié à un événement</span><select style={input} value={so.evenement_id || ""} onChange={(e) => setSo({ ...so, evenement_id: e.target.value })}><option value="">— aucun —</option>{evts.map((e) => <option key={e.id} value={e.id}>{e.date_label} — {e.titre}</option>)}</select></div>
+                    <div><span style={label}>Réponses jusqu’au (inclus)</span><input style={input} type="date" value={so.cloture_le || ""} onChange={(e) => setSo({ ...so, cloture_le: e.target.value })} /></div>
+                </div>
+            </div>
+            <div style={{ marginTop: 24 }}>
+                <span style={label}>Questions</span>
+                {qs.map((q, k) => (
+                    <div key={q.id} style={{ border: `1px solid ${C.line}`, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                            <input style={{ ...input, flex: "3 1 280px", width: "auto" }} value={q.intitule} placeholder={`Question ${k + 1}`} onChange={(e) => setQ(k, { intitule: e.target.value })} />
+                            <select style={{ ...input, flex: "1 1 160px", width: "auto" }} value={q.type} onChange={(e) => setQ(k, { type: e.target.value as any, options: q.options?.length ? q.options : ["Oui", "Non"] })}>{TYPES_Q.map(([t, l]) => <option key={t} value={t}>{l}</option>)}</select>
+                        </div>
+                        {(q.type === "unique" || q.type === "multiple") && <div><span style={{ fontSize: 13, color: C.mute }}>Réponses possibles, une par ligne</span><textarea style={{ ...input, minHeight: 80, resize: "vertical", marginTop: 4 }} value={(q.options || []).join("\n")} onChange={(e) => setQ(k, { options: e.target.value.split("\n") })} /></div>}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, cursor: "pointer" }}><input type="checkbox" checked={!!q.obligatoire} onChange={(e) => setQ(k, { obligatoire: e.target.checked })} style={{ width: 16, height: 16, accentColor: C.accent }} />Réponse obligatoire</label>
+                            <span style={{ display: "flex", gap: 6 }}>
+                                <button style={small()} disabled={k === 0} onClick={() => deplacer(k, -1)} aria-label="Monter">↑</button>
+                                <button style={small()} disabled={k === qs.length - 1} onClick={() => deplacer(k, 1)} aria-label="Descendre">↓</button>
+                                <button style={small(true)} onClick={() => setSo({ ...so, questions: qs.filter((_, i) => i !== k) })}>Retirer</button>
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                <button style={{ ...btn(false), marginTop: 10 }} onClick={() => setSo({ ...so, questions: [...qs, { id: nid(), intitule: "", type: "unique", options: ["Oui", "Non"], obligatoire: false }] })}>Ajouter une question</button>
+            </div>
+            <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+                {coche("ouvert", "Ouvert aux adhérents", "Décoché : brouillon, invisible des adhérents. Le sondage se ferme seul après la date limite.")}
+                {coche("resultats_visibles", "Montrer les résultats aux adhérents", "Totaux seulement, sans les noms ni les réponses libres.")}
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
+                <button style={btn()} onClick={enregistrer}>Enregistrer</button>
+                {so.id && <button style={small(true)} onClick={supprimer}>Supprimer</button>}
+            </div>
+            <Msg text={msg.t} err={msg.err} />
+        </div>
+    )
+}
+
+function ResultatsAdmin({ so, retour, editer, moi, ouvrirCampagne }: { so: any; retour: () => void; editer: () => void; moi: string; ouvrirCampagne: (id: string) => void }) {
+    const client = sb()
+    const [reps, setReps] = React.useState<any[] | null>(null)
+    const [adh, setAdh] = React.useState<Record<string, any>>({})
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const qs: Question[] = so.questions || []
+    React.useEffect(() => {
+        client.from("reponses").select("*").eq("sondage_id", so.id).order("maj_le", { ascending: false }).then(({ data }: any) => setReps(data ?? []))
+        client.from("adherents").select("email,prenom,nom").then(({ data }: any) => setAdh(Object.fromEntries((data ?? []).map((a: any) => [a.email, a]))))
+    }, [so.id])
+    const nom = (e: string) => { const a = adh[e]; return a ? [a.prenom, a.nom].filter(Boolean).join(" ") || e : e }
+    const val = (x: any) => (Array.isArray(x) ? x.join(", ") : x ?? "")
+    const annoncer = async () => {
+        const lien = "https://acs-armorique-cactus-succulentes.framer.website/espace-membre#sondages"
+        const { data, error } = await client.from("campagnes").insert({ sujet: `Sondage : ${so.titre}`, contenu: `Bonjour,\n\n${so.description ? so.description + "\n\n" : ""}Merci de répondre au sondage « ${so.titre} »${so.cloture_le ? ` avant le ${dateFr(so.cloture_le)}` : ""}, dans votre espace membre :\n${lien}\n\nÀ bientôt,\nLe bureau de l’ACS`, cible: so.evenement_id ? "evenement" : "tous", evenement_id: so.evenement_id || null, dans_espace: false, auteur: moi }).select().single()
+        if (error) return setMsg({ t: error.message, err: true })
+        ouvrirCampagne(data.id)
+    }
+    return (
+        <div style={{ display: "grid", gap: 16 }}>
+            <div style={box}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <div><span style={label}>{etatSondage(so)}{so.cloture_le ? ` · jusqu’au ${dateFr(so.cloture_le)}` : ""}</span><h3 style={{ ...h2, fontSize: 22, margin: 0 }}>{so.titre}</h3></div>
+                    <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <button style={small()} onClick={annoncer}>Annoncer par e-mail</button>
+                        {reps && reps.length > 0 && <button style={small()} onClick={() => exporter(`sondage-${so.titre}.csv`, ["Nom", "E-mail", "Répondu le", ...qs.map((q) => q.intitule)], reps.map((r) => [nom(r.email), r.email, r.maj_le?.slice(0, 10), ...qs.map((q) => val(r.valeurs?.[q.id]))]))}>Exporter (CSV)</button>}
+                        <button style={small()} onClick={editer}>Modifier</button>
+                        <button style={small()} onClick={retour}>Retour</button>
+                    </span>
+                </div>
+                <ResultatsSondage so={so} detail />
+                <Msg text={msg.t} err={msg.err} />
+            </div>
+            <div style={box}>
+                <h3 style={{ ...h2, fontSize: 20 }}>Réponses <span style={{ color: C.mute, fontWeight: 400 }}>({reps?.length ?? "…"})</span></h3>
+                {reps && reps.length === 0 && <p style={muted}>Pas encore de réponse.</p>}
+                <div style={{ overflowX: "auto" }}>
+                    {reps && reps.length > 0 && (
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+                            <thead><tr>{["Adhérent", ...qs.map((q) => q.intitule)].map((h) => <th key={h} style={{ textAlign: "left", padding: "8px 10px", borderBottom: `1px solid ${C.line}`, color: C.mute, fontWeight: 500, whiteSpace: "nowrap" }}>{h}</th>)}</tr></thead>
+                            <tbody>{reps.map((r) => <tr key={r.id}><td style={{ padding: "8px 10px", borderBottom: `1px solid ${C.line}`, whiteSpace: "nowrap" }}>{nom(r.email)}</td>{qs.map((q) => <td key={q.id} style={{ padding: "8px 10px", borderBottom: `1px solid ${C.line}` }}>{String(val(r.valeurs?.[q.id]))}</td>)}</tr>)}</tbody>
+                        </table>
+                    )}
+                </div>
             </div>
         </div>
     )

@@ -437,3 +437,79 @@ grant execute on function public.destinataires(uuid) to authenticated;
 -- 10. Codes personnels de connexion (mot de passe Supabase géré par la fonction « codes »)
 -- ---------------------------------------------------------------------
 alter table public.adherents add column if not exists code_envoye_le timestamptz;
+
+-- ---------------------------------------------------------------------
+-- 11. Sondages (créés par les admins, ouverts aux adhérents)
+-- questions : [{ id, intitule, type: 'unique'|'multiple'|'nombre'|'texte', options: [..], obligatoire }]
+-- ---------------------------------------------------------------------
+create table if not exists public.sondages (
+  id                 uuid primary key default gen_random_uuid(),
+  titre              text not null,
+  description        text,
+  questions          jsonb not null default '[]'::jsonb,
+  evenement_id       uuid references public.evenements(id) on delete set null,
+  ouvert             boolean not null default false,
+  cloture_le         date,                      -- dernier jour pour répondre (inclus)
+  resultats_visibles boolean not null default false,  -- les adhérents voient les totaux
+  auteur             text,
+  cree_le            timestamptz not null default now()
+);
+create table if not exists public.reponses (
+  id         uuid primary key default gen_random_uuid(),
+  sondage_id uuid not null references public.sondages(id) on delete cascade,
+  email      text not null,
+  valeurs    jsonb not null default '{}'::jsonb,   -- { question_id: valeur }
+  cree_le    timestamptz not null default now(),
+  maj_le     timestamptz not null default now(),
+  unique (sondage_id, email)
+);
+alter table public.sondages enable row level security;
+alter table public.reponses enable row level security;
+
+create or replace function public.sondage_ouvert(s uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from sondages where id = s and ouvert and (cloture_le is null or cloture_le >= current_date))
+$$;
+
+drop policy if exists sondage_lecture on public.sondages;
+create policy sondage_lecture on public.sondages for select using ((ouvert and est_membre()) or est_admin());
+drop policy if exists sondage_gestion on public.sondages;
+create policy sondage_gestion on public.sondages for all using (est_admin()) with check (est_admin());
+
+drop policy if exists reponse_lecture on public.reponses;
+create policy reponse_lecture on public.reponses for select using (email = mon_email() or est_admin());
+drop policy if exists reponse_ajout on public.reponses;
+create policy reponse_ajout on public.reponses for insert with check (email = mon_email() and est_membre() and sondage_ouvert(sondage_id));
+drop policy if exists reponse_modif on public.reponses;
+create policy reponse_modif on public.reponses for update using (email = mon_email() and sondage_ouvert(sondage_id)) with check (email = mon_email());
+drop policy if exists reponse_admin on public.reponses;
+create policy reponse_admin on public.reponses for delete using (est_admin() or (email = mon_email() and sondage_ouvert(sondage_id)));
+
+grant select, insert, update, delete on public.sondages, public.reponses to authenticated;
+grant execute on function public.sondage_ouvert(uuid) to authenticated;
+
+-- Totaux d'un sondage (sans les réponses libres, sans les noms) pour les adhérents si le bureau les rend visibles
+create or replace function public.resultats_sondage(s uuid) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare so record; q jsonb; res jsonb := '{}'::jsonb; t jsonb;
+begin
+  select * into so from sondages where id = s;
+  if not found then return null; end if;
+  if not (est_admin() or (est_membre() and so.resultats_visibles)) then raise exception 'résultats non publiés'; end if;
+  for q in select * from jsonb_array_elements(so.questions) loop
+    if q->>'type' in ('unique', 'multiple') then
+      select coalesce(jsonb_object_agg(v, n), '{}'::jsonb) into t from (
+        select v, count(*) n from reponses r,
+          lateral jsonb_array_elements_text(case jsonb_typeof(r.valeurs->(q->>'id')) when 'array' then r.valeurs->(q->>'id') when 'string' then jsonb_build_array(r.valeurs->(q->>'id')) else '[]'::jsonb end) v
+        where r.sondage_id = s group by v) x;
+    elsif q->>'type' = 'nombre' then
+      select jsonb_build_object('total', coalesce(sum(replace(r.valeurs->>(q->>'id'), ',', '.')::numeric), 0), 'reponses', count(*)) into t
+      from reponses r where r.sondage_id = s and (r.valeurs->>(q->>'id')) ~ '^[0-9]+([.,][0-9]+)?$';
+    else
+      select jsonb_build_object('reponses', count(*)) into t from reponses r where r.sondage_id = s and coalesce(r.valeurs->>(q->>'id'), '') <> '';
+    end if;
+    res := res || jsonb_build_object(q->>'id', t);
+  end loop;
+  return jsonb_build_object('participants', (select count(*) from reponses where sondage_id = s), 'questions', res);
+end $$;
+grant execute on function public.resultats_sondage(uuid) to authenticated;
