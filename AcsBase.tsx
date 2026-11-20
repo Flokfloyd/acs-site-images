@@ -14,7 +14,7 @@ export function sb(): SupabaseClient | null {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null
     if (typeof window === "undefined") return null
     const w = window as any
-    if (!w.__acsSupabase) w.__acsSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, storageKey: "acs-auth" } })
+    if (!w.__acsSupabase) w.__acsSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: "acs-auth", lock: async (_n: string, _t: number, fn: () => Promise<any>) => await fn() } })
     return w.__acsSupabase
 }
 

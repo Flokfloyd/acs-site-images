@@ -47,7 +47,9 @@ export default function EspaceMembre(props: { lienSemestriels: string; demo: "no
         let fini = false
         setMoi(undefined)
         const essai = async (n: number) => {
-            const { data, error } = await client.from("adherents").select("*").eq("email", sessionEmail.toLowerCase()).maybeSingle()
+            const delai = new Promise<any>((r) => setTimeout(() => r({ data: null, error: { message: "délai dépassé" } }), 6000))
+            const { data, error } = await Promise.race([client.from("adherents").select("*").eq("email", sessionEmail.toLowerCase()).maybeSingle(), delai])
+            if (error) console.warn("[ACS] lecture adhérent :", error.message || error)
             if (fini) return
             if ((error || !data) && n < 3) { setTimeout(() => essai(n + 1), 700 * (n + 1)); return }
             setMoi((data as Adherent) ?? null)
