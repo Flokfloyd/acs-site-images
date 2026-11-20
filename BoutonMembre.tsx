@@ -1,21 +1,50 @@
-// BoutonMembre.tsx — bouton de la barre de navigation : « Connexion » ou, une fois connecté, « Membres » avec un menu
+// BoutonMembre.tsx — barre de navigation : « Connexion », ou une fois connecté « Membres ▾ » (et « Admin ▾ » pour les administrateurs), puis Adhérer / nom du membre
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb } from "./AcsBase.tsx"
 
-const LIENS: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Annuaire", "#annuaire"]]
+const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Annuaire", "#annuaire"]]
+const LIENS_ADMIN: [string, string][] = [["Agenda", "#agenda"], ["Adhésions et paiements", "#paiements"], ["Adhérents", "#adherents"], ["Comptabilité", "#compta"], ["Boutique", "#boutique"], ["Campagnes e-mail", "#campagnes"], ["Semestriels", "#semestriels"]]
+const POLICE = "Poppins, sans-serif"
+
+function Deroulant({ titre, href, liens, compact, style, deconnexion }: { titre: string; href: string; liens: [string, string][]; compact: boolean; style: React.CSSProperties; deconnexion?: boolean }) {
+    const [ouvert, setOuvert] = React.useState(false)
+    const ref = React.useRef<HTMLDivElement>(null)
+    React.useEffect(() => {
+        if (!ouvert) return
+        const f = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOuvert(false) }
+        document.addEventListener("click", f)
+        return () => document.removeEventListener("click", f)
+    }, [ouvert])
+    const item: React.CSSProperties = { display: "block", width: "100%", textAlign: "left", padding: "11px 16px", color: "#f6f0e6", background: "transparent", border: "none", borderBottom: "1px solid rgba(246,240,230,0.08)", borderRadius: 0, textDecoration: "none", font: `500 14px ${POLICE}`, cursor: "pointer", boxSizing: "border-box" }
+    const survol = { onMouseEnter: (e: any) => (e.currentTarget.style.background = "rgba(155,189,138,0.14)"), onMouseLeave: (e: any) => (e.currentTarget.style.background = "transparent") }
+    return (
+        <div ref={ref} style={{ position: "relative", display: "inline-block" }} onMouseEnter={() => setOuvert(true)} onMouseLeave={() => setOuvert(false)}>
+            <a href={href} style={style} onClick={(e) => { if (compact && !ouvert) { e.preventDefault(); setOuvert(true) } }}>
+                {titre} <span aria-hidden style={{ fontSize: 10, opacity: 0.8 }}>▾</span>
+            </a>
+            {ouvert && (
+                <div style={{ position: "absolute", top: "100%", right: 0, paddingTop: 6, zIndex: 50 }}>
+                    <div style={{ background: "#16120f", border: "1px solid rgba(246,240,230,0.2)", minWidth: 210, boxShadow: "0 12px 30px rgba(0,0,0,0.35)" }}>
+                        {liens.map(([t, h]) => <a key={t} href={href + h} onClick={() => setOuvert(false)} style={item} {...survol}>{t}</a>)}
+                        {deconnexion && <button onClick={() => { setOuvert(false); sb()?.auth.signOut().finally(() => { window.location.href = "/" }) }} style={{ ...item, color: "rgba(246,240,230,0.7)", borderBottom: "none" }} {...survol}>Se déconnecter</button>}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
 
 /**
  * @framerSupportedLayoutWidth auto
  * @framerSupportedLayoutHeight auto
  */
-export default function BoutonMembre(props: { page: string; compact: boolean; adhesion: boolean; accent: string }) {
+export default function BoutonMembre(props: { page: string; pageAdmin: string; compact: boolean; adhesion: boolean; accent: string }) {
     const page = props.page || "/espace-membre"
+    const pageAdmin = props.pageAdmin || "/admin"
     const [connecte, setConnecte] = React.useState(false)
     const [email, setEmail] = React.useState<string | null>(null)
-    const [moi, setMoi] = React.useState<{ prenom?: string; nom?: string; cotisation_annee?: number } | null>(null)
-    const [ouvert, setOuvert] = React.useState(false)
-    const ref = React.useRef<HTMLDivElement>(null)
+    const [moi, setMoi] = React.useState<{ prenom?: string; nom?: string; cotisation_annee?: number; role?: string } | null>(null)
 
     React.useEffect(() => {
         const c = sb()
@@ -27,20 +56,13 @@ export default function BoutonMembre(props: { page: string; compact: boolean; ad
     }, [])
     React.useEffect(() => {
         const c = sb()
-        if (!c || !email || !props.adhesion) { setMoi(null); return }
+        if (!c || !email) { setMoi(null); return }
         let fini = false
-        c.from("adherents").select("prenom,nom,cotisation_annee").eq("email", email.toLowerCase()).maybeSingle().then(({ data }: any) => { if (!fini) setMoi(data ?? null) })
+        c.from("adherents").select("prenom,nom,cotisation_annee,role").eq("email", email.toLowerCase()).maybeSingle().then(({ data }: any) => { if (!fini) setMoi(data ?? null) })
         return () => { fini = true }
-    }, [email, props.adhesion])
-    React.useEffect(() => {
-        if (!ouvert) return
-        const f = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOuvert(false) }
-        document.addEventListener("click", f)
-        return () => document.removeEventListener("click", f)
-    }, [ouvert])
+    }, [email])
 
-    const style: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(246,240,230,0.4)", background: "transparent", color: "#f6f0e6", padding: props.compact ? "10px 14px" : "10px 20px", font: "600 14px Poppins, sans-serif", textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap", borderRadius: 0 }
-
+    const style: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(246,240,230,0.4)", background: "transparent", color: "#f6f0e6", padding: props.compact ? "10px 14px" : "10px 20px", font: `600 14px ${POLICE}`, textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap", borderRadius: 0 }
     const accent = props.accent || "#9bbd8a"
     const annee = new Date().getFullYear()
     const aJour = !!moi && (moi.cotisation_annee ?? 0) >= annee
@@ -51,36 +73,21 @@ export default function BoutonMembre(props: { page: string; compact: boolean; ad
         : connecte && moi ? <a href="/#adhesion" style={plein}>Renouveler · 20 €</a>
         : <a href="/#adhesion" style={plein}>Adhérer · 20 €</a>
 
-    return <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{bouton()}{adh}</div>
-
-    function bouton() {
-    if (!connecte) return <a href={page} style={style}>Connexion</a>
-
     return (
-        <div ref={ref} style={{ position: "relative", display: "inline-block" }} onMouseEnter={() => setOuvert(true)} onMouseLeave={() => setOuvert(false)}>
-            <a href={page} style={style} onClick={(e) => { if (props.compact && !ouvert) { e.preventDefault(); setOuvert(true) } }}>
-                Membres <span aria-hidden style={{ fontSize: 10, opacity: 0.8 }}>▾</span>
-            </a>
-            {ouvert && (
-                <div style={{ position: "absolute", top: "100%", right: 0, paddingTop: 6, zIndex: 50 }}>
-                    <div style={{ background: "#16120f", border: "1px solid rgba(246,240,230,0.2)", minWidth: 190, boxShadow: "0 12px 30px rgba(0,0,0,0.35)" }}>
-                        {LIENS.map(([t, h]) => (
-                            <a key={t} href={page + h} onClick={() => setOuvert(false)} style={{ display: "block", padding: "11px 16px", color: "#f6f0e6", textDecoration: "none", font: "500 14px Poppins, sans-serif", borderBottom: "1px solid rgba(246,240,230,0.08)" }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(155,189,138,0.14)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>{t}</a>
-                        ))}
-                        <button onClick={() => { setOuvert(false); sb()?.auth.signOut().finally(() => { window.location.href = "/" }) }} style={{ display: "block", width: "100%", textAlign: "left", padding: "11px 16px", color: "rgba(246,240,230,0.7)", background: "transparent", border: "none", borderRadius: 0, font: "500 14px Poppins, sans-serif", cursor: "pointer" }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(155,189,138,0.14)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>Se déconnecter</button>
-                    </div>
-                </div>
-            )}
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+            {!connecte ? <a href={page} style={style}>Connexion</a> : <>
+                {moi?.role === "admin" && <Deroulant titre="Admin" href={pageAdmin} liens={LIENS_ADMIN} compact={props.compact} style={style} />}
+                <Deroulant titre="Membres" href={page} liens={LIENS_MEMBRE} compact={props.compact} style={style} deconnexion />
+            </>}
+            {adh}
         </div>
     )
-    }
 }
 
-BoutonMembre.defaultProps = { page: "/espace-membre", compact: false, adhesion: false, accent: "#9bbd8a" }
+BoutonMembre.defaultProps = { page: "/espace-membre", pageAdmin: "/admin", compact: false, adhesion: false, accent: "#9bbd8a" }
 addPropertyControls(BoutonMembre, {
-    page: { type: ControlType.String, title: "Page", defaultValue: "/espace-membre" },
+    page: { type: ControlType.String, title: "Page membre", defaultValue: "/espace-membre" },
+    pageAdmin: { type: ControlType.String, title: "Page admin", defaultValue: "/admin" },
     compact: { type: ControlType.Boolean, title: "Compact", defaultValue: false },
     adhesion: { type: ControlType.Boolean, title: "Bouton Adhérer", defaultValue: false },
     accent: { type: ControlType.Color, title: "Accent", defaultValue: "#9bbd8a" },

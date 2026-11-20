@@ -347,3 +347,88 @@ language sql security definer set search_path = public as $$
   update inscriptions set statut = 'abandonne' where evenement_id = evt and email = mon_email() and statut in ('valide', 'en_attente')
 $$;
 grant execute on function public.se_desinscrire(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 9. Administration : agenda étendu, boutique, comptabilité, campagnes e-mail
+-- ---------------------------------------------------------------------
+alter table public.evenements add column if not exists date_fin date;   -- événement sur plusieurs jours
+alter table public.evenements add column if not exists heure text;      -- « 14 h », « 9 h – 18 h »
+
+create table if not exists public.produits (
+  id          uuid primary key default gen_random_uuid(),
+  nom         text not null,
+  categorie   text,                 -- Tee-shirts, Substrats, Engrais…
+  prix        numeric(8,2) not null default 0,
+  description text,
+  image_url   text,
+  stock       int,                  -- vide = non suivi
+  actif       boolean not null default true,
+  ordre       int not null default 0,
+  cree_le     timestamptz not null default now()
+);
+alter table public.produits enable row level security;
+drop policy if exists produit_lecture on public.produits;
+create policy produit_lecture on public.produits for select using (actif or est_admin());
+drop policy if exists produit_gestion on public.produits;
+create policy produit_gestion on public.produits for all using (est_admin()) with check (est_admin());
+grant select on public.produits to anon;
+grant select, insert, update, delete on public.produits to authenticated;
+
+create table if not exists public.ecritures (
+  id        uuid primary key default gen_random_uuid(),
+  le        date not null default current_date,
+  sens      text not null default 'depense' check (sens in ('recette', 'depense')),
+  libelle   text not null,
+  categorie text,                   -- Salon, Semestriel, Boutique, Frais bancaires…
+  montant   numeric(10,2) not null check (montant >= 0),
+  moyen     text,                   -- Chèque, Espèces, Virement, Carte
+  piece_url text,                   -- justificatif
+  note      text,
+  cree_le   timestamptz not null default now()
+);
+alter table public.ecritures enable row level security;
+drop policy if exists ecriture_admin on public.ecritures;
+create policy ecriture_admin on public.ecritures for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.ecritures to authenticated;
+
+create table if not exists public.campagnes (
+  id            uuid primary key default gen_random_uuid(),
+  sujet         text not null,
+  contenu       text not null,
+  cible         text not null default 'tous' check (cible in ('tous', 'a_jour', 'retard', 'bureau', 'evenement', 'test')),
+  evenement_id  uuid references public.evenements(id) on delete set null,
+  dans_espace   boolean not null default true,  -- copie dans « Messages » de l'espace membre
+  statut        text not null default 'brouillon' check (statut in ('brouillon', 'envoyee', 'erreur')),
+  envoyee_le    timestamptz,
+  nb_envois     int,
+  erreur        text,
+  auteur        text,
+  cree_le       timestamptz not null default now()
+);
+alter table public.campagnes enable row level security;
+drop policy if exists campagne_admin on public.campagnes;
+create policy campagne_admin on public.campagnes for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.campagnes to authenticated;
+
+-- Destinataires d'une campagne (utilisé par la fonction d'envoi, admins seulement)
+create or replace function public.destinataires(c uuid) returns table (email text, prenom text)
+language plpgsql stable security definer set search_path = public as $$
+declare k record; an int := extract(year from now())::int;
+begin
+  if not est_admin() then raise exception 'réservé aux administrateurs'; end if;
+  select * into k from campagnes where id = c;
+  if k.cible = 'test' then
+    return query select a.email, a.prenom from adherents a where a.email = mon_email();
+  elsif k.cible = 'evenement' then
+    return query select distinct i.email, a.prenom from inscriptions i left join adherents a on a.email = i.email
+      where i.evenement_id = k.evenement_id and i.statut in ('valide', 'en_attente');
+  else
+    return query select a.email, a.prenom from adherents a
+      where a.actif and a.recoit_emails is not false
+        and (k.cible = 'tous'
+          or (k.cible = 'a_jour' and coalesce(a.cotisation_annee, 0) >= an)
+          or (k.cible = 'retard' and coalesce(a.cotisation_annee, 0) < an)
+          or (k.cible = 'bureau' and a.fonction_bureau is not null));
+  end if;
+end $$;
+grant execute on function public.destinataires(uuid) to authenticated;

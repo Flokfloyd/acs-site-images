@@ -7,20 +7,20 @@ import { COTE, pt } from "./CarteBretagne.tsx"
 
 // En mode démo (aperçu dans l’éditeur), toutes les fonctions utilisent un faux client en mémoire
 let clientDemo: any = null
-const sb = (): any => clientDemo ?? sbReel()
+export const sb = (): any => clientDemo ?? sbReel()
 
-type Adherent = { id: string; email: string; prenom?: string; nom?: string; role: "membre" | "admin"; cotisation_annee?: number; actif: boolean; annuaire?: boolean }
+export type Adherent = { id: string; email: string; prenom?: string; nom?: string; role: "membre" | "admin"; cotisation_annee?: number; actif: boolean; annuaire?: boolean }
 
 // ---------- petits éléments d'interface (angles droits, palette du site) ----------
-const box: React.CSSProperties = { background: C.panel, border: `1px solid ${C.line}`, padding: 28, color: C.txt, ...font }
-const input: React.CSSProperties = { width: "100%", boxSizing: "border-box", colorScheme: "dark", background: C.bg, color: C.txt, border: `1px solid ${C.line}`, borderRadius: 0, padding: "12px 14px", font: "inherit", fontSize: 15, outline: "none" }
-const label: React.CSSProperties = { display: "block", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent, margin: "0 0 6px" }
-const btn = (primary = true): React.CSSProperties => ({ background: primary ? C.accent : "transparent", color: primary ? C.accentDark : C.txt, border: primary ? "none" : `1px solid ${C.line}`, borderRadius: 0, padding: "12px 20px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer" })
-const small = (danger = false): React.CSSProperties => ({ background: "transparent", color: danger ? C.danger : C.txt, border: `1px solid ${danger ? C.danger : C.line}`, borderRadius: 0, padding: "6px 12px", font: "inherit", fontSize: 13, cursor: "pointer" })
-const h2: React.CSSProperties = { fontFamily: serif, fontSize: 26, lineHeight: 1.2, margin: "0 0 8px", fontWeight: 600 }
-const muted: React.CSSProperties = { color: C.mute, margin: 0 }
+export const box: React.CSSProperties = { background: C.panel, border: `1px solid ${C.line}`, padding: 28, color: C.txt, ...font }
+export const input: React.CSSProperties = { width: "100%", boxSizing: "border-box", colorScheme: "dark", background: C.bg, color: C.txt, border: `1px solid ${C.line}`, borderRadius: 0, padding: "12px 14px", font: "inherit", fontSize: 15, outline: "none" }
+export const label: React.CSSProperties = { display: "block", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent, margin: "0 0 6px" }
+export const btn = (primary = true): React.CSSProperties => ({ background: primary ? C.accent : "transparent", color: primary ? C.accentDark : C.txt, border: primary ? "none" : `1px solid ${C.line}`, borderRadius: 0, padding: "12px 20px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer" })
+export const small = (danger = false): React.CSSProperties => ({ background: "transparent", color: danger ? C.danger : C.txt, border: `1px solid ${danger ? C.danger : C.line}`, borderRadius: 0, padding: "6px 12px", font: "inherit", fontSize: 13, cursor: "pointer" })
+export const h2: React.CSSProperties = { fontFamily: serif, fontSize: 26, lineHeight: 1.2, margin: "0 0 8px", fontWeight: 600 }
+export const muted: React.CSSProperties = { color: C.mute, margin: 0 }
 
-function Msg({ text, err }: { text: string; err?: boolean }) {
+export function Msg({ text, err }: { text: string; err?: boolean }) {
     if (!text) return null
     return <p style={{ margin: "12px 0 0", color: err ? C.danger : C.accent, fontSize: 14 }}>{text}</p>
 }
@@ -128,7 +128,7 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
-const ONGLETS = ["accueil", "profil", "evenements", "annuaire", "gestion"] as const
+const ONGLETS = ["accueil", "profil", "evenements", "annuaire"] as const
 type O = typeof ONGLETS[number]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
 
@@ -138,7 +138,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
     const admin = moi.role === "admin"
     React.useEffect(() => { const f = () => setO(lireHash()); window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f) }, [])
     const setOnglet = (o: O) => { setO(o); try { history.replaceState(null, "", o === "accueil" ? location.pathname : "#" + o) } catch (e) {} }
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["annuaire", "Annuaire"], ...(admin ? ([["gestion", "Gestion"]] as [O, string][]) : [])]
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["annuaire", "Annuaire"]]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -146,40 +146,18 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                     <h2 style={{ ...h2, marginBottom: 2 }}>Bonjour{moi.prenom ? " " + moi.prenom : ""}</h2>
                     <p style={muted}>{moi.email}{admin ? " · administrateur" : ""}</p>
                 </div>
-                <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {admin && <a href="/admin" style={{ ...btn(false), textDecoration: "none" }}>Administration</a>}
+                    <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
+                </div>
             </div>
             <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
-                {tabs.map(([k, t]) => <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginLeft: k === "gestion" ? "auto" : 0 }}>{t}</button>)}
+                {tabs.map(([k, t]) => <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", }}>{t}</button>)}
             </div>
             {onglet === "accueil" && <VueEnsemble moi={moi} aller={setOnglet} />}
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
             {onglet === "evenements" && <Evenements />}
             {onglet === "annuaire" && <Annuaire />}
-            {onglet === "gestion" && admin && <Gestion moi={moi} />}
-        </div>
-    )
-}
-
-function Gestion({ moi }: { moi: Adherent }) {
-    const [s, setS] = React.useState<"agenda" | "semestriels" | "adherents" | "paiements" | "messages">("agenda")
-    const annee = new Date().getFullYear()
-    const pills: [typeof s, string][] = [["agenda", "Agenda et inscriptions"], ["adherents", "Adhérents"], ["paiements", "Paiements"], ["messages", "Écrire aux adhérents"], ["semestriels", "Semestriels"]]
-    return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {pills.map(([k, t]) => <button key={k} onClick={() => setS(k)} style={{ ...small(), padding: "8px 14px", fontSize: 14, background: s === k ? C.accent : "transparent", color: s === k ? C.accentDark : C.txt, borderColor: s === k ? C.accent : C.line, fontWeight: 600 }}>{t}</button>)}
-            </div>
-            {s === "agenda" && <><Aide>Ajoutez une sortie, une réunion ou le salon. Cochez « Inscriptions ouvertes » pour que les adhérents puissent s’inscrire depuis leur espace ; les inscrits apparaissent dans « Paiements ».</Aide>
-                <Editeur table="evenements" ordre="date_debut" titre="Événements" champs={CHAMPS_AGENDA} fixes={{ publie: true }} preparer={preparerEvenement} resume={(r) => `${r.date_label} — ${r.titre}${r.inscription_ouverte ? " · inscriptions ouvertes" : ""}${r.reserve_membres ? " · adhérents" : ""}`} /></>}
-            {s === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
-                <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
-            {s === "adherents" && <><Aide>Seules les adresses de cette liste peuvent se connecter. Pour le bureau, remplissez « Fonction au bureau » : la personne apparaît alors dans les contacts du bureau.</Aide><ImportAdherents />
-                <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.fonction_bureau ? " · " + r.fonction_bureau : ""}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} /></>}
-            {s === "paiements" && <><Aide>Les paiements en ligne s’enregistreront seuls une fois le paiement branché. Ici, notez les adhésions réglées par chèque ou en espèces, et passez en « valide » les inscriptions réglées.</Aide>
-                <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => ({ annee, montant: 20, formule: "Année complète", debut: `${annee}-01-01`, fin: `${annee}-12-31`, source: "Chèque" })} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
-                <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
-            {s === "messages" && <><Aide>Le message apparaît dans l’espace de chaque adhérent pendant deux ans. Il est aussi envoyé par e-mail à ceux qui l’acceptent, une fois l’envoi d’e-mails branché.</Aide>
-                <Editeur table="messages" ordre="envoye_le" desc titre="Messages envoyés" champs={CHAMPS_MSG} fixes={{ auteur: moi.email }} resume={(r) => `${dateFr(r.envoye_le)} — ${r.sujet}`} /></>}
         </div>
     )
 }
@@ -247,21 +225,21 @@ function Evenements() {
 
 
 // ---------- Espace personnel ----------
-const euros = (n: any) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
-const dateFr = (d: any, heure = false) => { if (!d) return "—"; const x = new Date(d); return heure ? x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + " à " + x.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) }
-const STATUTS: Record<string, string> = { valide: "Validé", en_attente: "En attente", abandonne: "Abandonné", rembourse: "Remboursé" }
-const lien: React.CSSProperties = { color: C.accent, textDecoration: "none" }
-function useTable(table: string, ordre: string) {
+export const euros = (n: any) => (Number(n) || 0).toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+export const dateFr = (d: any, heure = false) => { if (!d) return "—"; const x = new Date(d); return heure ? x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + " à " + x.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) }
+export const STATUTS: Record<string, string> = { valide: "Validé", en_attente: "En attente", abandonne: "Abandonné", rembourse: "Remboursé" }
+export const lien: React.CSSProperties = { color: C.accent, textDecoration: "none" }
+export function useTable(table: string, ordre: string) {
     const [rows, setRows] = React.useState<any[] | null>(null)
     React.useEffect(() => { sb()!.from(table).select("*").order(ordre, { ascending: false }).then(({ data }: any) => setRows(data ?? [])) }, [table])
     return rows
 }
-function useRpc(nom: string) {
+export function useRpc(nom: string) {
     const [rows, setRows] = React.useState<any[] | null>(null)
     React.useEffect(() => { sb()!.rpc(nom).then(({ data }: any) => setRows(data ?? [])) }, [nom])
     return rows
 }
-function exporter(nom: string, entetes: string[], lignes: any[][]) {
+export function exporter(nom: string, entetes: string[], lignes: any[][]) {
     const csv = "\ufeff" + [entetes, ...lignes].map((l) => l.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n")
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" })); a.download = nom; a.click()
 }
@@ -415,23 +393,25 @@ function Messages() {
     )
 }
 
-function Aide({ children }: { children: React.ReactNode }) {
+export function Aide({ children }: { children: React.ReactNode }) {
     return <p style={{ margin: 0, color: C.mute, fontSize: 14, borderLeft: `2px solid ${C.accent}`, paddingLeft: 12 }}>{children}</p>
 }
 
 // ---------- Éditeur générique (liste + formulaire) ----------
-type Champ = { k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "admin" | "sommaire" | "fichier"; requis?: boolean; aide?: string; dossier?: string; accept?: string; place?: string }
+export type Champ = { k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "admin" | "sommaire" | "fichier" | "choix"; options?: [string, string][]; requis?: boolean; aide?: string; dossier?: string; accept?: string; place?: string }
 
-const JOURS_MOIS = (d: string) => { try { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase()) } catch (e) { return d } }
-function preparerEvenement(r: any): string | null {
+export const JOURS_MOIS = (d: string) => { try { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase()) } catch (e) { return d } }
+export function preparerEvenement(r: any): string | null {
     if (!r.date_debut && !r.date_label) return "Indiquez une date, ou un mois approximatif."
     if (r.date_debut && (!r.date_label || r.__auto)) r.date_label = JOURS_MOIS(r.date_debut)
     return null
 }
 
-const CHAMPS_AGENDA: Champ[] = [
+export const CHAMPS_AGENDA: Champ[] = [
     { k: "titre", t: "Titre", type: "text", requis: true, place: "Sortie chez un producteur" },
     { k: "date_debut", t: "Date", type: "date" },
+    { k: "date_fin", t: "Jusqu’au (si plusieurs jours)", type: "date" },
+    { k: "heure", t: "Horaire", type: "text", place: "14 h – 18 h" },
     { k: "date_label", t: "Ou date approximative", type: "text", aide: "Seulement si la date n’est pas encore fixée.", place: "Juin 2027" },
     { k: "lieu", t: "Lieu", type: "text", place: "Bédée (35)" },
     { k: "description", t: "Description", type: "textarea" },
@@ -440,7 +420,7 @@ const CHAMPS_AGENDA: Champ[] = [
     { k: "prix", t: "Prix par personne (€, 0 = gratuit)", type: "number" },
     { k: "places", t: "Nombre de places (vide = illimité)", type: "number" },
 ]
-const CHAMPS_SEM: Champ[] = [
+export const CHAMPS_SEM: Champ[] = [
     { k: "numero", t: "Numéro", type: "number", requis: true },
     { k: "date_label", t: "Date de parution", type: "text", requis: true, place: "Mars 2027" },
     { k: "pdf_url", t: "PDF du numéro", type: "fichier", dossier: "pdf", accept: "application/pdf", requis: true },
@@ -449,7 +429,7 @@ const CHAMPS_SEM: Champ[] = [
     { k: "resume", t: "Résumé (facultatif)", type: "textarea" },
     { k: "publie", t: "Publier sur le site", type: "bool" },
 ]
-const CHAMPS_ADH: Champ[] = [
+export const CHAMPS_ADH: Champ[] = [
     { k: "email", t: "E-mail", type: "text", requis: true },
     { k: "prenom", t: "Prénom", type: "text" },
     { k: "nom", t: "Nom", type: "text" },
@@ -467,7 +447,7 @@ const CHAMPS_ADH: Champ[] = [
     { k: "actif", t: "Peut se connecter", type: "bool" },
 ]
 
-const CHAMPS_ADHESION: Champ[] = [
+export const CHAMPS_ADHESION: Champ[] = [
     { k: "email", t: "E-mail de l’adhérent", type: "text", requis: true },
     { k: "annee", t: "Année", type: "number", requis: true },
     { k: "formule", t: "Formule", type: "text", place: "Année complète pour un couple" },
@@ -477,7 +457,7 @@ const CHAMPS_ADHESION: Champ[] = [
     { k: "source", t: "Moyen de paiement", type: "text", place: "Chèque, espèces, HelloAsso…" },
     { k: "recu_url", t: "Reçu (PDF)", type: "fichier", dossier: "recus", accept: "application/pdf" },
 ]
-const CHAMPS_INSCR: Champ[] = [
+export const CHAMPS_INSCR: Champ[] = [
     { k: "email", t: "E-mail de l’adhérent", type: "text", requis: true },
     { k: "formulaire", t: "Objet", type: "text", requis: true, place: "Sortie du 16 mai, T-shirt ACS 10 ans…" },
     { k: "montant", t: "Montant (€)", type: "number" },
@@ -485,12 +465,12 @@ const CHAMPS_INSCR: Champ[] = [
     { k: "statut", t: "Statut (valide, en_attente, abandonne, rembourse)", type: "text" },
     { k: "reference", t: "Référence de paiement", type: "text" },
 ]
-const CHAMPS_MSG: Champ[] = [
+export const CHAMPS_MSG: Champ[] = [
     { k: "sujet", t: "Sujet", type: "text", requis: true, place: "Troc plantes le 27 septembre" },
     { k: "contenu", t: "Message", type: "textarea", requis: true },
 ]
 
-function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer, avant }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null; avant?: (row: any, ancien: any) => Promise<void> }) {
+export function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer, avant }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null; avant?: (row: any, ancien: any) => Promise<void> }) {
     const client = sb()!
     const [lignes, setLignes] = React.useState<any[]>([])
     const [edit, setEdit] = React.useState<any | null>(null)
@@ -504,7 +484,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, pr
     }, [table])
     React.useEffect(() => { charger() }, [charger])
 
-    const vide = () => ({ ...Object.fromEntries(champs.map((c) => [c.k, c.type === "bool" ? (c.k === "actif" || c.k === "annuaire") : c.type === "admin" ? "membre" : c.type === "sommaire" ? [] : ""])), ...(nouveau ? nouveau(lignes) : {}) })
+    const vide = () => ({ ...Object.fromEntries(champs.map((c) => [c.k, c.type === "bool" ? (c.k === "actif" || c.k === "annuaire") : c.type === "admin" ? "membre" : c.type === "sommaire" ? [] : c.type === "choix" ? (c.options?.[0]?.[0] ?? "") : ""])), ...(nouveau ? nouveau(lignes) : {}) })
 
     const enregistrer = async () => {
         for (const c of champs) if (c.requis && (edit[c.k] === "" || edit[c.k] == null)) return setMsg({ t: `« ${c.t} » est obligatoire.`, err: true })
@@ -569,7 +549,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, pr
     )
 }
 
-function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
+export function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
     const aide = c.aide ? <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>{c.aide}</span> : null
     if (c.type === "admin") return (
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
@@ -584,6 +564,7 @@ function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
     let el: React.ReactNode
     if (c.type === "textarea") el = <textarea style={{ ...input, minHeight: 90, resize: "vertical" }} value={v ?? ""} onChange={(e) => set(e.target.value)} />
         else if (c.type === "sommaire") el = <SommaireForm v={v} set={set} />
+    else if (c.type === "choix") el = <select style={input} value={v ?? ""} onChange={(e) => set(e.target.value)}>{(c.options || []).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
     else if (c.type === "fichier") el = <FichierForm v={v} set={set} dossier={c.dossier || "divers"} accept={c.accept} />
     else el = <input style={input} type={c.type === "date" ? "date" : c.type === "number" ? "number" : "text"} placeholder={c.place} value={v ?? ""} onChange={(e) => set(e.target.value)} />
     return <div><span style={label}>{c.t}{c.requis ? " *" : ""}</span>{el}{aide}</div>
@@ -598,7 +579,7 @@ function SommaireForm({ v, set }: { v: any; set: (v: any) => void }) {
     }} placeholder={"Édito ; 2\nEcheveria ; 6"} />
 }
 
-function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
+export function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
     const client = sb()!
     const [etat, setEtat] = React.useState("")
     const envoyer = async (f: File) => {
@@ -619,7 +600,7 @@ function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => voi
 }
 
 // ---------- Import en masse des adhérents ----------
-function ImportAdherents() {
+export function ImportAdherents() {
     const client = sb()!
     const [ouvert, setOuvert] = React.useState(false)
     const [txt, setTxt] = React.useState("")
@@ -650,7 +631,7 @@ function ImportAdherents() {
 }
 
 // ---------- Localisation d'une commune (Base Adresse Nationale, seule la commune est envoyée) ----------
-async function localiserAdherent(row: any, ancien: any) {
+export async function localiserAdherent(row: any, ancien: any) {
     if (!row.ville) { row.lat = null; row.lon = null; return }
     if (row.ville === ancien.ville && row.code_postal === ancien.code_postal && ancien.lat != null) return
     try {
