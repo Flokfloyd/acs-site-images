@@ -4,6 +4,7 @@ import { addPropertyControls, ControlType } from "framer"
 import { sb as sbReel, C, font, serif } from "./AcsBase.tsx"
 import { demoClient } from "./AcsDemo.tsx"
 import { COTE, pt } from "./CarteBretagne.tsx"
+import { GALERIE, type Photo } from "./GalerieAccueil.tsx"
 
 // En mode démo (aperçu dans l’éditeur), toutes les fonctions utilisent un faux client en mémoire
 let clientDemo: any = null
@@ -152,7 +153,7 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
-const ONGLETS = ["accueil", "profil", "evenements", "sondages", "annuaire"] as const
+const ONGLETS = ["accueil", "profil", "evenements", "sondages", "galerie", "annuaire"] as const
 type O = typeof ONGLETS[number]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
 
@@ -164,7 +165,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
     const setOnglet = (o: O) => { setO(o); try { history.replaceState(null, "", o === "accueil" ? location.pathname : "#" + o) } catch (e) {} }
     const [aRepondre, setARepondre] = React.useState(0)
     React.useEffect(() => { compterSondages().then(setARepondre) }, [onglet])
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["annuaire", "Annuaire"]]
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["galerie", "Galerie"], ["annuaire", "Annuaire"]]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -184,6 +185,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
             {onglet === "evenements" && <Evenements />}
             {onglet === "sondages" && <Sondages moi={moi} />}
+            {onglet === "galerie" && <GalerieMembres />}
             {onglet === "annuaire" && <Annuaire />}
         </div>
     )
@@ -738,6 +740,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, pr
             <div>
                 {visibles.map((r) => (
                     <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px 12px", padding: "12px 0", borderTop: `1px solid ${C.line}`, flexWrap: "wrap" }}>
+                        {table === "photos" && r.image_url && <img src={r.image_url} alt="" loading="lazy" style={{ width: 56, height: 42, objectFit: "cover", flex: "none", display: "block" }} />}
                         <span style={{ flex: "1 1 220px", minWidth: 0, overflowWrap: "anywhere" }}>{resume(r)}</span>
                         <span style={{ display: "flex", gap: 8, flex: "0 0 auto" }}>
                             <button style={small()} onClick={() => setEdit({ ...vide(), ...r })}>Modifier</button>
@@ -851,6 +854,42 @@ const REPERES: [string, number, number][] = [["Rennes", -1.68, 48.05], ["Nantes"
 const NOM_DEPT: Record<string, string> = { "22": "Côtes-d’Armor", "29": "Finistère", "35": "Ille-et-Vilaine", "44": "Loire-Atlantique", "56": "Morbihan", "49": "Maine-et-Loire", "50": "Manche", "53": "Mayenne", "72": "Sarthe", "85": "Vendée", "14": "Calvados", "76": "Seine-Maritime" }
 const sansAccent = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
 
+// ---------- Galerie (réservée aux adhérents) ----------
+function GalerieMembres() {
+    const client = sb()!
+    const [photos, setPhotos] = React.useState<Photo[] | null>(null)
+    const [album, setAlbum] = React.useState<string>("")
+    const [ouverte, setOuverte] = React.useState<number | null>(null)
+    React.useEffect(() => {
+        client.from("photos").select("id,image_url,legende,album,accueil,ordre").order("ordre").order("cree_le", { ascending: false })
+            .then(({ data, error }: any) => setPhotos(error ? GALERIE.SECOURS : data ?? []))
+    }, [])
+    if (!photos) return <div style={{ ...box, ...muted }}>Chargement de la galerie…</div>
+    const albums = Array.from(new Set(photos.map((p) => p.album || "Divers"))).sort((a, b) => a.localeCompare(b, "fr"))
+    const liste = album ? photos.filter((p) => (p.album || "Divers") === album) : photos
+    const puce = (actif: boolean): React.CSSProperties => ({ ...small(), background: actif ? C.accent : "transparent", color: actif ? C.accentDark : C.txt, borderColor: actif ? C.accent : C.line })
+    return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                <h2 style={{ ...h2, margin: 0 }}>Galerie</h2>
+                <span style={{ ...muted, fontSize: 13 }}>{liste.length} photo{liste.length > 1 ? "s" : ""} · réservées aux adhérents, merci de ne pas les diffuser.</span>
+            </div>
+            {albums.length > 1 && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button style={puce(!album)} onClick={() => setAlbum("")}>Toutes</button>
+                    {albums.map((a) => <button key={a} style={puce(album === a)} onClick={() => setAlbum(a)}>{a}</button>)}
+                </div>
+            )}
+            {liste.length === 0 ? <div style={{ ...box, ...muted }}>Aucune photo pour l’instant.</div> : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+                    {liste.map((p, i) => <GALERIE.Vignette key={p.id} p={p} hauteur="clamp(150px, 20vw, 200px)" onClick={() => setOuverte(i)} />)}
+                </div>
+            )}
+            {ouverte != null && <GALERIE.Diaporama photos={liste} index={ouverte} fermer={() => setOuverte(null)} />}
+        </div>
+    )
+}
+
 function Annuaire() {
     const client = sb()!
     const [liste, setListe] = React.useState<Fiche[] | null>(null)
@@ -946,3 +985,11 @@ function Annuaire() {
 
 // Composants partagés avec l’administration (regroupés pour ne pas apparaître comme composants séparés dans Framer)
 export const UI = { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage }
+
+export const CHAMPS_PHOTO: Champ[] = [
+    { k: "image_url", t: "Photo", type: "fichier", dossier: "galerie", accept: "image/*", requis: true },
+    { k: "legende", t: "Légende", type: "text", place: "Ex. : Copiapoa cinerea, Chili" },
+    { k: "album", t: "Album", type: "text", place: "Ex. : Salon 2026, Voyage à Madère, Collections" },
+    { k: "accueil", t: "Afficher sur la page d’accueil (visible de tous : aucune personne reconnaissable)", type: "bool" },
+    { k: "ordre", t: "Ordre d’affichage (1 = en premier)", type: "number" },
+]

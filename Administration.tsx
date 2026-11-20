@@ -6,8 +6,9 @@ import * as XLSX from "https://esm.sh/xlsx@0.18.5"
 import {
     sb, box, input, label, btn, small, h2, muted, euros, dateFr, STATUTS, exporter, UI,
     localiserAdherent, preparerEvenement, JOURS_MOIS,
-    CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR,
+    CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR, CHAMPS_PHOTO,
 } from "./EspaceMembre.tsx"
+import { GALERIE } from "./GalerieAccueil.tsx"
 import type { Champ, Question } from "./EspaceMembre.tsx"
 const { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage } = UI
 
@@ -24,7 +25,7 @@ function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
     return [setEl, etroit]
 }
 
-const ONGLETS = [["agenda", "Agenda"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["semestriels", "Semestriels"]] as const
+const ONGLETS = [["agenda", "Agenda"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"]] as const
 type O = (typeof ONGLETS)[number][0]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.some(([k]) => k === h) ? h : "agenda" }
 
@@ -86,6 +87,7 @@ export default function Administration(props: { pageMembre: string }) {
                 <Editeur table="produits" ordre="ordre" titre="Articles" champs={CHAMPS_PROD} nouveau={(l) => ({ actif: true, ordre: (l.length + 1) * 10 })} resume={(r) => `${r.categorie ? r.categorie + " · " : ""}${r.nom} · ${euros(r.prix)}${r.stock != null ? ` · stock ${r.stock}` : ""}${r.actif ? "" : " (retiré)"}`} /></>}
             {onglet === "campagnes" && <Campagnes moi={email} ouverte={campagneOuverte} setOuverte={setCampagneOuverte} />}
             {onglet === "sondages" && <SondagesAdmin moi={email} ouvrirCampagne={ouvrirCampagne} />}
+            {onglet === "galerie" && <GalerieAdmin />}
             {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
         </div>
@@ -116,8 +118,66 @@ const CHAMPS_ECR: Champ[] = [
 ]
 const CIBLES: [string, string][] = [["tous", "Tous les adhérents"], ["a_jour", "Adhérents à jour de cotisation"], ["retard", "Cotisation à renouveler"], ["bureau", "Membres du bureau"], ["evenement", "Inscrits à un événement"]]
 
+// ---------- Galerie ----------
+function GalerieAdmin() {
+    const client = sb()!
+    const [rev, setRev] = React.useState(0)
+    const [album, setAlbum] = React.useState("")
+    const [accueil, setAccueil] = React.useState(false)
+    const [etat, setEtat] = React.useState<{ t: string; err: boolean } | null>(null)
+    const [albums, setAlbums] = React.useState<string[]>([])
+    React.useEffect(() => { client.from("photos").select("album").then(({ data }: any) => setAlbums(Array.from(new Set((data ?? []).map((r) => r.album).filter(Boolean))) as string[])) }, [rev])
+    const envoyer = async (fichiers: FileList | null) => {
+        if (!fichiers || !fichiers.length) return
+        const liste = Array.from(fichiers).filter((f) => f.type.startsWith("image/"))
+        let ok = 0
+        for (const [n, f] of liste.entries()) {
+            setEtat({ t: `Envoi ${n + 1} / ${liste.length}…`, err: false })
+            try {
+                const blob = await GALERIE.reduireImage(f)
+                const nom = `galerie/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
+                const up = await client.storage.from("semestriels").upload(nom, blob, { contentType: "image/jpeg", upsert: false })
+                if (up.error) throw up.error
+                const url = client.storage.from("semestriels").getPublicUrl(nom).data.publicUrl
+                const legende = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/^(img|dsc|pxl|photo)\s*\d.*$/i, "").trim() || null
+                const ins = await client.from("photos").insert({ image_url: url, legende, album: album.trim() || null, accueil, ordre: 100 })
+                if (ins.error) throw ins.error
+                ok++
+            } catch (e) { setEtat({ t: `Échec pour ${f.name} : ${String((e as any).message || e)}`, err: true }); return }
+        }
+        setEtat({ t: `${ok} photo${ok > 1 ? "s" : ""} ajoutée${ok > 1 ? "s" : ""}. Ajoutez les légendes ci-dessous.`, err: false })
+        setRev((x) => x + 1)
+    }
+    return (
+        <>
+            <Aide>Les photos cochées « page d’accueil » sont visibles de tous : uniquement des plantes, paysages ou stands, sans personne reconnaissable. Les autres ne sont visibles que des adhérents connectés (onglet Galerie de l’espace membre). Les photos sont réduites automatiquement avant l’envoi.</Aide>
+            <div style={box}>
+                <h2 style={h2}>Ajouter des photos</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 8 }}>
+                    <label style={{ display: "block" }}>
+                        <span style={label}>Album</span>
+                        <input style={input} list="acs-albums" value={album} onChange={(e) => setAlbum(e.target.value)} placeholder="Ex. : Salon 2026" />
+                        <datalist id="acs-albums">{albums.map((a) => <option key={a} value={a} />)}</datalist>
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 22, cursor: "pointer", fontSize: 14 }}>
+                        <input type="checkbox" checked={accueil} onChange={(e) => setAccueil(e.target.checked)} />
+                        Montrer aussi sur la page d’accueil
+                    </label>
+                </div>
+                <label style={{ ...btn(), display: "inline-block", marginTop: 16, cursor: "pointer" }}>
+                    Choisir des photos…
+                    <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => { envoyer(e.target.files); e.target.value = "" }} />
+                </label>
+                {etat && <div><Msg text={etat.t} err={etat.err} /></div>}
+            </div>
+            <Editeur key={rev} table="photos" ordre="ordre" titre="Photos" champs={CHAMPS_PHOTO} nouveau={() => ({ ordre: 100, accueil: false })}
+                resume={(r) => `${r.accueil ? "★ Accueil · " : ""}${r.album ? r.album + " · " : ""}${r.legende || "(sans légende)"}`} />
+        </>
+    )
+}
+
 // ---------- Sauvegarde complète (classeur Excel, une feuille par table) ----------
-const TABLES_SAUVEGARDE: [string, string][] = [["adherents", "nom"], ["adhesions", "cree_le"], ["inscriptions", "cree_le"], ["dons", "le"], ["evenements", "date_debut"], ["ecritures", "le"], ["produits", "ordre"], ["campagnes", "cree_le"], ["messages", "envoye_le"], ["sondages", "cree_le"], ["reponses", "cree_le"], ["semestriels", "numero"]]
+const TABLES_SAUVEGARDE: [string, string][] = [["adherents", "nom"], ["adhesions", "cree_le"], ["inscriptions", "cree_le"], ["dons", "le"], ["evenements", "date_debut"], ["ecritures", "le"], ["produits", "ordre"], ["campagnes", "cree_le"], ["messages", "envoye_le"], ["sondages", "cree_le"], ["reponses", "cree_le"], ["photos", "ordre"], ["semestriels", "numero"]]
 function Sauvegarde() {
     const [derniere, setDerniere] = React.useState<string | null>(null)
     const [etat, setEtat] = React.useState("")
