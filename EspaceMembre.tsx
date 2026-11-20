@@ -430,7 +430,8 @@ function Annuaire() {
 
     const carte = (
         <div style={{ position: etroit ? "relative" : "sticky", top: 90, flex: etroit ? "none" : "1.15 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>
-            <svg viewBox="-24 -4 272 196" style={{ width: "100%", height: "auto", display: "block", overflow: "visible" }} role="img" aria-label="Carte des adhérents en Bretagne">
+            <div style={{ width: "100%", aspectRatio: "272 / 196", position: "relative" }}>
+            <svg viewBox="-24 -4 272 196" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block", overflow: "visible" }} role="img" aria-label="Carte des adhérents en Bretagne">
                 <path d={COTE} fill="none" stroke={C.txt} strokeOpacity={0.75} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
                 {REPERES.map(([n, lo, la]) => { const [x, y] = pt(lo, la); return <text key={n} x={x} y={y + 1.6} textAnchor="middle" fontFamily="Poppins, sans-serif" fontSize={4.4} letterSpacing={0.6} fill={C.txt} fillOpacity={0.35}>{n.toUpperCase()}</text> })}
                 {[...communes.entries()].map(([k, c]) => {
@@ -444,6 +445,7 @@ function Annuaire() {
                 })}
                 {infos && <text x={infos.x + 4} y={infos.y - 4} fontFamily="Poppins, sans-serif" fontSize={6} fontWeight={600} fill={C.txt} stroke={C.bg} strokeWidth={2} paintOrder="stroke">{infos.ville}{infos.n > 1 ? ` · ${infos.n}` : ""}</text>}
             </svg>
+            </div>
             <p style={{ ...muted, fontSize: 13, marginTop: 10 }}>{communes.size} communes · cliquez sur un point pour voir qui y habite. Les points sont placés au centre de la commune.</p>
         </div>
     )
