@@ -51,8 +51,8 @@ function PagePdf({ url, p, style, alt }: { url: string; p: number; style: React.
   return s ? <img src={s} alt={alt} draggable={false} style={style} /> : <div style={{ ...style, display: "flex", alignItems: "center", justifyContent: "center", color: "#8a7c6c", font: "500 13px " + FONT }}>Chargement…</div>
 }
 
-export default function Visionneuse(props: { start: number; essaiPdf?: string }) {
-  const [issues, setIssues] = React.useState<Issue[]>(props.essaiPdf ? [...STATIQUES, { n: 99, date: "Essai", ch: [["Page 3", 3]], pdf: props.essaiPdf, total: 16 }] : STATIQUES)
+export default function Visionneuse(props: { start: number }) {
+  const [issues, setIssues] = React.useState<Issue[]>(STATIQUES)
   const [issue, setIssue] = React.useState(Math.max(0, Math.min(STATIQUES.length - 1, (props.start || 4) - 1)))
   const [page, setPage] = React.useState(1) // première page visible
   const [zoom, setZoom] = React.useState(1)
@@ -317,4 +317,4 @@ export default function Visionneuse(props: { start: number; essaiPdf?: string })
   )
 }
 ;(Visionneuse as any).defaultProps = { start: 4, width: 1120, height: 760 }
-addPropertyControls(Visionneuse, { start: { type: ControlType.Number, title: "N° initial", min: 1, max: 20, step: 1, defaultValue: 4 }, essaiPdf: { type: ControlType.String, title: "PDF d’essai", defaultValue: "" } })
+addPropertyControls(Visionneuse, { start: { type: ControlType.Number, title: "N° initial", min: 1, max: 20, step: 1, defaultValue: 4 } })

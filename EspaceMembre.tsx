@@ -152,47 +152,57 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                     </div>
                 </div>
             )}
-            {onglet === "agenda" && <Editeur table="evenements" ordre="date_debut" titre="Événements" champs={CHAMPS_AGENDA} resume={(r) => `${r.date_label} — ${r.titre}`} />}
-            {onglet === "semestriels" && <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (brouillon)"}`} />}
-            {onglet === "adherents" && <><ImportAdherents /><Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.role === "admin" ? " · admin" : ""}${r.actif ? "" : " (inactif)"}`} /></>}
+            {onglet === "agenda" && <><Aide>Ajoutez une sortie, une réunion ou le salon. S’il n’y a pas encore de date précise, laissez la date vide et écrivez par exemple « Juin 2027 ».</Aide>
+                <Editeur table="evenements" ordre="date_debut" titre="Événements" champs={CHAMPS_AGENDA} fixes={{ publie: true }} preparer={preparerEvenement} resume={(r) => `${r.date_label} — ${r.titre}${r.reserve_membres ? " · adhérents" : ""}`} /></>}
+            {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la visionneuse du site.</Aide>
+                <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
+            {onglet === "adherents" && <><Aide>Seules les adresses de cette liste peuvent se connecter. Pour un renouvellement, modifiez l’année de cotisation.</Aide><ImportAdherents />
+                <Editeur table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} nouveau={() => ({ cotisation_annee: annee })} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} /></>}
         </div>
     )
 }
 
+function Aide({ children }: { children: React.ReactNode }) {
+    return <p style={{ margin: 0, color: C.mute, fontSize: 14, borderLeft: `2px solid ${C.accent}`, paddingLeft: 12 }}>{children}</p>
+}
+
 // ---------- Éditeur générique (liste + formulaire) ----------
-type Champ = { k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "select" | "sommaire" | "fichier"; options?: string[]; requis?: boolean; aide?: string; dossier?: string }
+type Champ = { k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "admin" | "sommaire" | "fichier"; requis?: boolean; aide?: string; dossier?: string; accept?: string; place?: string }
+
+const JOURS_MOIS = (d: string) => { try { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase()) } catch (e) { return d } }
+function preparerEvenement(r: any): string | null {
+    if (!r.date_debut && !r.date_label) return "Indiquez une date, ou un mois approximatif."
+    if (r.date_debut && (!r.date_label || r.__auto)) r.date_label = JOURS_MOIS(r.date_debut)
+    return null
+}
 
 const CHAMPS_AGENDA: Champ[] = [
-    { k: "date_label", t: "Date affichée", type: "text", requis: true, aide: "Ex. « Samedi 14 mars 2027 » ou « Juin 2027 »" },
-    { k: "date_debut", t: "Date (pour le tri)", type: "date", aide: "Laisser vide si à confirmer" },
-    { k: "titre", t: "Titre", type: "text", requis: true },
-    { k: "lieu", t: "Lieu", type: "text" },
+    { k: "titre", t: "Titre", type: "text", requis: true, place: "Sortie chez un producteur" },
+    { k: "date_debut", t: "Date", type: "date" },
+    { k: "date_label", t: "Ou date approximative", type: "text", aide: "Seulement si la date n’est pas encore fixée.", place: "Juin 2027" },
+    { k: "lieu", t: "Lieu", type: "text", place: "Bédée (35)" },
     { k: "description", t: "Description", type: "textarea" },
-    { k: "reserve_membres", t: "Réservé aux adhérents", type: "bool" },
-    { k: "publie", t: "Publié", type: "bool" },
+    { k: "reserve_membres", t: "Visible seulement par les adhérents connectés", type: "bool" },
 ]
 const CHAMPS_SEM: Champ[] = [
     { k: "numero", t: "Numéro", type: "number", requis: true },
-    { k: "date_label", t: "Date de parution", type: "text", requis: true, aide: "Ex. « Mars 2027 »" },
-    { k: "titre", t: "Titre (facultatif)", type: "text" },
-    { k: "resume", t: "Résumé", type: "textarea" },
-    { k: "sommaire", t: "Sommaire", type: "sommaire", aide: "Une ligne par article : Titre ; page" },
-    { k: "nb_pages", t: "Nombre de pages", type: "number" },
-    { k: "couverture_url", t: "Couverture", type: "fichier", dossier: "couvertures" },
-    { k: "pdf_url", t: "PDF du numéro", type: "fichier", dossier: "pdf" },
-    { k: "pages_base_url", t: "Dossier des pages (images)", type: "text", aide: "Rempli par l’équipe technique après conversion du PDF" },
-    { k: "publie", t: "Publié sur le site", type: "bool" },
+    { k: "date_label", t: "Date de parution", type: "text", requis: true, place: "Mars 2027" },
+    { k: "pdf_url", t: "PDF du numéro", type: "fichier", dossier: "pdf", accept: "application/pdf", requis: true },
+    { k: "couverture_url", t: "Couverture (image)", type: "fichier", dossier: "couvertures", accept: "image/*" },
+    { k: "sommaire", t: "Sommaire (facultatif)", type: "sommaire", aide: "Une ligne par article : titre ; page" },
+    { k: "resume", t: "Résumé (facultatif)", type: "textarea" },
+    { k: "publie", t: "Publier sur le site", type: "bool" },
 ]
 const CHAMPS_ADH: Champ[] = [
     { k: "email", t: "E-mail", type: "text", requis: true },
     { k: "prenom", t: "Prénom", type: "text" },
     { k: "nom", t: "Nom", type: "text" },
-    { k: "cotisation_annee", t: "Cotisation réglée pour l’année", type: "number" },
-    { k: "role", t: "Rôle", type: "select", options: ["membre", "admin"] },
-    { k: "actif", t: "Actif (peut se connecter)", type: "bool" },
+    { k: "cotisation_annee", t: "Cotisation payée pour l’année", type: "number" },
+    { k: "role", t: "Administrateur (peut gérer le site)", type: "admin" },
+    { k: "actif", t: "Peut se connecter", type: "bool" },
 ]
 
-function Editeur({ table, ordre, desc, titre, champs, resume }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string }) {
+function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, preparer }: { table: string; ordre: string; desc?: boolean; titre: string; champs: Champ[]; resume: (r: any) => string; fixes?: any; nouveau?: (lignes: any[]) => any; preparer?: (r: any) => string | null }) {
     const client = sb()!
     const [lignes, setLignes] = React.useState<any[]>([])
     const [edit, setEdit] = React.useState<any | null>(null)
@@ -206,11 +216,11 @@ function Editeur({ table, ordre, desc, titre, champs, resume }: { table: string;
     }, [table])
     React.useEffect(() => { charger() }, [charger])
 
-    const vide = () => Object.fromEntries(champs.map((c) => [c.k, c.type === "bool" ? (c.k === "actif" || c.k === "publie") : c.type === "select" ? c.options![0] : c.type === "sommaire" ? [] : ""]))
+    const vide = () => ({ ...Object.fromEntries(champs.map((c) => [c.k, c.type === "bool" ? c.k === "actif" : c.type === "admin" ? "membre" : c.type === "sommaire" ? [] : ""])), ...(nouveau ? nouveau(lignes) : {}) })
 
     const enregistrer = async () => {
         for (const c of champs) if (c.requis && (edit[c.k] === "" || edit[c.k] == null)) return setMsg({ t: `« ${c.t} » est obligatoire.`, err: true })
-        const row: any = {}
+        const row: any = { ...(fixes || {}) }
         for (const c of champs) {
             let v = edit[c.k]
             if (v === "") v = null
@@ -218,6 +228,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume }: { table: string;
             if (c.k === "email" && v) v = String(v).trim().toLowerCase()
             row[c.k] = v
         }
+        if (preparer) { row.__auto = edit.__auto; const err = preparer(row); delete row.__auto; if (err) return setMsg({ t: err, err: true }) }
         const q = edit.id ? client.from(table).update(row).eq("id", edit.id) : client.from(table).insert(row)
         const { error } = await q
         if (error) return setMsg({ t: error.message.includes("duplicate") ? "Cette entrée existe déjà." : error.message, err: true })
@@ -235,7 +246,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume }: { table: string;
         <div style={box}>
             <h3 style={{ ...h2, fontSize: 20 }}>{edit.id ? "Modifier" : "Ajouter"} · {titre}</h3>
             <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
-                {champs.map((c) => <ChampForm key={c.k} c={c} v={edit[c.k]} set={(v) => setEdit({ ...edit, [c.k]: v })} />)}
+                {champs.map((c) => <ChampForm key={c.k} c={c} v={edit[c.k]} set={(v) => setEdit({ ...edit, [c.k]: v, ...(c.k === "date_debut" && edit.date_debut && edit.date_label === JOURS_MOIS(edit.date_debut) ? { __auto: true } : {}) })} />)}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
                 <button style={btn()} onClick={enregistrer}>Enregistrer</button>
@@ -271,6 +282,11 @@ function Editeur({ table, ordre, desc, titre, champs, resume }: { table: string;
 
 function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
     const aide = c.aide ? <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>{c.aide}</span> : null
+    if (c.type === "admin") return (
+        <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <input type="checkbox" checked={v === "admin"} onChange={(e) => set(e.target.checked ? "admin" : "membre")} style={{ width: 18, height: 18, accentColor: C.accent }} />{c.t}
+        </label>
+    )
     if (c.type === "bool") return (
         <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
             <input type="checkbox" checked={!!v} onChange={(e) => set(e.target.checked)} style={{ width: 18, height: 18, accentColor: C.accent }} />{c.t}
@@ -278,10 +294,9 @@ function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
     )
     let el: React.ReactNode
     if (c.type === "textarea") el = <textarea style={{ ...input, minHeight: 90, resize: "vertical" }} value={v ?? ""} onChange={(e) => set(e.target.value)} />
-    else if (c.type === "select") el = <select style={input} value={v ?? ""} onChange={(e) => set(e.target.value)}>{c.options!.map((o) => <option key={o} value={o}>{o}</option>)}</select>
-    else if (c.type === "sommaire") el = <SommaireForm v={v} set={set} />
-    else if (c.type === "fichier") el = <FichierForm v={v} set={set} dossier={c.dossier || "divers"} />
-    else el = <input style={input} type={c.type === "date" ? "date" : c.type === "number" ? "number" : "text"} value={v ?? ""} onChange={(e) => set(e.target.value)} />
+        else if (c.type === "sommaire") el = <SommaireForm v={v} set={set} />
+    else if (c.type === "fichier") el = <FichierForm v={v} set={set} dossier={c.dossier || "divers"} accept={c.accept} />
+    else el = <input style={input} type={c.type === "date" ? "date" : c.type === "number" ? "number" : "text"} placeholder={c.place} value={v ?? ""} onChange={(e) => set(e.target.value)} />
     return <div><span style={label}>{c.t}{c.requis ? " *" : ""}</span>{el}{aide}</div>
 }
 
@@ -294,7 +309,7 @@ function SommaireForm({ v, set }: { v: any; set: (v: any) => void }) {
     }} placeholder={"Édito ; 2\nEcheveria ; 6"} />
 }
 
-function FichierForm({ v, set, dossier }: { v: any; set: (v: any) => void; dossier: string }) {
+function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
     const client = sb()!
     const [etat, setEtat] = React.useState("")
     const envoyer = async (f: File) => {
@@ -308,7 +323,7 @@ function FichierForm({ v, set, dossier }: { v: any; set: (v: any) => void; dossi
         <div>
             {v && /\.(jpe?g|png|webp)$/i.test(v) && <img src={v} alt="" style={{ display: "block", maxWidth: 140, marginBottom: 10, border: `1px solid ${C.line}` }} />}
             {v && !/\.(jpe?g|png|webp)$/i.test(v) && <a href={v} target="_blank" rel="noreferrer" style={{ color: C.accent, display: "block", marginBottom: 10, wordBreak: "break-all" }}>{v.split("/").pop()}</a>}
-            <input type="file" onChange={(e) => e.target.files?.[0] && envoyer(e.target.files[0])} style={{ color: C.mute, font: "inherit" }} />
+            <input type="file" accept={accept} onChange={(e) => e.target.files?.[0] && envoyer(e.target.files[0])} style={{ color: C.mute, font: "inherit" }} />
             {etat && <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>{etat}</span>}
         </div>
     )
