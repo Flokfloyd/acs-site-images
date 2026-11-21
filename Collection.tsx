@@ -218,7 +218,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
             ["Exemplaires", "Nombre de plantes identiques (1 par défaut)."],
             ["À échanger, Graines à donner", "Écrivez oui ou x pour proposer la plante dans la bourse d’échange."],
             [""],
-            ["Ensuite : espace membre › Ma collection › Importer Excel. Un aperçu s’affiche avant l’enregistrement ; les lignes déjà présentes sont ignorées."],
+            ["Ensuite : espace membre › Collection › Importer Excel. Un aperçu s’affiche avant l’enregistrement ; les lignes déjà présentes sont ignorées."],
         ]
         const wa = X.utils.aoa_to_sheet(aideL)
         wa["!cols"] = [{ wch: 28 }, { wch: 110 }]
