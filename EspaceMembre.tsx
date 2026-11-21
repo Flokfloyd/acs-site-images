@@ -194,9 +194,16 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
 // ---------- Sondages : les adhérents répondent ----------
 export type Question = { id: string; intitule: string; type: "unique" | "multiple" | "nombre" | "texte"; options?: string[]; obligatoire?: boolean }
 const ouvertAujourdhui = (s: any) => s.ouvert && (!s.cloture_le || s.cloture_le >= new Date().toISOString().slice(0, 10))
+// Adresse du membre connecté : sert à ne lire que ses propres lignes (un administrateur voit toutes celles des autres)
+async function monEmail(): Promise<string> {
+    const { data } = await sb()!.auth.getSession()
+    return (data?.session?.user?.email || "").trim()
+}
+const filtreEmail = (e: string) => e.replace(/([\\%_])/g, "\\$1")
 async function compterSondages(): Promise<number> {
     const c = sb(); if (!c) return 0
-    const [{ data: so }, { data: re }] = await Promise.all([c.from("sondages").select("id,ouvert,cloture_le"), c.from("reponses").select("sondage_id")])
+    const em = filtreEmail(await monEmail())
+    const [{ data: so }, { data: re }] = await Promise.all([c.from("sondages").select("id,ouvert,cloture_le"), c.from("reponses").select("sondage_id").ilike("email", em)])
     const faits = new Set((re ?? []).map((r: any) => r.sondage_id))
     return (so ?? []).filter((x: any) => ouvertAujourdhui(x) && !faits.has(x.id)).length
 }
@@ -220,7 +227,7 @@ function Sondages({ moi }: { moi: Adherent }) {
     const [evts, setEvts] = React.useState<Record<string, any>>({})
     const [ouvert, setOuvert] = React.useState<string | null>(null)
     const charger = React.useCallback(async () => {
-        const [{ data: so }, { data: re }] = await Promise.all([client.from("sondages").select("*").order("cree_le", { ascending: false }), client.from("reponses").select("*")])
+        const [{ data: so }, { data: re }] = await Promise.all([client.from("sondages").select("*").order("cree_le", { ascending: false }), client.from("reponses").select("*").ilike("email", filtreEmail(moi.email))])
         const l = (so ?? []).filter(ouvertAujourdhui)
         setListe(l); setMes(Object.fromEntries((re ?? []).map((r: any) => [r.sondage_id, r])))
         const ids = l.map((x: any) => x.evenement_id).filter(Boolean)
@@ -351,7 +358,7 @@ function Evenements() {
         const { data } = await client.from("evenements").select("*").order("date_debut", { ascending: true, nullsFirst: false })
         const futurs = (data ?? []).filter((e: any) => e.publie !== false && (!e.date_debut || e.date_debut >= auj))
         setEvts(futurs)
-        const { data: m } = await client.from("inscriptions").select("*").order("cree_le", { ascending: false })
+        const { data: m } = await client.from("inscriptions").select("*").ilike("email", filtreEmail(await monEmail())).order("cree_le", { ascending: false })
         setMes((m ?? []).filter((r: any) => r.evenement_id && r.statut !== "abandonne"))
         const p: Record<string, number> = {}
         for (const e of futurs) if (e.inscription_ouverte && e.places) { const { data: n } = await client.rpc("places_prises", { evt: e.id }); p[e.id] = n ?? 0 }
@@ -406,9 +413,14 @@ export const euros = (n: any) => (Number(n) || 0).toLocaleString("fr-FR", { styl
 export const dateFr = (d: any, heure = false) => { if (!d) return "—"; const x = new Date(d); return heure ? x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) + " à " + x.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : x.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) }
 export const STATUTS: Record<string, string> = { valide: "Validé", en_attente: "En attente", abandonne: "Abandonné", rembourse: "Remboursé" }
 export const lien: React.CSSProperties = { color: C.accent, textDecoration: "none" }
-export function useTable(table: string, ordre: string) {
+// email : ne garde que les lignes de ce membre (indispensable pour un administrateur, qui voit toutes les lignes)
+export function useTable(table: string, ordre: string, email?: string) {
     const [rows, setRows] = React.useState<any[] | null>(null)
-    React.useEffect(() => { sb()!.from(table).select("*").order(ordre, { ascending: false }).then(({ data }: any) => setRows(data ?? [])) }, [table])
+    React.useEffect(() => {
+        let q = sb()!.from(table).select("*")
+        if (email) q = q.ilike("email", email.trim().replace(/([\\%_])/g, "\\$1"))
+        q.order(ordre, { ascending: false }).then(({ data }: any) => setRows(data ?? []))
+    }, [table, email])
     return rows
 }
 export function useRpc(nom: string) {
@@ -422,8 +434,8 @@ export function exporter(nom: string, entetes: string[], lignes: any[][]) {
 }
 
 function VueEnsemble({ moi, aller }: { moi: Adherent; aller: (o: any) => void }) {
-    const adhesions = useTable("adhesions", "annee")
-    const inscr = useTable("inscriptions", "cree_le")
+    const adhesions = useTable("adhesions", "annee", moi.email)
+    const inscr = useTable("inscriptions", "cree_le", moi.email)
     const bureau = useRpc("bureau")
     const annee = new Date().getFullYear()
     const aJour = (moi.cotisation_annee ?? 0) >= annee
@@ -557,9 +569,9 @@ function Tableau2({ titre, entetes, lignes, fichier, vide }: { titre: string; en
 }
 
 function Historique({ moi }: { moi: Adherent }) {
-    const adhesions = useTable("adhesions", "annee")
-    const inscr = useTable("inscriptions", "cree_le")
-    const dons = useTable("dons", "le")
+    const adhesions = useTable("adhesions", "annee", moi.email)
+    const inscr = useTable("inscriptions", "cree_le", moi.email)
+    const dons = useTable("dons", "le", moi.email)
     const valides = inscr?.filter((r) => r.statut !== "abandonne") ?? null
     const pastille = (st: string) => <span style={{ fontSize: 12, padding: "2px 8px", border: `1px solid ${st === "valide" ? C.accent : C.line}`, color: st === "valide" ? C.accent : C.mute, whiteSpace: "nowrap" }}>{STATUTS[st] || st}</span>
     return (

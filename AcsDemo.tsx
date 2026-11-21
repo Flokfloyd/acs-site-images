@@ -37,6 +37,7 @@ class Q {
     constructor(public table: string) { this.rows = data[table] }
     select() { return this }
     eq(k: string, v: any) { this.filters.push([k, v]); return this }
+    ilike(k: string, v: string) { this.rows = this.rows.filter((r) => String(r[k] ?? "").toLowerCase() === String(v).replace(/\\(.)/g, "$1").toLowerCase()); return this }
     or() { return this }
     limit() { return this }
     order(k: string, o?: { ascending?: boolean }) { const s = o?.ascending === false ? -1 : 1; this.rows = [...this.rows].sort((a, b) => (a[k] ?? "￿") > (b[k] ?? "￿") ? s : -s); return this }
