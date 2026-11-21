@@ -21,8 +21,16 @@ type Echange = { id: string; espece: string; type?: string; statut: string; orig
 export const TYPES = ["Cactus", "Aizoacées", "Caudex", "Autres succulentes", "Bulbes", "Autre"]
 export const SUB_COURT = ["", "Cactée classique", "Cactée gourmande", "Délicate, sud-afr.", "Succulente", "Épiphyte", "Semis"]
 export const SUBSTRATS = ["", "Classique cactée", "Cactée gourmande", "Cactée délicate et sud-africaine", "Classique succulente", "Cactée épiphyte", "Semis"]
-export const EXPOS = ["Soleil", "Lumière vive", "Mi-ombre"]
+export const EXPOS = ["Soleil", "Mi-ombre", "Ombre"]
+export const ICONE_EXPO: Record<string, string> = { Soleil: "☀️", "Mi-ombre": "⛅", Ombre: "☁️" }
 export const ARROSAGES = ["Faible", "Modéré", "Régulier"]
+export const GOUTTES: Record<string, string> = { Faible: "💧", "Modéré": "💧💧", "Régulier": "💧💧💧" }
+const CERCLES = ["", "❶", "❷", "❸", "❹", "❺", "❻"]
+// valeurs des fiches de genre (« Lumière vive ») ramenées aux trois expositions du club
+export const normExpo = (e?: string | null) => (!e ? null : /soleil|☀/i.test(e) ? "Soleil" : /☁|^ombre/i.test(e) ? "Ombre" : "Mi-ombre")
+const expoAff = (e?: string | null) => (e ? `${ICONE_EXPO[e] ?? ""} ${e}`.trim() : "")
+const eauAff = (e?: string | null) => (e ? GOUTTES[e] ?? e : "")
+const subAff = (n?: number | null, court = true) => (n ? `${CERCLES[n]} ${(court ? SUB_COURT : SUBSTRATS)[n]}` : "")
 type Genres = Record<string, [string, string, [number | null, number, string, string] | null, string]>
 let ESPECES: Promise<Genres> | null = null
 const chargerEspeces = () => (ESPECES ??= fetch(URL_ESPECES).then((r) => r.json()).then((j) => j.genres as Genres).catch(() => { ESPECES = null; return {} as Genres }))
@@ -65,10 +73,10 @@ const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
         { k: "code", w: 72, t: "N°", v: (p) => p.code },
         { k: "origine", w: 210, t: "Origine", v: (p) => p.origine },
         { k: "n_collecte", w: 110, t: "N° collecte", v: (p) => p.n_collecte },
-        { k: "exposition", w: 112, t: "Exposition", v: (p) => p.exposition },
-        { k: "substrat", w: 150, t: "Substrat", v: (p) => (p.substrat ? SUB_COURT[p.substrat] : "") },
+        { k: "exposition", w: 112, t: "Exposition", v: (p) => expoAff(p.exposition) },
+        { k: "substrat", w: 150, t: "Substrat", v: (p) => subAff(p.substrat) },
         { k: "t_min", w: 72, t: "T min", v: (p) => (p.t_min != null ? `${p.t_min} °C` : ""), tri: (p) => p.t_min ?? 99 },
-        { k: "arrosage", w: 92, t: "Arrosage", v: (p) => p.arrosage },
+        { k: "arrosage", w: 92, t: "Eau", v: (p) => eauAff(p.arrosage) },
         { k: "semis", w: 100, t: "Semis", v: (p) => p.semis, tri: (p) => cleDate(p.semis) },
         { k: "acquis", w: 84, t: "Acquis", v: (p) => p.acquis, tri: (p) => cleDate(p.acquis) },
         { k: "rempotage", w: 100, t: "Rempotage", v: (p) => p.rempotage, tri: (p) => cleDate(p.rempotage) },
@@ -91,9 +99,9 @@ const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
     rusticite: [
         { k: "espece", w: 270, t: "Espèce", v: (p) => <NomEspece p={p} />, tri: (p) => p.espece },
         { k: "t_min", w: 72, t: "T min", v: (p) => (p.t_min != null ? `${p.t_min} °C` : "—"), tri: (p) => p.t_min ?? 99 },
-        { k: "exposition", w: 112, t: "Exposition", v: (p) => p.exposition },
-        { k: "arrosage", w: 92, t: "Arrosage", v: (p) => p.arrosage },
-        { k: "substrat", w: 150, t: "Substrat", v: (p) => (p.substrat ? SUB_COURT[p.substrat] : "") },
+        { k: "exposition", w: 112, t: "Exposition", v: (p) => expoAff(p.exposition) },
+        { k: "arrosage", w: 92, t: "Eau", v: (p) => eauAff(p.arrosage) },
+        { k: "substrat", w: 150, t: "Substrat", v: (p) => subAff(p.substrat) },
         { k: "origine", w: 210, t: "Origine", v: (p) => p.origine },
     ],
 }
@@ -161,8 +169,8 @@ export default function Collection({ client, email, auteur }: { client: any; ema
             const X: any = await import(/* @vite-ignore */ URL_XLSX)
             const ligne = (p: Plante) => ({
                 "N°": p.code ?? "", Espèce: p.espece, Type: p.type ?? "", Liste: p.statut === "semis" ? "Semis" : "Collection",
-                Origine: p.origine ?? "", "N° collecte": p.n_collecte ?? "", Exposition: p.exposition ?? "", Substrat: p.substrat ? SUBSTRATS[p.substrat] : "",
-                "T(°C)": p.t_min ?? "", Arrosage: p.arrosage ?? "", Semis: p.semis ?? "", Méthode: p.methode ?? "", Graines: p.nb_graines ?? "", Levées: p.nb_leves ?? "",
+                Origine: p.origine ?? "", "N° collecte": p.n_collecte ?? "", Exposition: expoAff(p.exposition), Substrat: subAff(p.substrat, false),
+                "T(°C)": p.t_min ?? "", Arrosage: eauAff(p.arrosage), Semis: p.semis ?? "", Méthode: p.methode ?? "", Graines: p.nb_graines ?? "", Levées: p.nb_leves ?? "",
                 "%": taux(p) ?? "", Vivants: p.nb_vivants ?? "", "Réf.": p.reference ?? "", Acquis: p.acquis ?? "", Rempotage: p.rempotage ?? "", Achat: p.fournisseur ?? "",
                 Exemplaires: p.exemplaires ?? "", "À échanger": p.a_echanger ? "oui" : "", "Graines à donner": p.graines_a_donner ? "oui" : "", Notes: p.notes ?? "",
             })
@@ -171,7 +179,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
             const feuille = (nom: string, l: any[]) => { const ws = X.utils.json_to_sheet(l); ws["!cols"] = Object.keys(l[0] || { a: 1 }).map((k) => ({ wch: k === "Espèce" ? 42 : k === "Notes" || k === "Origine" ? 30 : 12 })); X.utils.book_append_sheet(wb, ws, nom) }
             feuille("Collection", tri2(plantes.filter((p) => p.statut === "collection")).map(ligne))
             feuille("Semis", [...plantes.filter((p) => p.statut === "semis")].sort((a, b) => cleDate(a.semis).localeCompare(cleDate(b.semis)) || a.espece.localeCompare(b.espece)).map(ligne))
-            feuille("Rusticité", [...plantes].sort((a, b) => (a.t_min ?? 99) - (b.t_min ?? 99) || a.espece.localeCompare(b.espece)).map((p) => ({ Espèce: p.espece, "T(°C)": p.t_min ?? "", Exposition: p.exposition ?? "", Arrosage: p.arrosage ?? "", Substrat: p.substrat ? SUBSTRATS[p.substrat] : "" })))
+            feuille("Rusticité", [...plantes].sort((a, b) => (a.t_min ?? 99) - (b.t_min ?? 99) || a.espece.localeCompare(b.espece)).map((p) => ({ Espèce: p.espece, "T(°C)": p.t_min ?? "", Exposition: expoAff(p.exposition), Arrosage: eauAff(p.arrosage), Substrat: subAff(p.substrat, false) })))
             X.writeFile(wb, `Collection ACS ${new Date().toISOString().slice(0, 10)}.xlsx`)
             setMsg("")
         } catch (e: any) { setMsg("Export impossible : " + (e?.message || e)) }
@@ -283,7 +291,7 @@ function Cartes({ l, vue, onOuvrir, basculer }: { l: Plante[]; vue: Vue; onOuvri
             {l.map((p) => {
                 const infos = vue === "semis"
                     ? [p.semis, p.nb_graines ? `${p.nb_leves ?? 0}/${p.nb_graines} levées (${taux(p)} %)` : "", p.nb_vivants != null ? `${p.nb_vivants} vivants` : "", p.n_collecte, p.fournisseur]
-                    : vue === "rusticite" ? [p.exposition, p.arrosage, p.substrat ? SUBSTRATS[p.substrat] : ""]
+                    : vue === "rusticite" ? [expoAff(p.exposition), eauAff(p.arrosage), subAff(p.substrat)]
                         : [p.code, p.origine, p.n_collecte, p.t_min != null ? `${p.t_min} °C` : "", p.acquis ? `acquis ${p.acquis}` : p.semis ? `semé ${p.semis}` : ""]
                 return (
                     <div key={p.id} style={{ background: C.panel, border: `1px solid ${C.line}`, padding: "12px 14px" }}>
@@ -370,7 +378,7 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
         setF((x) => ({
             ...x, genre: g, type: x.type || typ,
             t_min: x.t_min ?? cult?.[0] ?? null, substrat: x.substrat ?? (x.statut === "semis" ? 6 : cult?.[1] ?? null),
-            exposition: x.exposition || cult?.[2] || null, arrosage: x.arrosage || cult?.[3] || null,
+            exposition: x.exposition || normExpo(cult?.[2]) || null, arrosage: x.arrosage || cult?.[3] || null,
             origine: x.origine || (pays ? pays.split("|").join(", ") : null),
         }))
     }, [g, !!info])
@@ -442,9 +450,9 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
             {titre("Culture")}
             <div style={grille}>
                 {T("t_min", "Température minimale (°C)", "-5", "number")}
-                {S("exposition", "Exposition", EXPOS.map((e) => [e, e]))}
-                {S("arrosage", "Arrosage", ARROSAGES.map((e) => [e, e]))}
-                {S("substrat", "Substrat", SUBSTRATS.slice(1).map((s, i) => [i + 1, s]))}
+                {S("exposition", "Exposition", EXPOS.map((e) => [e, `${ICONE_EXPO[e]} ${e}`]))}
+                {S("arrosage", "Besoin en eau", ARROSAGES.map((e) => [e, `${GOUTTES[e]} ${e}`]))}
+                {S("substrat", "Substrat", SUBSTRATS.slice(1).map((s, i) => [i + 1, `${CERCLES[i + 1]} ${s}`]))}
             </div>
             {info?.[2] && <p style={{ margin: "8px 0 0", fontSize: 12, color: C.mute }}>Pré-rempli d’après la fiche du genre {g} : modifiable selon votre expérience.</p>}
 
@@ -550,7 +558,7 @@ const substratDe = (v: any) => {
     const k = SUBSTRATS.findIndex((x) => x && sansAccent(x) === sansAccent(t)); if (k > 0) return k
     const k2 = SUB_COURT.findIndex((x) => x && sansAccent(x) === sansAccent(t)); return k2 > 0 ? k2 : null
 }
-const expoDe = (v: any) => { const t = texte(v); if (!t) return null; if (/☀|soleil/i.test(t)) return "Soleil"; if (/◐|◑|◒|◓|mi-?ombre|ombre/i.test(t)) return "Mi-ombre"; if (/vive|lumi/i.test(t)) return "Lumière vive"; return t }
+const expoDe = (v: any) => { const t = texte(v); if (!t) return null; if (/☀|soleil/i.test(t)) return "Soleil"; if (/⛅|🌤|🌥|◐|◑|mi-?ombre|vive|lumi/i.test(t)) return "Mi-ombre"; if (/☁|ombre/i.test(t)) return "Ombre"; return t }
 const arrosageDe = (v: any) => { const t = texte(v); if (!t) return null; const g = (t.match(/[💧💦●•]/gu) || []).length; if (g) return g >= 3 ? "Régulier" : g === 2 ? "Modéré" : "Faible"; return t }
 
 export function lireClasseur(X: any, wb: any, existantes: Plante[], genres: Genres, email: string, auteur: string) {
@@ -627,7 +635,7 @@ export function lireClasseur(X: any, wb: any, existantes: Plante[], genres: Genr
                 semis: dateXL(X, v.semis) ?? dateBloc, methode: texte(v.methode), nb_graines: nbG != null && !isNaN(nbG) ? nbG : null, nb_leves: nbL != null && !isNaN(nbL) ? nbL : null,
                 nb_vivants: v.nb_vivants != null && !isNaN(Number(v.nb_vivants)) ? Number(v.nb_vivants) : null,
                 acquis: dateXL(X, v.acquis), rempotage: dateXL(X, v.rempotage),
-                exposition: expoDe(v.exposition) || info?.[2]?.[2] || null, arrosage: arrosageDe(v.arrosage) || info?.[2]?.[3] || null,
+                exposition: expoDe(v.exposition) || normExpo(info?.[2]?.[2]) || null, arrosage: arrosageDe(v.arrosage) || info?.[2]?.[3] || null,
                 substrat: sub ?? (statut === "semis" ? 6 : info?.[2]?.[1] ?? null),
                 t_min: tmin ?? info?.[2]?.[0] ?? null,
                 exemplaires: v.exemplaires != null && !isNaN(Number(v.exemplaires)) ? Number(v.exemplaires) : 1,
