@@ -30,6 +30,24 @@ const CERCLES = ["", "❶", "❷", "❸", "❹", "❺", "❻"]
 export const normExpo = (e?: string | null) => (!e ? null : /soleil|☀/i.test(e) ? "Soleil" : /☁|^ombre/i.test(e) ? "Ombre" : "Mi-ombre")
 const expoAff = (e?: string | null) => (e ? `${ICONE_EXPO[e] ?? ""} ${e}`.trim() : "")
 const eauAff = (e?: string | null) => (e ? GOUTTES[e] ?? e : "")
+// icônes au trait du site (blanc cassé), plutôt que les emojis en couleur
+const svgIco: React.CSSProperties = { width: 15, height: 15, verticalAlign: "-2px", flex: "0 0 auto" }
+export function IcoExpo({ e }: { e?: string | null }) {
+    if (!e) return null
+    return (
+        <svg viewBox="0 0 16 16" style={svgIco} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" aria-hidden="true">
+            {e === "Soleil" && <><circle cx="8" cy="8" r="3" />{[0, 45, 90, 135, 180, 225, 270, 315].map((a) => <line key={a} x1="8" y1="1.2" x2="8" y2="2.8" transform={`rotate(${a} 8 8)`} />)}</>}
+            {e === "Mi-ombre" && <><circle cx="6" cy="6" r="2.4" /><line x1="6" y1="1" x2="6" y2="1.9" /><line x1="1" y1="6" x2="1.9" y2="6" /><line x1="2.5" y1="2.5" x2="3.1" y2="3.1" /><path d="M5.2 14 a2.4 2.4 0 0 1 0.6-4.7 a3.2 3.2 0 0 1 6.1 0.8 a2 2 0 0 1 0.3 3.9 Z" fill={C.panel} /></>}
+            {e === "Ombre" && <path d="M4.4 13 a2.7 2.7 0 0 1 0.6-5.3 a3.7 3.7 0 0 1 7 0.9 a2.3 2.3 0 0 1 0.3 4.4 Z" />}
+        </svg>
+    )
+}
+export function IcoEau({ e }: { e?: string | null }) {
+    const n = e === "Régulier" ? 3 : e === "Modéré" ? 2 : e === "Faible" ? 1 : 0
+    if (!n) return e ? <>{e}</> : null
+    return <span style={{ display: "inline-flex", gap: 1 }} title={e || ""}>{Array.from({ length: n }, (_, i) => <svg key={i} viewBox="0 0 10 14" style={{ width: 9, height: 13, verticalAlign: "-2px" }} fill="currentColor" aria-hidden="true"><path d="M5 0.8 C5 0.8 1 5.6 1 8.6 a4 4 0 0 0 8 0 C9 5.6 5 0.8 5 0.8 Z" /></svg>)}</span>
+}
+const ExpoTxt = ({ e }: { e?: string | null }) => (e ? <span style={{ display: "inline-flex", gap: 6, alignItems: "center", whiteSpace: "nowrap" }}><IcoExpo e={e} />{e}</span> : null)
 const subAff = (n?: number | null, court = true) => (n ? `${CERCLES[n]} ${(court ? SUB_COURT : SUBSTRATS)[n]}` : "")
 type Genres = Record<string, [string, string, [number | null, number, string, string] | null, string]>
 let ESPECES: Promise<Genres> | null = null
@@ -73,10 +91,10 @@ const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
         { k: "code", w: 72, t: "N°", v: (p) => p.code },
         { k: "origine", w: 190, t: "Origine", v: (p) => p.origine },
         { k: "n_collecte", w: 110, t: "N° collecte", v: (p) => p.n_collecte },
-        { k: "exposition", w: 112, t: "Exposition", v: (p) => expoAff(p.exposition) },
+        { k: "exposition", w: 112, t: "Exposition", v: (p) => <ExpoTxt e={p.exposition} /> },
         { k: "substrat", w: 178, t: "Substrat", v: (p) => subAff(p.substrat) },
         { k: "t_min", w: 72, t: "T min", v: (p) => (p.t_min != null ? `${p.t_min} °C` : ""), tri: (p) => p.t_min ?? 99 },
-        { k: "arrosage", w: 92, t: "Eau", v: (p) => eauAff(p.arrosage) },
+        { k: "arrosage", w: 92, t: "Eau", v: (p) => <IcoEau e={p.arrosage} /> },
         { k: "semis", w: 100, t: "Semis", v: (p) => p.semis, tri: (p) => cleDate(p.semis) },
         { k: "acquis", w: 84, t: "Acquis", v: (p) => p.acquis, tri: (p) => cleDate(p.acquis) },
         { k: "rempotage", w: 100, t: "Rempotage", v: (p) => p.rempotage, tri: (p) => cleDate(p.rempotage) },
@@ -99,8 +117,8 @@ const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
     rusticite: [
         { k: "espece", w: 270, t: "Espèce", v: (p) => <NomEspece p={p} />, tri: (p) => p.espece },
         { k: "t_min", w: 72, t: "T min", v: (p) => (p.t_min != null ? `${p.t_min} °C` : "—"), tri: (p) => p.t_min ?? 99 },
-        { k: "exposition", w: 112, t: "Exposition", v: (p) => expoAff(p.exposition) },
-        { k: "arrosage", w: 92, t: "Eau", v: (p) => eauAff(p.arrosage) },
+        { k: "exposition", w: 112, t: "Exposition", v: (p) => <ExpoTxt e={p.exposition} /> },
+        { k: "arrosage", w: 92, t: "Eau", v: (p) => <IcoEau e={p.arrosage} /> },
         { k: "substrat", w: 178, t: "Substrat", v: (p) => subAff(p.substrat) },
         { k: "origine", w: 190, t: "Origine", v: (p) => p.origine },
     ],
@@ -121,6 +139,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const [genres, setGenres] = React.useState<Genres>({})
     const [limite, setLimite] = React.useState(200)
     const [aide, setAide] = React.useState(false)
+    const [etq, setEtq] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(900)
     const etroit = w < 720
@@ -266,12 +285,14 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     {vue !== "echanges" && <button style={bouton()} onClick={() => setEdit(nouvelle())}>{vue === "semis" ? "Nouveau semis" : "Ajouter une plante"}</button>}
                     <label style={{ ...bouton(false), display: "inline-flex", alignItems: "center" }}>Importer Excel<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = "" }} /></label>
                     <button style={bouton(false)} onClick={exporter} disabled={!plantes.length}>Exporter Excel</button>
+                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setAide(false) }} aria-expanded={etq}>Étiquettes</button>}
                     <button style={{ ...bouton(false), border: "none", textDecoration: "underline", textUnderlineOffset: 3, paddingLeft: 6, paddingRight: 6 }} onClick={() => setAide((a) => !a)} aria-expanded={aide}>Comment importer sa collection ?</button>
                 </div>
                 {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
                 {msg && <p style={{ margin: "12px 0 0", fontSize: 14, color: /impossible|Erreur|Aucune/.test(msg) ? C.danger : C.accent }}>{msg}</p>}
             </div>
 
+            {etq && vue !== "echanges" && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} onFermer={() => setEtq(false)} />}
             {imp && <ApercuImport imp={imp} onAnnuler={() => setImp(null)} onValider={validerImport} />}
             {edit && <Fiche p={edit} genres={genres} client={client} email={email} auteur={auteur} onFermer={(maj) => { setEdit(null); if (maj) charger() }} />}
 
@@ -334,7 +355,7 @@ function Cartes({ l, vue, onOuvrir, basculer }: { l: Plante[]; vue: Vue; onOuvri
             {l.map((p) => {
                 const infos = vue === "semis"
                     ? [p.semis, p.nb_graines ? `${p.nb_leves ?? 0}/${p.nb_graines} levées (${taux(p)} %)` : "", p.nb_vivants != null ? `${p.nb_vivants} vivants` : "", p.n_collecte, p.fournisseur]
-                    : vue === "rusticite" ? [expoAff(p.exposition), eauAff(p.arrosage), subAff(p.substrat)]
+                    : vue === "rusticite" ? [p.exposition ? <ExpoTxt e={p.exposition} /> : "", p.arrosage ? <IcoEau e={p.arrosage} /> : "", subAff(p.substrat)]
                         : [p.code, p.origine, p.n_collecte, p.t_min != null ? `${p.t_min} °C` : "", p.acquis ? `acquis ${p.acquis}` : p.semis ? `semé ${p.semis}` : ""]
                 return (
                     <div key={p.id} style={{ background: C.panel, border: `1px solid ${C.line}`, padding: "12px 14px" }}>
@@ -343,7 +364,7 @@ function Cartes({ l, vue, onOuvrir, basculer }: { l: Plante[]; vue: Vue; onOuvri
                                 <span style={{ fontSize: 16, lineHeight: 1.35 }}><NomEspece p={p} /></span>
                                 {vue === "rusticite" && <span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{p.t_min != null ? `${p.t_min} °C` : "—"}</span>}
                             </div>
-                            <div style={{ fontSize: 13, color: C.mute, marginTop: 3 }}>{infos.filter(Boolean).join(" · ") || "Touchez pour compléter la fiche"}</div>
+                            <div style={{ fontSize: 13, color: C.mute, marginTop: 3 }}>{infos.filter(Boolean).length ? (infos.filter(Boolean) as React.ReactNode[]).map((x, i) => <React.Fragment key={i}>{i ? " · " : ""}{x}</React.Fragment>) : "Touchez pour compléter la fiche"}</div>
                         </div>
                         {vue !== "rusticite" && (
                             <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 13 }}>
@@ -493,8 +514,8 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
             {titre("Culture")}
             <div style={grille}>
                 {T("t_min", "Température minimale (°C)", "-5", "number")}
-                {S("exposition", "Exposition", EXPOS.map((e) => [e, `${ICONE_EXPO[e]} ${e}`]))}
-                {S("arrosage", "Besoin en eau", ARROSAGES.map((e) => [e, `${GOUTTES[e]} ${e}`]))}
+                {S("exposition", "Exposition", EXPOS.map((e) => [e, e]))}
+                {S("arrosage", "Besoin en eau", ARROSAGES.map((e, i) => [e, `${e} (${i + 1} goutte${i ? "s" : ""})`]))}
                 {S("substrat", "Substrat", SUBSTRATS.slice(1).map((s, i) => [i + 1, `${CERCLES[i + 1]} ${s}`]))}
             </div>
             {info?.[2] && <p style={{ margin: "8px 0 0", fontSize: 12, color: C.mute }}>Pré-rempli d’après la fiche du genre {g} : modifiable selon votre expérience.</p>}
@@ -517,6 +538,79 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
     )
 }
 
+// ---------- panneau des étiquettes ----------
+function PanneauEtiquettes({ liste, vue, auteur, genres, onFermer }: { liste: Plante[]; vue: Vue; auteur: string; genres: Genres; onFermer: () => void }) {
+    const lots = React.useMemo(() => {
+        const m = new Map<string, number>()
+        for (const p of liste) if (p.statut === "semis" && p.semis) m.set(p.semis, (m.get(p.semis) || 0) + 1)
+        return [...m.entries()].sort((a, b) => cleDate(b[0]).localeCompare(cleDate(a[0])))
+    }, [liste])
+    const [lot, setLot] = React.useState("")
+    const [sansLevee, setSansLevee] = React.useState(true)
+    const [selon, setSelon] = React.useState(false)
+    const [debut, setDebut] = React.useState(1)
+    const [contours, setContours] = React.useState(true)
+    const [choix, setChoix] = React.useState<Set<string> | null>(null)
+    const [msg, setMsg] = React.useState("")
+    const base = liste.filter((p) => (!lot || p.semis === lot) && !(sansLevee && p.statut === "semis" && ((p.nb_vivants != null && p.nb_vivants === 0) || (p.nb_vivants == null && p.nb_leves === 0))))
+    const coches = base.filter((p) => !choix || choix.has(p.id!))
+    const items = coches.map((p) => ({ ...p, _pays: paysPlante(p, genres) } as Plante)).flatMap((p) => Array(Math.max(1, Math.min(50, selon ? (p.statut === "semis" ? p.nb_vivants ?? p.nb_leves ?? 1 : p.exemplaires ?? 1) : 1))).fill(p))
+    const manques = coches.filter((p) => tempEtiquette(p) == null || !paysPlante(p, genres))
+    const bascule = (id: string) => setChoix((c) => { const n = new Set(c ?? base.map((p) => p.id!)); n.has(id) ? n.delete(id) : n.add(id); return n })
+    const imprimer = () => {
+        if (!items.length) return setMsg("Aucune étiquette à imprimer.")
+        const titre = lot ? `Semis du ${lot}` : vue === "semis" ? "Semis" : vue === "rusticite" ? "Collection" : "Collection"
+        if (!ouvrirImpression(items, { debut, contours, titre, auteur })) setMsg("Le navigateur a bloqué la fenêtre d’impression : autorisez les fenêtres pour ce site.")
+        else setMsg("")
+    }
+    const ligne: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", fontSize: 14, cursor: "pointer" }
+    return (
+        <div style={{ ...box, border: `1px solid ${C.accent}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Étiquettes à piquer</h3>
+                <button onClick={onFermer} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Planche A4 de 44 étiquettes (gabarit LINAD) : nom latin, n° de collecte, température minimale, pays, date et exposition. Les plantes viennent de la liste affichée (onglet, recherche et filtre de type).</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 230px), 1fr))", gap: 12, marginTop: 14 }}>
+                {lots.length > 0 && <div><label style={etiquette}>Lot de semis</label><select value={lot} onChange={(e) => { setLot(e.target.value); setChoix(null) }} style={champ}><option value="">Tous les lots affichés</option>{lots.map(([d, n]) => <option key={d} value={d}>Semis du {d} ({n})</option>)}</select></div>}
+                <div><label style={etiquette}>Commencer à l’étiquette</label><input type="number" min={1} max={44} value={debut} onChange={(e) => setDebut(Math.max(1, Math.min(44, Number(e.target.value) || 1)))} style={champ} /><div style={{ fontSize: 12, color: C.mute, marginTop: 4 }}>Pour finir une planche entamée (1 à 22 à gauche, 23 à 44 à droite).</div></div>
+                <div style={{ display: "grid", gap: 8, alignContent: "start", paddingTop: 18 }}>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={sansLevee} onChange={(e) => setSansLevee(e.target.checked)} />Ignorer les semis sans plant vivant</label>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={selon} onChange={(e) => setSelon(e.target.checked)} />Une étiquette par plant (exemplaires ou vivants)</label>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={contours} onChange={(e) => setContours(e.target.checked)} />Imprimer les traits de découpe</label>
+                </div>
+            </div>
+            <div style={{ marginTop: 14, border: `1px solid ${C.line}`, maxHeight: 240, overflowY: "auto" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, padding: "8px 12px", borderBottom: `1px solid ${C.line}`, fontSize: 13, color: C.mute, position: "sticky", top: 0, background: C.panel }}>
+                    <span>{coches.length} plante{coches.length > 1 ? "s" : ""} sur {base.length}</span>
+                    <span><button style={{ ...petit(), padding: "3px 8px" }} onClick={() => setChoix(null)}>Tout</button> <button style={{ ...petit(), padding: "3px 8px" }} onClick={() => setChoix(new Set())}>Aucune</button></span>
+                </div>
+                {base.slice(0, 600).map((p) => (
+                    <label key={p.id} style={{ ...ligne, padding: "6px 12px", borderBottom: `1px solid ${C.line}` }}>
+                        <input type="checkbox" style={coche} checked={!choix || choix.has(p.id!)} onChange={() => bascule(p.id!)} />
+                        <span style={{ flex: 1, minWidth: 0 }}><NomEspece p={p} /></span>
+                        <span style={{ fontSize: 12, color: C.mute, whiteSpace: "nowrap" }}>{[p.n_collecte, p.statut === "semis" ? p.semis : p.code].filter(Boolean).join(" · ")}</span>
+                    </label>
+                ))}
+            </div>
+            {manques.length > 0 && (
+                <details style={{ marginTop: 12, fontSize: 13 }}>
+                    <summary style={{ cursor: "pointer", color: C.danger }}>{manques.length} étiquette{manques.length > 1 ? "s" : ""} à compléter (température ou pays manquant)</summary>
+                    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto auto", gap: "4px 14px", marginTop: 8, color: C.mute }}>
+                        <span style={{ fontWeight: 600 }}>Plante</span><span style={{ fontWeight: 600 }}>T°</span><span style={{ fontWeight: 600 }}>Pays</span>
+                        {manques.slice(0, 200).map((p) => <React.Fragment key={p.id}><span><NomEspece p={p} /></span><span>{tempEtiquette(p) == null ? "✗" : ""}</span><span>{paysPlante(p, genres) ? "" : "✗"}</span></React.Fragment>)}
+                    </div>
+                    <p style={{ margin: "8px 0 0", color: C.mute }}>Elles s’impriment avec « (?°C) » ou « Pays ? » : complétez la fiche pour corriger.</p>
+                </details>
+            )}
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
+                <button style={bouton()} onClick={imprimer} disabled={!items.length}>Aperçu et impression ({items.length} étiquette{items.length > 1 ? "s" : ""}, {Math.max(1, Math.ceil((items.length + debut - 1) / 44))} planche{Math.ceil((items.length + debut - 1) / 44) > 1 ? "s" : ""})</button>
+                {msg && <span style={{ fontSize: 14, color: C.danger }}>{msg}</span>}
+            </div>
+        </div>
+    )
+}
+
 // ---------- mode d’emploi de l’import ----------
 function AideImport({ onModele, onFermer }: { onModele: () => void; onFermer: () => void }) {
     const etape = (n: number, titre: string, texte: React.ReactNode) => (
@@ -532,7 +626,7 @@ function AideImport({ onModele, onFermer }: { onModele: () => void; onFermer: ()
                 <button onClick={onFermer} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
             </div>
             {etape(1, "Téléchargez le modèle", <>Un fichier Excel avec les bonnes colonnes, deux lignes d’exemple et un onglet « Mode d’emploi ». <button onClick={onModele} style={{ ...petit(true), marginTop: 8, display: "inline-block" }}>Télécharger le modèle Excel</button></>)}
-            {etape(2, "Remplissez une ligne par plante", <>Seule la colonne <strong>Espèce</strong> est obligatoire. Mettez <em>Semis</em> dans la colonne Liste pour un lot de graines. Exposition : ☀️ ⛅ ☁️ ; substrat : 1 à 6 (les mélanges de l’article sur les substrats) ; arrosage : 💧 à 💧💧💧 ; T(°C) : la température minimale.</>)}
+            {etape(2, "Remplissez une ligne par plante", <>Seule la colonne <strong>Espèce</strong> est obligatoire. Mettez <em>Semis</em> dans la colonne Liste pour un lot de graines. Exposition : Soleil, Mi-ombre ou Ombre (ou ☀️ ⛅ ☁️) ; substrat : 1 à 6 (les mélanges de l’article sur les substrats) ; arrosage : 1 à 3 gouttes ; T(°C) : la température minimale.</>)}
             {etape(3, "Importez le fichier", <>Bouton <strong>Importer Excel</strong> ci-dessus. Un aperçu montre ce qui sera ajouté avant d’enregistrer ; les lignes déjà présentes ne sont pas dupliquées.</>)}
             {etape(4, "Vous avez déjà votre propre tableau ?", <>Importez-le tel quel : les colonnes sont reconnues par leur titre (Espèce ou Nom, Origine, T(°C), Semis, Acquis, N° collecte, Taux « 13/20 »…). Si une colonne n’est pas lue, renommez son titre comme dans le modèle.</>)}
             <div style={{ fontSize: 13, color: C.mute, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>Pour sauvegarder ou partager votre collection, <strong style={{ color: C.txt }}>Exporter Excel</strong> produit un fichier au même format, réimportable.</div>
@@ -753,4 +847,187 @@ function Bourse({ client, email }: { client: any; email: string }) {
             )}
         </div>
     )
+}
+
+// =====================================================================================
+// ÉTIQUETTES À PIQUER — gabarit A4 LINAD (44 étiquettes, 2 colonnes imbriquées)
+// d’après le générateur d’étiquettes de Florentin Guitton (macro Excel + InDesign, LINAD 2026)
+// =====================================================================================
+const ETQ = { h: 32.64, corps: 269.16, pointe: 325.8, page: 594.84, hautG: 69.68, hautD: 53.36, n: 22 }
+const ABREV = ["var.", "subsp.", "ssp.", "fma.", "v.", "f.", "cv."]
+
+// coupe du nom sur deux lignes : jamais avant la fin de l’espèce, jamais autour d’une abréviation
+export function couperNom(nom: string, max = 44): [string, string] {
+    const t = nom.trim().replace(/\s+/g, " ")
+    if (t.length <= max) return [t, ""]
+    // espaces autorisés : hors parenthèses et hors ‘cultivar’, après la fin de l’espèce
+    const ok: number[] = []
+    let par = 0, guill = false, mots = 0
+    for (let k = 0; k < t.length; k++) {
+        const ch = t[k]
+        if (ch === "(") par++
+        else if (ch === ")") par = Math.max(0, par - 1)
+        else if ((ch === "'" || ch === "‘" || ch === "’") && (ch !== "’" || guill)) guill = ch === "‘" ? true : ch === "’" ? false : !guill
+        else if (ch === " ") { mots++; if (!par && !guill && mots >= 2) ok.push(k) }
+    }
+    const abrev = (k: number) => ABREV.includes((t.slice(k + 1).split(" ")[0] || "").toLowerCase()) || ABREV.includes((t.slice(0, k).split(" ").pop() || "").toLowerCase())
+    const bons = ok.filter((k) => !abrev(k))
+    if (!bons.some((k) => k <= max + 16) && t.length <= max + 16) return [t, ""]
+    const c = [...bons].reverse().find((k) => k <= max) ?? [...bons].reverse().find((k) => k <= max + 16) ?? bons[0] ?? [...ok].reverse().find((k) => k <= max) ?? ok[0]
+    if (c == null) return [t, ""]
+    return [t.slice(0, c).trim(), t.slice(c + 1).trim()]
+}
+
+// pays à partir de la localité (« Cuatrocienagas/COAH/Mexique », « Mexique : Coahuila », « Salta »…)
+const PAYS: [RegExp, string][] = [
+    [/horticole|cultivar|hybride/i, "Horticole"],
+    [/baja california|\bbcs?\b|san luis potos|\bslp\b|m[ée]xi(que|co)|\bmex\b|coahuila|\bcoah\b|nuevo le[oó]n|\bn\.?l\.?\b|tamaulipas|\btamps\b|oaxaca|\boax\b|durango|\bdgo\b|chihuahua|\bchih\b|quer[ée]taro|\bqro\b|hidalgo|\bhgo\b|zacatecas|\bzac\b|sonora|\bson\b|puebla|\bpue\b|guanajuato|\bgto\b|jalisco|\bjal\b|sinaloa|aguascalientes|michoac/i, "Mexique"],
+    [/\busa\b|[ée]tats-unis|united states|texas|\btx\b|new mexico|\bnm\b|arizona|\baz\b|utah|\but\b|nevada|\bnv\b|wyoming|colorado|californi/i, "USA"],
+    [/argentin|salta|jujuy|catamarca|la rioja|c[oó]rdoba|san juan|tucum[aá]n|mendoza|neuqu[ée]n|santiago del estero|\barg\b/i, "Argentine"],
+    [/bolivi|cochabamba|chuquisaca|tarija|santa cruz|potos[ií]|oruro|\bbol\b/i, "Bolivie"],
+    [/chil[ie]|atacama|antofagasta|coquimbo|tarapac|valpara[ií]so|huasco|taltal/i, "Chili"],
+    [/p[ée]rou|peru|ayacucho|arequipa|ancash|lima\b/i, "Pérou"],
+    [/br[ée]sil|brazil|minas gerais|\bmg\b|bahia|\bba\b|rio grande do sul|\brgs\b|santa catarina/i, "Brésil"],
+    [/paraguay/i, "Paraguay"], [/uruguay/i, "Uruguay"], [/[ée]quateur|ecuador/i, "Équateur"], [/cuba\b/i, "Cuba"],
+    [/afrique du sud|south africa|\brsa\b|cape|namaqualand|karoo|kwazulu|limpopo|mpumalanga/i, "Afrique du Sud"],
+    [/namibi/i, "Namibie"], [/madagascar/i, "Madagascar"], [/y[ée]men|socotra/i, "Yémen"], [/somali/i, "Somalie"],
+    [/kenya/i, "Kenya"], [/tanzani/i, "Tanzanie"], [/maroc|morocco/i, "Maroc"], [/canaries|canary/i, "Canaries"],
+]
+export function paysDe(origine?: string | null): string | null {
+    const t = (origine || "").trim()
+    if (!t) return null
+    for (const [re, p] of PAYS) if (re.test(t)) return p
+    const dernier = t.split(/[\/,:]/).map((s) => s.trim()).filter(Boolean).pop() || ""
+    return dernier.length <= 22 && !/\d/.test(dernier) && /^[A-ZÉ]/.test(dernier) ? dernier : null
+}
+// pays de la plante : localité, sinon pays d’origine du genre quand il n’y en a qu’un
+export const paysPlante = (p: Plante, genres?: Genres) => {
+    const d = paysDe(p.origine)
+    if (d) return d
+    const g = genres?.[p.espece.split(" ")[0]]
+    const l = g?.[3] ? g[3].split("|") : []
+    return l.length === 1 ? l[0] : null
+}
+
+// exposition par défaut d’après le genre (listes du générateur LINAD) si la fiche n’en a pas
+const OMBRE = "SCHLUMBERGERA,RHIPSALIS,EPIPHYLLUM,HATIORA,LEPISMIUM,HYLOCEREUS,SELENICEREUS,DISOCACTUS,WEBEROCEREUS,PSEUDORHIPSALIS,WEBERBAUEROCEREUS,DEAMIA,APOROCACTUS,CRYPTOCEREUS,STROPHOCACTUS,WIGGINSIA,PARODIA,NOTOCACTUS".split(",")
+const MIOMBRE = "GYMNOCALYCIUM,DISCOCACTUS,MELOCACTUS,BLOSSFELDIA,STROMBOCACTUS,OBREGONIA,AZTEKIUM,EPITHELANTHA,PELECYPHORA,LOPHOPHORA,PTEROCACTUS,HAWORTHIA,HAWORTHIOPSIS,GASTERIA,ALOE,ADROMISCHUS,COTYLEDON,LITHOPS,CONOPHYTUM,DINTERANTHUS,FENESTRARIA,FRITHIA,PLEIOSPILOS,FAUCARIA,TITANOPSIS,ALOINOPSIS,ARGYRODERMA,GIBBAEUM,GLOTTIPHYLLUM,CONICOSIA,LAPIDARIA,CEROPEGIA,CRASSULA".split(",")
+export const expoEtiquette = (p: Plante) => {
+    if (p.exposition) return normExpo(p.exposition) || "Soleil"
+    const g = (p.espece.split(" ")[0] || "").toUpperCase()
+    return OMBRE.includes(g) ? "Ombre" : MIOMBRE.includes(g) ? "Mi-ombre" : "Soleil"
+}
+
+const PALIERS: [number, string[]][] = [
+    [-10, ["ECHINOCEREUS", "ESCOBARIA", "PEDIOCACTUS", "SCLEROCACTUS", "MAIHUENIA", "TEPHROCACTUS"]],
+    [-5, ["REBUTIA", "LOBIVIA", "GYMNOCALYCIUM", "ECHINOPSIS", "TRICHOCEREUS", "WEINGARTIA", "ACANTHOCALYCIUM", "SULCOREBUTIA"]],
+    [-2, ["ASTROPHYTUM", "MAMMILLARIA", "THELOCACTUS", "TURBINICARPUS", "CORYPHANTHA", "NOTOCACTUS", "FEROCACTUS"]],
+    [0, ["FRITHIA", "LITHOPS", "CONOPHYTUM", "TITANOPSIS", "PLEIOSPILOS", "ALOINOPSIS", "COPIAPOA", "ERIOSYCE", "MELOCACTUS", "DISCOCACTUS", "FRAILEA", "PARODIA", "ARIZONOCEREUS", "AEONIUM", "SINNINGIA"]],
+]
+export const tempEtiquette = (p: Plante): number | null => {
+    if (p.t_min != null) return Number(p.t_min)
+    const g = (p.espece.split(" ")[0] || "").toUpperCase()
+    for (const [t, l] of PALIERS) if (l.includes(g)) return t
+    return null
+}
+
+const echXml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+// segments du nom : genre/épithètes en italique ; abréviations, ‘cultivars’ et (synonymes) en romain
+const segmentsNom = (s: string) => s.split(/(\s(?:var\.|subsp\.|ssp\.|fma\.|f\.|v\.|cv\.|x)(?=\s)|'[^']*'?|‘[^’]*’?|\([^)]*\)?)/g).filter((x) => x !== "")
+    .map((x, i, a) => `<tspan font-style="${/^\s?(var\.|subsp\.|ssp\.|fma\.|f\.|v\.|cv\.|x)$|^['‘(]/.test(x.trim()) || /^\s(var|subsp|ssp|fma|f|v|cv)\.$/.test(x) ? "normal" : "italic"}">${echXml(x)}</tspan>`).join("")
+
+export type OptEtq = { debut: number; contours: boolean; titre: string; auteur: string }
+export type LigneEtq = { p: Plante }
+
+function etiquetteSVG(p: Plante, x0: number, y0: number, droite: boolean, contours: boolean) {
+    const { h, corps, pointe } = ETQ
+    const [l1, l2] = couperNom(p.espece)
+    const tv = tempEtiquette(p)
+    const t = tv != null ? `(${String(tv).replace("-", "−")}°C)` : "(?°C)"
+    const pays = (p as any)._pays || paysDe(p.origine) || "Pays ?"
+    const date = p.statut === "semis" ? p.semis || "" : p.acquis ? p.acquis : p.semis || ""
+    const expo = expoEtiquette(p)
+    const forme = `M0,0 L${corps},0 L${pointe},${h / 2} L${corps},${h} L0,${h} Z`
+    const tr = droite ? `translate(${(x0).toFixed(2)},${(y0 + h).toFixed(2)}) rotate(180)` : `translate(${x0.toFixed(2)},${y0.toFixed(2)})`
+    return `<g transform="${tr}">
+${contours ? `<path d="${forme}" fill="none" stroke="#9a9a9a" stroke-width="0.35"/>` : ""}
+<circle cx="9.5" cy="${h / 2}" r="2.6" fill="none" stroke="#222" stroke-width="0.6"/>
+<text class="l1" x="18" y="13.4" font-size="9.4">${segmentsNom(l1)}</text>
+<text class="l2" x="18" y="25.6" font-size="8.6">${l2 ? segmentsNom(l2) + "<tspan> </tspan>" : ""}${p.n_collecte ? `<tspan font-style="normal">${echXml(p.n_collecte)} </tspan>` : ""}<tspan font-style="normal" font-size="5.4" dy="-0.2">${echXml(t)} </tspan><tspan font-style="normal" font-weight="600" dy="0.2">${echXml(pays)}</tspan>${date ? `<tspan font-style="normal" font-size="5.4"> ${echXml(date)}</tspan>` : ""}</text>
+<use class="ico" href="#ico-${expo === "Ombre" ? "ombre" : expo === "Mi-ombre" ? "miombre" : "soleil"}" x="0" y="${h - 10.6}"/>
+</g>`
+}
+
+export function pagesEtiquettes(plantes: Plante[], o: OptEtq) {
+    const { h, page, hautG, hautD, n } = ETQ
+    const places: Array<{ x: number; y: number; droite: boolean }> = []
+    for (let i = 0; i < n; i++) places.push({ x: 0, y: hautG + i * h, droite: false })
+    for (let i = 0; i < n; i++) places.push({ x: page, y: hautD + i * h, droite: true })
+    const file: (Plante | null)[] = [...Array(Math.max(0, Math.min(43, o.debut - 1))).fill(null), ...plantes]
+    const nbPages = Math.max(1, Math.ceil(file.length / places.length))
+    const date = new Date().toLocaleDateString("fr-FR")
+    const ico = `<defs>
+<g id="ico-soleil"><circle cx="3.2" cy="3.2" r="1.7" fill="#111"/>${[0, 45, 90, 135, 180, 225, 270, 315].map((a) => `<line x1="3.2" y1="0.3" x2="3.2" y2="1.05" stroke="#111" stroke-width="0.55" transform="rotate(${a} 3.2 3.2)"/>`).join("")}</g>
+<g id="ico-miombre"><circle cx="2.6" cy="2.6" r="1.6" fill="#111"/><path d="M1.9,5.9 a1.35,1.35 0 0 1 0.6,-2.55 a1.75,1.75 0 0 1 3.3,0.35 a1.15,1.15 0 0 1 0.3,2.2 Z" fill="#fff" stroke="#111" stroke-width="0.5"/></g>
+<g id="ico-ombre"><path d="M1.2,5.6 a1.4,1.4 0 0 1 0.6,-2.7 a1.9,1.9 0 0 1 3.6,0.3 a1.25,1.25 0 0 1 0.4,2.4 Z" fill="#111"/></g>
+</defs>`
+    let svg = ""
+    for (let pg = 0; pg < nbPages; pg++) {
+        const bloc: (Plante | null)[] = file.slice(pg * places.length, (pg + 1) * places.length)
+        while (bloc.length < places.length) bloc.push(null)
+        svg += `<section class="feuille"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 595.28 841.89" width="210mm" height="297mm">${ico}
+<g font-family="'Roboto Condensed','Arial Narrow',sans-serif" fill="#111">
+<text x="18" y="22" font-size="7" font-weight="700" letter-spacing="0.4">${echXml(o.auteur.toUpperCase())}</text>
+<text x="18" y="32" font-size="6.3">${echXml(o.titre)} · ${date}</text>
+<line x1="18" y1="36.5" x2="250" y2="36.5" stroke="#111" stroke-width="0.4"/>
+<text x="18" y="45" font-size="5.6" fill="#555">Feuille ${pg + 1}/${nbPages} · ${bloc.filter(Boolean).length} étiquette${bloc.filter(Boolean).length > 1 ? "s" : ""}</text>
+<text x="576" y="22" font-size="6.3" text-anchor="end" font-weight="700" letter-spacing="0.4">A.C.S. ARMORIQUE CACTUS SUCCULENTES</text>
+<text x="576" y="32" font-size="5.6" text-anchor="end" fill="#555">Générateur d’étiquettes LINAD</text>
+${bloc.map((p, i) => (p ? etiquetteSVG(p, places[i].x, places[i].y, places[i].droite, o.contours) : o.contours ? etiquetteVide(places[i].x, places[i].y, places[i].droite) : "")).join("\n")}
+</g></svg></section>`
+    }
+    return { svg, nbPages }
+}
+function etiquetteVide(x0: number, y0: number, droite: boolean) {
+    const { h, corps, pointe } = ETQ
+    const tr = droite ? `translate(${x0},${y0 + h}) rotate(180)` : `translate(${x0},${y0})`
+    return `<g transform="${tr}"><path d="M0,0 L${corps},0 L${pointe},${h / 2} L${corps},${h} L0,${h} Z" fill="none" stroke="#cfcfcf" stroke-width="0.3"/></g>`
+}
+
+export function ouvrirImpression(plantes: Plante[], o: OptEtq) {
+    const { svg } = pagesEtiquettes(plantes, o)
+    const w = window.open("", "_blank")
+    if (!w) return false
+    w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Étiquettes ${echXml(o.titre)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+@page { size: A4; margin: 0 }
+html, body { margin: 0; padding: 0; background: #e9e5df }
+.feuille { width: 210mm; height: 297mm; margin: 10mm auto; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.18); page-break-after: always; break-after: page; overflow: hidden }
+.feuille svg { display: block }
+.barre { position: sticky; top: 0; z-index: 2; display: flex; gap: 12px; align-items: center; justify-content: center; padding: 10px; background: #1d1612; color: #f6f0e6; font: 14px Poppins, Arial, sans-serif }
+.barre button { background: #9bbd8a; color: #1d1612; border: 0; padding: 9px 16px; font: 600 14px Poppins, Arial, sans-serif; cursor: pointer }
+@media print { html, body { background: #fff } .barre { display: none } .feuille { margin: 0; box-shadow: none } }
+</style></head><body>
+<div class="barre"><span>Imprimez à 100 % (taille réelle), sans marges ni mise à l’échelle.</span><button id="imprimer">Imprimer</button></div>
+${svg}
+</body></html>`)
+    w.document.close()
+    const placer = () => {
+        w.document.querySelectorAll("g[transform]").forEach((g: any) => {
+            const l1 = g.querySelector("text.l1"), l2 = g.querySelector("text.l2"), ico = g.querySelector("use.ico")
+            const max = 282
+            for (const t of [l1, l2]) if (t && t.getComputedTextLength() > max) { t.setAttribute("textLength", String(max)); t.setAttribute("lengthAdjust", "spacingAndGlyphs") }
+            if (l2 && ico) ico.setAttribute("x", String(18 + Math.min(l2.getComputedTextLength(), max) + 3))
+        })
+    }
+    try { placer() } catch {}
+    const bt = w.document.getElementById("imprimer"); if (bt) bt.addEventListener("click", () => w.print())
+    const polices: Promise<any> = (w.document as any).fonts ? (w.document as any).fonts.ready : Promise.resolve()
+    Promise.race([polices, new Promise((r) => setTimeout(r, 2500))]).then(() => {
+        try { placer() } catch {}
+        setTimeout(() => { try { w.focus(); w.print() } catch {} }, 300)
+    })
+    return true
 }

@@ -61,7 +61,7 @@ export default function EspaceMembre(props: { lienSemestriels: string; demo: "no
         return () => { fini = true }
     }, [sessionEmail])
 
-    const wrap = (children: React.ReactNode) => <div className="acs-large" style={{ width: "100%", maxWidth: "100%", minWidth: 0, contain: "inline-size", overflowWrap: "anywhere", overflowX: "clip", color: C.txt, ...font }}><style>{".acs-large input,.acs-large select,.acs-large textarea{max-width:100%;min-width:0;box-sizing:border-box}.acs-large img{max-width:100%}"}</style>{children}</div>
+    const wrap = (children: React.ReactNode) => <div className="acs-large" style={{ width: "100%", maxWidth: "100%", minWidth: 0, contain: "inline-size", overflowWrap: "anywhere", overflowX: "clip", color: C.txt, ...font }}><style>{".acs-large input,.acs-large select,.acs-large textarea{max-width:100%;min-width:0;box-sizing:border-box}.acs-large img{max-width:100%}.acs-large *{scrollbar-width:thin;scrollbar-color:rgba(246,240,230,.32) transparent}.acs-large ::-webkit-scrollbar{width:8px;height:8px}.acs-large ::-webkit-scrollbar-track{background:transparent}.acs-large ::-webkit-scrollbar-thumb{background:rgba(246,240,230,.28);border-radius:0}.acs-large ::-webkit-scrollbar-thumb:hover{background:rgba(246,240,230,.5)}.acs-large ::-webkit-scrollbar-corner{background:transparent}.acs-large select option{background:#15100d;color:#f6f0e6}"}</style>{children}</div>
 
     if (!client) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>) // page pré-générée côté serveur : la base se branche dans le navigateur
     if (!ready) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
