@@ -601,15 +601,90 @@ export default function CarteMonde(props) {
     const g = GENRES.find((x) => x.n === sel) || null
     const choisir = (n: string) => { setSel((s) => (s === n ? null : n)); setSuggOuv(false) }
     const r = etroit ? (visibles.length > 120 ? 4.2 : 5) : visibles.length > 120 ? 3.5 : 4.4
-    const LARG_MOBILE = 900
-    const defil = React.useRef<HTMLDivElement>(null)
+    // ---- Vue zoomable (molette, pincement, glisser, boutons + / −)
+    const BX = 0, BY = 4, BW = 1000, BH = 446
+    type Vue = { x: number; y: number; w: number }
+    const VUE0: Vue = { x: BX, y: BY, w: BW }
+    const [vue, setVue] = React.useState<Vue>(VUE0)
+    const vueRef = React.useRef(vue); vueRef.current = vue
+    const svgRef = React.useRef<SVGSVGElement>(null)
+    const WMIN = 70
+    const borner = (v: Vue): Vue => {
+        const w = Math.min(BW, Math.max(WMIN, v.w)), h = (w * BH) / BW
+        return { w, x: Math.min(BX + BW - w, Math.max(BX, v.x)), y: Math.min(BY + BH - h, Math.max(BY, v.y)) }
+    }
+    const zoomer = (f: number, cx?: number, cy?: number) => setVue((v) => {
+        const h = (v.w * BH) / BW
+        const px = cx ?? v.x + v.w / 2, py = cy ?? v.y + h / 2
+        const w = Math.min(BW, Math.max(WMIN, v.w / f))
+        const k = w / v.w
+        return borner({ w, x: px - (px - v.x) * k, y: py - (py - v.y) * k })
+    })
+    const versCarte = (clientX: number, clientY: number): [number, number] => {
+        const el = svgRef.current!, b = el.getBoundingClientRect(), v = vueRef.current
+        return [v.x + ((clientX - b.left) / b.width) * v.w, v.y + ((clientY - b.top) / b.height) * ((v.w * BH) / BW)]
+    }
     React.useEffect(() => {
-        const el = defil.current
+        const el = svgRef.current
         if (!el) return
-        const k = LARG_MOBILE / 1000
-        const cible = g ? positions(g)[0][0] * k : LARG_MOBILE * 0.42
-        el.scrollTo({ left: Math.max(0, cible - el.clientWidth / 2), behavior: g ? "smooth" : "auto" })
-    }, [etroit, sel])
+        const roue = (e: WheelEvent) => {
+            const v = vueRef.current
+            if (e.deltaY > 0 && v.w >= BW) return // tout dézoomé : on laisse la page défiler
+            e.preventDefault()
+            const [cx, cy] = versCarte(e.clientX, e.clientY)
+            zoomer(Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), cx, cy)
+        }
+        el.addEventListener("wheel", roue, { passive: false })
+        return () => el.removeEventListener("wheel", roue)
+    }, [])
+    const pointeurs = React.useRef(new Map<number, [number, number]>())
+    const geste = React.useRef<{ d0: number; v0: Vue; c0: [number, number] } | null>(null)
+    const bouge = React.useRef(0)
+    const pDown = (e: React.PointerEvent) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return
+        pointeurs.current.set(e.pointerId, [e.clientX, e.clientY])
+        bouge.current = 0
+        if (pointeurs.current.size === 2) {
+            const [a, b] = Array.from(pointeurs.current.values())
+            geste.current = { d0: Math.hypot(a[0] - b[0], a[1] - b[1]), v0: vueRef.current, c0: versCarte((a[0] + b[0]) / 2, (a[1] + b[1]) / 2) }
+        }
+    }
+    const pMove = (e: React.PointerEvent) => {
+        const prec = pointeurs.current.get(e.pointerId)
+        if (!prec) return
+        pointeurs.current.set(e.pointerId, [e.clientX, e.clientY])
+        const el = svgRef.current!, b = el.getBoundingClientRect()
+        if (pointeurs.current.size === 2 && geste.current) {
+            const [a, c] = Array.from(pointeurs.current.values())
+            const d = Math.hypot(a[0] - c[0], a[1] - c[1])
+            const g0 = geste.current, w = Math.min(BW, Math.max(WMIN, (g0.v0.w * g0.d0) / Math.max(d, 1))), k = w / g0.v0.w
+            const [cx, cy] = g0.c0
+            setVue(borner({ w, x: cx - (cx - g0.v0.x) * k, y: cy - (cy - g0.v0.y) * k }))
+            bouge.current += 10
+            return
+        }
+        if (pointeurs.current.size !== 1 || vueRef.current.w >= BW) return
+        const dx = e.clientX - prec[0], dy = e.clientY - prec[1]
+        bouge.current += Math.abs(dx) + Math.abs(dy)
+        if (bouge.current > 4) {
+            if (!el.hasPointerCapture(e.pointerId)) try { el.setPointerCapture(e.pointerId) } catch (er) {}
+            const v = vueRef.current, k = v.w / b.width
+            setVue(borner({ ...v, x: v.x - dx * k, y: v.y - dy * k }))
+        }
+    }
+    const pUp = (e: React.PointerEvent) => { pointeurs.current.delete(e.pointerId); if (pointeurs.current.size < 2) geste.current = null }
+    const clicCarte = (n: string) => { if (bouge.current > 6) return; choisir(n) }
+    // en choisissant un genre depuis la liste ou la recherche, la carte se recentre dessus
+    React.useEffect(() => {
+        if (!g) return
+        const [x, y] = pt(g.pts[0][0], g.pts[0][1])
+        setVue((v) => {
+            const w = Math.min(v.w, 320), h = (w * BH) / BW
+            const dedans = x > v.x + v.w * 0.1 && x < v.x + v.w * 0.9 && y > v.y + h * 0.1 && y < v.y + ((v.w * BH) / BW) * 0.9
+            return dedans && v.w <= 320 ? v : borner({ w, x: x - w / 2, y: y - h / 2 })
+        })
+    }, [sel])
+    const echelle = vue.w / BW // pour garder points et textes à taille constante à l'écran
     const ficheRef = React.useRef<HTMLDivElement>(null)
 
     const puce = (actif: boolean): React.CSSProperties => ({
@@ -620,70 +695,59 @@ export default function CarteMonde(props) {
     const gEtiq = GENRES.find((x) => x.n === nomEtiquette)
     const nbPays = new Set(GENRES.flatMap((x) => x.pays)).size
 
-    // Encarts agrandis des régions où les points se chevauchent
-    const ENCARTS = [
-        { nom: "AFRIQUE AUSTRALE, AGRANDIE", lo0: 15.2, lo1: 33.4, la0: -21.6, la1: -35.3, X: 612, Y: 396, K: 4.6 },
-        { nom: "MEXIQUE ET SUD DES ÉTATS-UNIS, AGRANDIS", lo0: -117.5, lo1: -92.0, la0: 33.0, la1: 15.4, X: 18, Y: 384, K: 3.05 },
-    ].map((e) => {
-        const [x0] = pt(e.lo0, (e.la0 + e.la1) / 2), [x1] = pt(e.lo1, (e.la0 + e.la1) / 2), [, y0] = pt((e.lo0 + e.lo1) / 2, e.la0), [, y1] = pt((e.lo0 + e.lo1) / 2, e.la1)
-        return { ...e, x0, x1, y0, y1, W: (x1 - x0) * e.K, H: (y1 - y0) * e.K }
-    })
-    const encartDe = (lo: number, la: number) => ENCARTS.find((e) => lo > e.lo0 && lo < e.lo1 && la < e.la0 && la > e.la1)
-    const versEncart = (e: any, x: number, y: number): [number, number] => [e.X + (x - e.x0) * e.K, e.Y + (y - e.y0) * e.K]
+    // tailles exprimées en pixels écran, converties en unités de carte selon le zoom
+    const u = vue.w / Math.max(w, 1)
+    const rp = (etroit ? 5 : 4.5) * (visibles.length > 120 && vue.w > 600 ? 0.82 : 1)
     const point = (gg: Genre, x: number, y: number, key: string) => {
         const actif = gg.n === sel, sur = gg.n === survol
         return (
-            <g key={key} style={{ cursor: "pointer" }} onClick={() => choisir(gg.n)} onMouseEnter={() => setSurvol(gg.n)} onMouseLeave={() => setSurvol(null)}>
-                <circle cx={x} cy={y} r={r * 1.8} fill="transparent" />
-                {actif && <circle cx={x} cy={y} r={r * 2.3} fill="none" stroke={accent} strokeWidth={1.2} />}
-                <circle cx={x} cy={y} r={actif || sur ? r * 1.3 : r} fill={actif ? accent : vert} fillOpacity={actif || sur ? 1 : 0.85} stroke={fond} strokeWidth={1} />
+            <g key={key} style={{ cursor: "pointer" }} onClick={() => clicCarte(gg.n)} onMouseEnter={() => setSurvol(gg.n)} onMouseLeave={() => setSurvol(null)}>
+                <circle cx={x} cy={y} r={rp * 2 * u} fill="transparent" />
+                {actif && <circle cx={x} cy={y} r={rp * 2.4 * u} fill="none" stroke={accent} strokeWidth={1.3 * u} />}
+                <circle cx={x} cy={y} r={(actif || sur ? rp * 1.3 : rp) * u} fill={actif ? accent : vert} fillOpacity={actif || sur ? 1 : 0.85} stroke={fond} strokeWidth={1 * u} />
             </g>
         )
     }
     const etiquetteSvg = (n: string, x: number, y: number, key: string) => {
-        const droite = x < 860
-        return <text key={key} x={x + (droite ? r * 2.4 + 3 : -(r * 2.4 + 3))} y={y + 5} textAnchor={droite ? "start" : "end"} fontFamily={serif} fontSize={etroit ? 17 : 16} fontWeight={600} fontStyle="italic" fill={n === sel ? accent : encre} stroke={fond} strokeWidth={4} strokeLinejoin="round" paintOrder="stroke" style={{ pointerEvents: "none" }}>{n}</text>
+        const droite = x < vue.x + vue.w * 0.82
+        const dx = (rp * 2.6 + 3) * u
+        return <text key={key} x={x + (droite ? dx : -dx)} y={y + 5 * u} textAnchor={droite ? "start" : "end"} fontFamily={serif} fontSize={16 * u} fontWeight={600} fontStyle="italic" fill={n === sel ? accent : encre} stroke={fond} strokeWidth={4 * u} strokeLinejoin="round" paintOrder="stroke" style={{ pointerEvents: "none" }}>{n}</text>
     }
-    const positions = (gg: Genre) => {
-        const out: [number, number][] = []
-        for (const [lo, la] of gg.pts) {
-            const [x, y] = pt(lo, la)
-            const e = encartDe(lo, la)
-            out.push(e ? versEncart(e, x, y) : [x, y])
-        }
-        return out
-    }
+    const positions = (gg: Genre) => gg.pts.map(([lo, la]) => pt(lo, la))
+    const bouton = (t: string, aria: string, f: () => void, off = false) => (
+        <button aria-label={aria} title={aria} onClick={f} disabled={off}
+            style={{ all: "unset", boxSizing: "border-box", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", background: carteFond, border: `1px solid rgba(29,22,18,0.3)`, color: encre, fontFamily: sans, fontSize: t.length > 1 ? 15 : 20, cursor: off ? "default" : "pointer", opacity: off ? 0.35 : 1, userSelect: "none" }}>{t}</button>
+    )
+    const zoomee = vue.w < BW - 1
     const carte = (
-        <svg viewBox="0 4 1000 612" style={{ width: "100%", height: "auto", display: "block", overflow: "visible", touchAction: "manipulation" }} role="img" aria-label="Carte du monde des régions d'origine de genres de cactus, succulentes et bulbes">
-            <defs>{ENCARTS.map((e, i) => <clipPath key={i} id={"acs-encart-" + i}><rect x={e.X} y={e.Y} width={e.W} height={e.H} /></clipPath>)}</defs>
-            <path d={COTE_MONDE} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-            {ENCARTS.map((e, i) => (
-                <g key={"e" + i}>
-                    <rect x={e.x0} y={e.y0} width={e.x1 - e.x0} height={e.y1 - e.y0} fill="none" stroke={encre} strokeOpacity={0.45} strokeWidth={0.8} strokeDasharray="2 2" />
-                    <path d={`M${(e.x0 + e.x1) / 2} ${e.y1} L${e.X + e.W / 2} ${e.Y}`} stroke={encre} strokeOpacity={0.3} strokeWidth={0.8} strokeDasharray="2 2" fill="none" />
-                    <rect x={e.X} y={e.Y} width={e.W} height={e.H} fill={fond} stroke={encre} strokeOpacity={0.5} strokeWidth={1} />
-                    <g clipPath={`url(#acs-encart-${i})`}>
-                        <path d={COTE_MONDE} transform={`translate(${e.X - e.x0 * e.K} ${e.Y - e.y0 * e.K}) scale(${e.K})`} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                    </g>
-                    <text x={e.X + 6} y={e.Y + e.H + 14} fontFamily={sans} fontSize={11} letterSpacing={0.8} fill={encre} fillOpacity={0.6}>{e.nom}</text>
-                </g>
-            ))}
-            {infos && typeof infos === "object" && infos.pts.map(([lo, la], i) => {
-                const [x, y] = pt(lo, la)
-                const en = encartDe(lo, la)
-                const [ex, ey] = en ? versEncart(en, x, y) : [x, y]
-                return <circle key={"o" + i} cx={ex} cy={ey} r={2} fill={accent} fillOpacity={0.4} />
-            })}
-            {visibles.map((gg) => positions(gg).map(([x, y], i) => point(gg, x, y, gg.n + i)))}
-            {gEtiq && (() => {
-                const vus: [number, number][] = []
-                return positions(gEtiq).map(([x, y], i) => {
-                    if (vus.some(([a, b]) => Math.hypot(a - x, b - y) < 70)) return null
-                    vus.push([x, y])
-                    return etiquetteSvg(gEtiq.n, x, y, "t" + i)
-                })
-            })()}
-        </svg>
+        <div style={{ position: "relative", border: `1px solid ${trait}`, background: fond, overflow: "hidden" }}>
+            <svg ref={svgRef} viewBox={`${vue.x} ${vue.y} ${vue.w} ${(vue.w * BH) / BW}`} onPointerDown={pDown} onPointerMove={pMove} onPointerUp={pUp} onPointerCancel={pUp} onPointerLeave={(e) => { if (e.pointerType === "mouse") pUp(e) }}
+                style={{ width: "100%", height: "auto", display: "block", touchAction: zoomee ? "none" : "pan-y", cursor: zoomee ? "grab" : "default", userSelect: "none" }}
+                role="img" aria-label="Carte du monde des régions d'origine de genres de cactus, succulentes et bulbes">
+                <path d={COTE_MONDE} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                {infos && typeof infos === "object" && infos.pts.map(([lo, la], i) => {
+                    const [x, y] = pt(lo, la)
+                    return <circle key={"o" + i} cx={x} cy={y} r={2.2 * u} fill={accent} fillOpacity={0.4} />
+                })}
+                {visibles.map((gg) => positions(gg).map(([x, y], i) => point(gg, x, y, gg.n + i)))}
+                {gEtiq && (() => {
+                    const vus: [number, number][] = []
+                    return positions(gEtiq).map(([x, y], i) => {
+                        if (vus.some(([a, b]) => Math.hypot(a - x, b - y) < 70 * u)) return null
+                        vus.push([x, y])
+                        return etiquetteSvg(gEtiq.n, x, y, "t" + i)
+                    })
+                })()}
+            </svg>
+            <div style={{ position: "absolute", top: 10, right: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                {bouton("+", "Zoomer", () => zoomer(1.8), vue.w <= WMIN + 0.5)}
+                {bouton("−", "Dézoomer", () => zoomer(1 / 1.8), !zoomee)}
+                {bouton("⤢", "Voir le monde entier", () => setVue(VUE0), !zoomee)}
+            </div>
+            <div style={{ position: "absolute", left: 10, bottom: 8, fontFamily: sans, fontSize: 11.5, color: encre, opacity: 0.6, pointerEvents: "none" }}>
+                {etroit ? "Pincez pour zoomer, glissez pour vous déplacer" : "Molette pour zoomer, cliquer-glisser pour se déplacer"}
+            </div>
+        </div>
     )
 
     const recherche = (
@@ -815,14 +879,7 @@ export default function CarteMonde(props) {
                     {CATS.map(([c, t]) => <button key={c} style={puce(cat === c)} onClick={() => { setCat(c); if (g && c !== "Tous" && g.c !== c) setSel(null) }}>{t}</button>)}
                 </div>
             </div>
-            {etroit ? (
-                <div>
-                    <div ref={defil} style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-                        <div style={{ width: LARG_MOBILE }}>{carte}</div>
-                    </div>
-                    <div style={{ fontFamily: sans, fontSize: 12, opacity: 0.6, marginTop: 6 }}>Faites glisser la carte pour voir tout le monde.</div>
-                </div>
-            ) : carte}
+            {carte}
             <div style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 28 : 48, alignItems: "flex-start", marginTop: etroit ? 0 : 8 }}>
                 <div style={{ flex: etroit ? "none" : "1 1 0", width: etroit ? "100%" : undefined, minWidth: 0, position: etroit ? "static" : "sticky", top: 96 }}>{fiche}</div>
                 <div style={{ flex: etroit ? "none" : "1.25 1 0", width: etroit ? "100%" : undefined, minWidth: 0 }}>{liste}</div>
