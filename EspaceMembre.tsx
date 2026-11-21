@@ -153,7 +153,7 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
-const ONGLETS = ["accueil", "profil", "evenements", "sondages", "galerie", "annuaire"] as const
+const ONGLETS = ["accueil", "profil", "evenements", "sondages", "discussion", "galerie", "annuaire"] as const
 type O = typeof ONGLETS[number]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
 
@@ -165,7 +165,14 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
     const setOnglet = (o: O) => { setO(o); try { history.replaceState(null, "", o === "accueil" ? location.pathname : "#" + o) } catch (e) {} }
     const [aRepondre, setARepondre] = React.useState(0)
     React.useEffect(() => { compterSondages().then(setARepondre) }, [onglet])
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["galerie", "Galerie"], ["annuaire", "Annuaire"]]
+    const [nonLus, setNonLus] = React.useState(0)
+    React.useEffect(() => {
+        if (onglet === "discussion") { setNonLus(0); return }
+        let vu = "1970-01-01"; try { vu = localStorage.getItem("acs-discussion-vu") || vu } catch (e) {}
+        client.from("discussion").select("id", { count: "exact", head: true }).gt("cree_le", vu).neq("email", moi.email.toLowerCase())
+            .then(({ count, error }: any) => setNonLus(error ? 0 : count || 0))
+    }, [onglet])
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["galerie", "Galerie"], ["annuaire", "Annuaire"]]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -185,6 +192,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
             {onglet === "evenements" && <Evenements />}
             {onglet === "sondages" && <Sondages moi={moi} />}
+            {onglet === "discussion" && <Discussion moi={moi} />}
             {onglet === "galerie" && <GalerieMembres />}
             {onglet === "annuaire" && <Annuaire />}
         </div>
@@ -865,6 +873,99 @@ const DEPTS_BZH = ["22", "29", "35", "44", "56"]
 const REPERES: [string, number, number][] = [["Rennes", -1.68, 48.05], ["Nantes", -1.55, 47.16], ["Brest", -4.49, 48.33], ["Vannes", -2.76, 47.6], ["Saint-Brieuc", -2.76, 48.45]]
 const NOM_DEPT: Record<string, string> = { "22": "Côtes-d’Armor", "29": "Finistère", "35": "Ille-et-Vilaine", "44": "Loire-Atlantique", "56": "Morbihan", "49": "Maine-et-Loire", "50": "Manche", "53": "Mayenne", "72": "Sarthe", "85": "Vendée", "14": "Calvados", "76": "Seine-Maritime" }
 const sansAccent = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+
+// ---------- Discussion : petit salon en direct entre adhérents ----------
+type MsgDisc = { id: string; email: string; auteur: string; texte: string; cree_le: string }
+function Discussion({ moi }: { moi: Adherent }) {
+    const client = sb()!
+    const moiEmail = moi.email.toLowerCase()
+    const admin = moi.role === "admin"
+    const [msgs, setMsgs] = React.useState<MsgDisc[] | null>(null)
+    const [inactif, setInactif] = React.useState(false)
+    const [texte, setTexte] = React.useState("")
+    const [erreur, setErreur] = React.useState("")
+    const [envoi, setEnvoi] = React.useState(false)
+    const fil = React.useRef<HTMLDivElement>(null)
+    const enBas = React.useRef(true)
+    const auteur = [moi.prenom, moi.nom ? moi.nom.charAt(0).toUpperCase() + "." : ""].filter(Boolean).join(" ") || moi.email.split("@")[0]
+    const marquerVu = () => { try { localStorage.setItem("acs-discussion-vu", new Date().toISOString()) } catch (e) {} }
+    const charger = React.useCallback(async () => {
+        const { data, error } = await client.from("discussion").select("*").order("cree_le", { ascending: false }).limit(300)
+        if (error) { setInactif(true); setMsgs([]); return }
+        setMsgs((data ?? []).reverse()); marquerVu()
+    }, [])
+    React.useEffect(() => {
+        charger()
+        let canal: any = null
+        try {
+            canal = client.channel?.("acs-discussion")
+                ?.on("postgres_changes", { event: "*", schema: "public", table: "discussion" }, (p: any) => {
+                    if (p.eventType === "INSERT") setMsgs((l) => (l && !l.some((m) => m.id === p.new.id) ? [...l, p.new] : l))
+                    if (p.eventType === "DELETE") setMsgs((l) => (l ? l.filter((m) => m.id !== p.old.id) : l))
+                    marquerVu()
+                })
+                ?.subscribe()
+        } catch (e) {}
+        const minuterie = setInterval(charger, 30000) // filet de sécurité si le direct est coupé
+        return () => { clearInterval(minuterie); try { canal && client.removeChannel(canal) } catch (e) {} }
+    }, [])
+    React.useEffect(() => { const el = fil.current; if (el && enBas.current) el.scrollTop = el.scrollHeight }, [msgs])
+    const envoyer = async () => {
+        const t = texte.trim()
+        if (!t || envoi) return
+        setEnvoi(true); setErreur("")
+        const { data, error } = await client.from("discussion").insert({ auteur, texte: t.slice(0, 1000) }).select().single()
+        setEnvoi(false)
+        if (error) { setErreur("Envoi impossible : " + error.message); return }
+        setTexte(""); enBas.current = true
+        setMsgs((l) => (l && data && !l.some((m) => m.id === data.id) ? [...l, data] : l))
+    }
+    const supprimer = async (m: MsgDisc) => {
+        if (!window.confirm("Supprimer ce message ?")) return
+        const { error } = await client.from("discussion").delete().eq("id", m.id)
+        if (error) setErreur(error.message); else setMsgs((l) => (l ? l.filter((x) => x.id !== m.id) : l))
+    }
+    if (inactif) return <div style={box}><h2 style={h2}>Discussion</h2><p style={muted}>Le salon de discussion n’est pas encore activé. Un administrateur doit d’abord l’installer.</p></div>
+    const jour = (d: string) => new Date(d).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+    const heure = (d: string) => new Date(d).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+    return (
+        <div style={{ ...box, padding: 0, display: "flex", flexDirection: "column", height: "min(70vh, 640px)", minHeight: 380 }}>
+            <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.line}`, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                <span style={{ fontFamily: serif, fontSize: 20, fontWeight: 600 }}>Discussion des adhérents</span>
+                <span style={{ ...muted, fontSize: 12 }}>Visible par tous les adhérents · restons courtois</span>
+            </div>
+            <div ref={fil} onScroll={(e) => { const el = e.currentTarget; enBas.current = el.scrollHeight - el.scrollTop - el.clientHeight < 60 }} style={{ flex: "1 1 auto", overflowY: "auto", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 4 }}>
+                {msgs === null && <p style={muted}>Chargement…</p>}
+                {msgs && msgs.length === 0 && <p style={{ ...muted, margin: "auto", textAlign: "center" }}>Aucun message pour l’instant. Lancez la conversation !</p>}
+                {msgs?.map((m, i) => {
+                    const prec = msgs[i - 1]
+                    const nouveauJour = !prec || jour(prec.cree_le) !== jour(m.cree_le)
+                    const suite = !nouveauJour && prec && prec.email === m.email && new Date(m.cree_le).getTime() - new Date(prec.cree_le).getTime() < 5 * 60000
+                    const mien = m.email === moiEmail
+                    return (
+                        <React.Fragment key={m.id}>
+                            {nouveauJour && <div style={{ textAlign: "center", fontSize: 12, color: C.mute, margin: "14px 0 6px" }}>{jour(m.cree_le).replace(/^./, (c) => c.toUpperCase())}</div>}
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: mien ? "flex-end" : "flex-start", marginTop: suite ? 0 : 8 }}>
+                                {!suite && <div style={{ fontSize: 12, color: C.mute, margin: "0 2px 3px" }}>{mien ? "Vous" : m.auteur} · {heure(m.cree_le)}</div>}
+                                <div style={{ display: "flex", alignItems: "center", gap: 6, flexDirection: mien ? "row-reverse" : "row", maxWidth: "88%" }}>
+                                    <div style={{ background: mien ? C.accent : C.bg, color: mien ? C.accentDark : C.txt, border: mien ? "none" : `1px solid ${C.line}`, padding: "8px 12px", fontSize: 15, lineHeight: 1.45, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.texte}</div>
+                                    {(mien || admin) && <button onClick={() => supprimer(m)} title="Supprimer" aria-label="Supprimer ce message" style={{ background: "transparent", border: "none", color: C.mute, cursor: "pointer", fontSize: 16, padding: 2, opacity: 0.6 }}>×</button>}
+                                </div>
+                            </div>
+                        </React.Fragment>
+                    )
+                })}
+            </div>
+            <div style={{ borderTop: `1px solid ${C.line}`, padding: 12, display: "flex", gap: 8, alignItems: "flex-end" }}>
+                <textarea value={texte} onChange={(e) => setTexte(e.target.value)} maxLength={1000} rows={1} placeholder="Votre message…"
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer() } }}
+                    style={{ ...input, resize: "none", minHeight: 46, maxHeight: 140, fontSize: 15 }} />
+                <button style={{ ...btn(), flex: "none", opacity: texte.trim() && !envoi ? 1 : 0.5 }} onClick={envoyer} disabled={!texte.trim() || envoi}>Envoyer</button>
+            </div>
+            {erreur && <div style={{ padding: "0 14px 12px" }}><Msg text={erreur} err /></div>}
+        </div>
+    )
+}
 
 // ---------- Galerie (réservée aux adhérents) ----------
 function GalerieMembres() {
