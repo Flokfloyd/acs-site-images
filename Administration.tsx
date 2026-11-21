@@ -25,9 +25,15 @@ function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
     return [setEl, etroit]
 }
 
-const ONGLETS = [["agenda", "Agenda"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"]] as const
+const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"]] as const
 type O = (typeof ONGLETS)[number][0]
-const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.some(([k]) => k === h) ? h : "agenda" }
+const lireHash = (): O => {
+    if (typeof window === "undefined") return "agenda"
+    if (new URLSearchParams(window.location.search).get("billet")) return "billets" // QR code scanné avec l'appareil photo
+    const h = window.location.hash.slice(1) as O
+    return ONGLETS.some(([k]) => k === h) ? h : "agenda"
+}
+const CODE_BILLET = /ACS-[A-Z0-9]{4}-[A-Z0-9]{4}/i
 
 /**
  * @framerSupportedLayoutWidth any-prefer-fixed
@@ -77,6 +83,7 @@ export default function Administration(props: { pageMembre: string }) {
                 </div>
             )}
             {onglet === "agenda" && <Agenda moi={email} ouvrirCampagne={ouvrirCampagne} etroit={etroit} />}
+            {onglet === "billets" && <ControleBillets />}
             {onglet === "paiements" && <><Aide>Les paiements encaissés sur AssoConnect (en ligne ou au salon avec l’appli) s’ajoutent ici en important un export AssoConnect, par exemple une fois par mois. Notez à la main les adhésions réglées par chèque ou en espèces hors AssoConnect.</Aide>
                 <ImportAssoConnect />
                 <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => { const a = new Date().getFullYear(); return { annee: a, montant: 20, formule: "Année complète", debut: `${a}-01-01`, fin: `${a}-12-31`, source: "Chèque" } }} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
@@ -173,6 +180,86 @@ function GalerieAdmin() {
             <Editeur key={rev} table="photos" ordre="ordre" titre="Photos" champs={CHAMPS_PHOTO} nouveau={() => ({ ordre: 100, accueil: false })}
                 resume={(r) => `${r.accueil ? "★ Accueil · " : ""}${r.album ? r.album + " · " : ""}${r.legende || "(sans légende)"}`} />
         </>
+    )
+}
+
+// ---------- Contrôle des billets à l'entrée ----------
+function ControleBillets() {
+    const client = sb()
+    const depuisUrl = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("billet") || "" : ""
+    const [code, setCode] = React.useState(depuisUrl)
+    const [res, setRes] = React.useState<any>(null)
+    const [occupe, setOccupe] = React.useState(false)
+    const [camera, setCamera] = React.useState(false)
+    const video = React.useRef<HTMLVideoElement>(null)
+    const flux = React.useRef<MediaStream | null>(null)
+    const scanPossible = typeof window !== "undefined" && "BarcodeDetector" in window && !!navigator.mediaDevices
+    const verifier = async (c: string, valider = false) => {
+        const m = c.toUpperCase().match(CODE_BILLET)
+        if (!m) { setRes({ etat: "format" }); return }
+        setOccupe(true)
+        const { data, error } = await client.rpc("controler_billet", { code: m[0], valider })
+        setOccupe(false)
+        setRes(error || !data ? { etat: "erreur", message: error?.message || "Pas de réponse : la base n’est peut-être pas à jour." } : { ...data, valide: valider && data.etat === "ok" })
+        setCode(m[0])
+    }
+    React.useEffect(() => { if (depuisUrl) verifier(depuisUrl) }, [])
+    const arreter = () => { flux.current?.getTracks().forEach((t) => t.stop()); flux.current = null; setCamera(false) }
+    React.useEffect(() => () => arreter(), [])
+    const scanner = async () => {
+        try {
+            const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            flux.current = s; setCamera(true)
+            await new Promise((r) => setTimeout(r, 50))
+            if (!video.current) return
+            video.current.srcObject = s; await video.current.play()
+            const det = new (window as any).BarcodeDetector({ formats: ["qr_code"] })
+            const boucle = async () => {
+                if (!flux.current || !video.current) return
+                try { const t = await det.detect(video.current); const v = t.map((x: any) => x.rawValue).find((x: string) => CODE_BILLET.test(x)); if (v) { arreter(); verifier(v); return } } catch (e) {}
+                requestAnimationFrame(boucle)
+            }
+            boucle()
+        } catch (e) { setCamera(false); setRes({ etat: "erreur", message: "Caméra indisponible : saisissez le numéro du billet." }) }
+    }
+    const couleur = !res ? C.line : res.etat === "ok" ? C.accent : res.etat === "deja" ? "#d8a24a" : "#c8664f"
+    const titre: Record<string, string> = {
+        ok: res?.valide ? "Entrée validée" : "Billet valide", deja: "Billet déjà utilisé", annule: "Inscription annulée",
+        inconnu: "Billet inconnu", format: "Numéro incomplet", refuse: "Réservé aux administrateurs", erreur: "Erreur",
+    }
+    return (
+        <div style={{ display: "grid", gap: 16 }}>
+            <Aide>À l’entrée, scannez le QR code du billet (sur téléphone ou papier) ou tapez son numéro, puis validez l’entrée. Un billet ne peut être validé qu’une fois. Vous pouvez aussi scanner le QR code avec l’appareil photo du téléphone : il ouvre directement cette page.</Aide>
+            <div style={box}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <label style={{ flex: "1 1 220px" }}><span style={label}>Numéro du billet</span>
+                        <input style={{ ...input, fontFamily: "monospace", fontSize: 18, letterSpacing: 1.5, textTransform: "uppercase" }} value={code} placeholder="ACS-XXXX-XXXX" onChange={(e) => setCode(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") verifier(code) }} />
+                    </label>
+                    <button style={btn()} onClick={() => verifier(code)} disabled={occupe}>Vérifier</button>
+                    {scanPossible && !camera && <button style={small()} onClick={scanner}>Scanner avec la caméra</button>}
+                    {camera && <button style={small(true)} onClick={arreter}>Arrêter la caméra</button>}
+                </div>
+                {camera && <video ref={video} playsInline muted style={{ width: "100%", maxWidth: 420, marginTop: 14, display: "block", background: "#000" }} />}
+            </div>
+            {res && (
+                <div style={{ ...box, borderColor: couleur, borderWidth: 2 }}>
+                    <div style={{ fontFamily: serif, fontSize: 24, fontWeight: 600, color: couleur }}>{titre[res.etat] || res.etat}</div>
+                    {res.message && <p style={muted}>{res.message}</p>}
+                    {res.nom && (
+                        <div style={{ marginTop: 10, lineHeight: 1.7 }}>
+                            <div style={{ fontSize: 20 }}><strong>{res.nom}</strong> · {res.personnes || 1} personne{(res.personnes || 1) > 1 ? "s" : ""}</div>
+                            <div style={muted}>{res.evenement}{res.date ? " · " + res.date : ""}</div>
+                            <div style={{ fontFamily: "monospace", fontSize: 15, marginTop: 4 }}>{res.billet}</div>
+                            {res.montant > 0 && <div style={{ marginTop: 6, color: res.statut === "en_attente" ? "#d8a24a" : C.accent }}>{euros(res.montant)} · {res.statut === "en_attente" ? "à régler sur place" : "réglé"}</div>}
+                            {res.etat === "deja" && res.scanne_le && <div style={{ marginTop: 6 }}>Entré le {dateFr(res.scanne_le, true)}</div>}
+                        </div>
+                    )}
+                    {res.etat === "ok" && !res.valide && <button style={{ ...btn(), marginTop: 14 }} onClick={() => verifier(res.billet, true)} disabled={occupe}>Valider l’entrée</button>}
+                    {res.etat === "ok" && res.statut === "en_attente" && !res.valide && <p style={{ ...muted, fontSize: 13, marginTop: 8 }}>Pensez à encaisser puis à marquer l’inscription « réglée » dans l’agenda.</p>}
+                    {(res.valide || res.etat !== "ok") && <button style={{ ...small(), marginTop: 14 }} onClick={() => { setRes(null); setCode(""); if (scanPossible) scanner() }}>Billet suivant</button>}
+                </div>
+            )}
+        </div>
     )
 }
 
@@ -632,12 +719,12 @@ function Inscrits({ evt, moi, ouvrirCampagne }: { evt: any; moi: string; ouvrirC
     const ajouter = async () => {
         const email = f.email.trim().toLowerCase()
         if (!/@/.test(email)) return setMsg({ t: "Adresse e-mail invalide.", err: true })
-        const { error } = await client.from("inscriptions").insert({ email, formulaire: `${evt.titre} · ${evt.date_label}`, montant: (evt.prix || 0) * f.nb, statut: f.statut, evenement_id: evt.id, nb_personnes: f.nb })
+        const { data: cree, error } = await client.from("inscriptions").insert({ email, formulaire: `${evt.titre} · ${evt.date_label}`, montant: (evt.prix || 0) * f.nb, statut: f.statut, evenement_id: evt.id, nb_personnes: f.nb }).select().single()
         if (error) return setMsg({ t: error.message, err: true })
         let t = "Inscription ajoutée."
-        if (f.confirmer) {
-            const r = await envoyer({ a: [email], sujet: `Inscription confirmée : ${evt.titre}`, contenu: `Bonjour${nom(email) ? " " + nom(email).split(" ")[0] : ""},\n\nVotre inscription est bien enregistrée pour ${f.nb} personne${f.nb > 1 ? "s" : ""} :\n${evt.titre}\n${evt.date_label}${evt.heure ? ", " + evt.heure : ""}${evt.lieu ? "\n" + evt.lieu : ""}${evt.prix > 0 ? `\n\nMontant : ${euros(evt.prix * f.nb)}${f.statut === "en_attente" ? " (à régler)" : " (réglé)"}` : ""}\n\nÀ bientôt,\nLe bureau de l’ACS` })
-            t += r.ok ? " Confirmation envoyée par e-mail." : " E-mail non envoyé : " + r.texte
+        if (f.confirmer && cree) {
+            const { data: r, error: er } = await client.functions.invoke("billet", { body: { id: cree.id } })
+            t += !er && r?.ok ? " Billet envoyé par e-mail." : " E-mail non envoyé : " + (r?.erreur || er?.message || "erreur")
         }
         setMsg({ t, err: false }); setF({ ...f, email: "", nb: 1 }); charger()
     }
@@ -653,7 +740,7 @@ function Inscrits({ evt, moi, ouvrirCampagne }: { evt: any; moi: string; ouvrirC
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                 <h4 style={{ fontFamily: serif, fontSize: 20, margin: 0 }}>Inscrits <span style={{ color: C.mute, fontWeight: 400, fontSize: 15 }}>{liste ? `${liste.length} inscription(s) · ${total} personne(s)${evt.places ? ` sur ${evt.places} places` : ""}` : ""}</span></h4>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    {liste && liste.length > 0 && <button style={small()} onClick={() => exporter(`inscrits-${evt.titre}.csv`, ["E-mail", "Nom", "Personnes", "Montant", "Statut", "Inscrit le"], liste.map((r) => [r.email, nom(r.email), r.nb_personnes, r.montant, STATUTS[r.statut], r.cree_le]))}>Exporter (CSV)</button>}
+                    {liste && liste.length > 0 && <button style={small()} onClick={() => exporter(`inscrits-${evt.titre}.csv`, ["E-mail", "Nom", "Personnes", "Montant", "Statut", "Inscrit le", "Billet", "Entré le"], liste.map((r) => [r.email, nom(r.email), r.nb_personnes, r.montant, STATUTS[r.statut], r.cree_le, r.billet || "", r.scanne_le || ""]))}>Exporter (CSV)</button>}
                     {liste && liste.length > 0 && <button style={small()} onClick={ecrire}>Écrire aux inscrits</button>}
                 </div>
             </div>
@@ -661,7 +748,7 @@ function Inscrits({ evt, moi, ouvrirCampagne }: { evt: any; moi: string; ouvrirC
             <div style={{ marginTop: 10 }}>
                 {(liste ?? []).map((r) => (
                     <div key={r.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "10px 0", borderTop: `1px solid ${C.line}`, flexWrap: "wrap" }}>
-                        <span>{nom(r.email) || r.email} <span style={{ color: C.mute, fontSize: 13 }}>· {r.nb_personnes || 1} pers.{r.montant > 0 ? " · " + euros(r.montant) : ""}</span></span>
+                        <span>{nom(r.email) || r.email} <span style={{ color: C.mute, fontSize: 13 }}>· {r.nb_personnes || 1} pers.{r.montant > 0 ? " · " + euros(r.montant) : ""}{r.billet ? " · " + r.billet : ""}{r.scanne_le ? " · entré ✓" : ""}</span></span>
                         <span style={{ display: "flex", gap: 6 }}>
                             {r.statut === "en_attente" ? <button style={small()} onClick={() => changer(r, "valide")}>Marquer réglé</button> : <span style={{ fontSize: 12, color: C.accent, padding: "6px 0" }}>{STATUTS[r.statut]}</span>}
                             <button style={small(true)} onClick={() => window.confirm("Annuler cette inscription ?") && changer(r, "abandonne")}>Annuler</button>
@@ -676,7 +763,7 @@ function Inscrits({ evt, moi, ouvrirCampagne }: { evt: any; moi: string; ouvrirC
                 <div><span style={label}>Règlement</span><select style={input} value={f.statut} onChange={(x) => setF({ ...f, statut: x.target.value })}><option value="valide">Réglé / gratuit</option><option value="en_attente">À régler</option></select></div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
-                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14 }}><input type="checkbox" checked={f.confirmer} onChange={(x) => setF({ ...f, confirmer: x.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent }} />Envoyer une confirmation par e-mail</label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 14 }}><input type="checkbox" checked={f.confirmer} onChange={(x) => setF({ ...f, confirmer: x.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent }} />Envoyer le billet par e-mail</label>
                 <button style={btn()} onClick={ajouter}>Ajouter</button>
             </div>
             <Msg text={msg.t} err={msg.err} />

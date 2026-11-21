@@ -352,6 +352,39 @@ function ResultatsSondage({ so, detail }: { so: any; detail?: boolean }) {
 }
 
 // ---------- Événements : s'inscrire aux sorties de l'agenda ----------
+// ---------- Billet d'un événement (QR code à présenter à l'entrée) ----------
+const SITE = "https://acs-armorique-cactus-succulentes.framer.website"
+const qrBillet = (code: string, taille = 220) => `https://api.qrserver.com/v1/create-qr-code/?size=${taille}x${taille}&margin=8&data=${encodeURIComponent(`${SITE}/admin?billet=${code}`)}`
+function Billet({ r, e }: { r: any; e: any }) {
+    const client = sb()!
+    const [etat, setEtat] = React.useState("")
+    const pers = `${r.nb_personnes || 1} personne${(r.nb_personnes || 1) > 1 ? "s" : ""}`
+    const prix = r.montant > 0 ? `${euros(r.montant)} · ${r.statut === "en_attente" ? "à régler sur place" : "réglé"}` : "Gratuit"
+    const renvoyer = async () => { setEtat("Envoi…"); const { data, error } = await client.functions.invoke("billet", { body: { id: r.id } }); setEtat(!error && data?.ok ? "Billet envoyé par e-mail." : "Envoi impossible : " + (data?.erreur || error?.message)) }
+    const imprimer = () => {
+        const w = window.open("", "_blank", "width=480,height=640")
+        if (!w) return
+        w.document.write(`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Billet ${r.billet}</title></head><body style="font-family:Arial,sans-serif;text-align:center;padding:30px"><div style="border:2px dashed #4f7a3c;padding:24px;max-width:380px;margin:0 auto"><p style="letter-spacing:2px;color:#4f7a3c;font-size:12px;margin:0">A.C.S. · BILLET</p><h2 style="font-family:Georgia,serif;margin:8px 0">${e.titre}</h2><p style="margin:0">${[e.date_label, e.heure].filter(Boolean).join(" · ")}</p>${e.lieu ? `<p style="color:#666;margin:4px 0 0">${e.lieu}</p>` : ""}<img src="${qrBillet(r.billet, 260)}" width="220" height="220" style="margin:14px auto;display:block" onload="setTimeout(()=>print(),200)"><p style="font-family:monospace;font-size:20px;letter-spacing:2px;margin:0">${r.billet}</p><p>${pers} · ${prix}</p></div></body></html>`)
+        w.document.close()
+    }
+    return (
+        <div style={{ border: `2px dashed ${C.accent}`, padding: 18, display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>
+            <img src={qrBillet(r.billet)} alt={`QR code du billet ${r.billet}`} width={160} height={160} style={{ background: "#fff", display: "block", flex: "none" }} />
+            <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                <span style={label}>Votre billet</span>
+                <div style={{ fontFamily: "monospace", fontSize: 22, letterSpacing: 2, margin: "4px 0 6px" }}>{r.billet}</div>
+                <div>{pers} · {prix}</div>
+                <div style={{ ...muted, fontSize: 13, marginTop: 6 }}>À présenter à l’entrée, sur votre téléphone ou imprimé.{r.scanne_le ? ` Utilisé le ${dateFr(r.scanne_le, true)}.` : ""}</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                    <button style={small()} onClick={imprimer}>Imprimer</button>
+                    <button style={small()} onClick={renvoyer}>Recevoir par e-mail</button>
+                </div>
+                {etat && <div style={{ fontSize: 13, marginTop: 8, color: C.mute }}>{etat}</div>}
+            </div>
+        </div>
+    )
+}
+
 function Evenements() {
     const client = sb()!
     const [evts, setEvts] = React.useState<any[] | null>(null)
@@ -360,6 +393,7 @@ function Evenements() {
     const [nb, setNb] = React.useState<Record<string, number>>({})
     const [msg, setMsg] = React.useState<Record<string, { t: string; err: boolean }>>({})
     const [sondagesEvt, setSondagesEvt] = React.useState<Record<string, boolean>>({})
+    const [ouvert, setOuvert] = React.useState<Record<string, boolean>>({})
     React.useEffect(() => { client.from("sondages").select("evenement_id").not("evenement_id", "is", null).then(({ data }: any) => setSondagesEvt(Object.fromEntries((data ?? []).map((x: any) => [x.evenement_id, true])))) }, [])
     const charger = React.useCallback(async () => {
         const auj = new Date().toISOString().slice(0, 10)
@@ -375,7 +409,13 @@ function Evenements() {
     React.useEffect(() => { charger() }, [charger])
     const inscrire = async (e: any) => {
         const { data, error } = await client.rpc("s_inscrire", { evt: e.id, nb: nb[e.id] ?? 1 })
-        const t = error ? error.message : data === "ok" ? (e.prix > 0 ? "Inscription enregistrée, règlement à prévoir." : "Vous êtes inscrit, à bientôt !") : data
+        let t = error ? error.message : data === "ok" ? (e.prix > 0 ? "Inscription enregistrée, règlement à prévoir sur place." : "Vous êtes inscrit, à bientôt !") : data
+        if (!error && data === "ok") {
+            // envoi automatique du billet par e-mail
+            const { data: ins } = await client.from("inscriptions").select("id").eq("evenement_id", e.id).ilike("email", filtreEmail(await monEmail())).in("statut", ["valide", "en_attente"]).order("cree_le", { ascending: false }).limit(1)
+            if (ins?.[0]) { const { data: r, error: er } = await client.functions.invoke("billet", { body: { id: ins[0].id } }); t += !er && r?.ok ? " Votre billet vous a été envoyé par e-mail." : " Votre billet est disponible ci-dessous." }
+            setOuvert({ ...ouvert, [e.id]: true })
+        }
         setMsg({ ...msg, [e.id]: { t, err: !!error || data !== "ok" } }); charger()
     }
     const desinscrire = async (e: any) => { if (!window.confirm("Annuler votre inscription ?")) return; await client.rpc("se_desinscrire", { evt: e.id }); setMsg({ ...msg, [e.id]: { t: "Inscription annulée.", err: false } }); charger() }
@@ -406,7 +446,9 @@ function Evenements() {
                                 {moiInscrit && <button style={small(true)} onClick={() => desinscrire(e)}>Annuler mon inscription</button>}
                             </>}
                             {msg[e.id] && <Msg text={msg[e.id].t} err={msg[e.id].err} />}
+                            {moiInscrit?.billet && <button style={{ ...small(), marginTop: 2 }} onClick={() => setOuvert({ ...ouvert, [e.id]: !ouvert[e.id] })}>{ouvert[e.id] ? "Masquer mon billet" : "Voir mon billet"}</button>}
                         </div>
+                        {moiInscrit?.billet && ouvert[e.id] && <div style={{ gridColumn: "1 / -1" }}><Billet r={moiInscrit} e={e} /></div>}
                     </div>
                 )
             })}
