@@ -62,7 +62,7 @@ export default function EspaceMembre(props: { lienSemestriels: string; demo: "no
 
     const wrap = (children: React.ReactNode) => <div style={{ width: "100%", color: C.txt, ...font }}>{children}</div>
 
-    if (!client) return wrap(<div style={box}><h2 style={h2}>Bientôt disponible</h2><p style={muted}>L’espace membre ouvre bientôt. Les adhérents pourront s’y connecter avec leur adresse e-mail.</p></div>)
+    if (!client) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>) // page pré-générée côté serveur : la base se branche dans le navigateur
     if (!ready) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
     if (!sessionEmail) return wrap(<Connexion email={email} setEmail={setEmail} />)
     if (moi === undefined) return wrap(<div style={box}><p style={muted}>Chargement de votre espace…</p></div>)
