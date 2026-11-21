@@ -557,13 +557,14 @@ function Especes({ n, l, q, source }: { n: string; l: [string, number, number, s
             </button>
             <div style={{ fontSize: 12.5, opacity: 0.6, marginTop: 3 }}>{source ? "Liste : " + source : `Taxonomie des Cactaceae, ${ref}${obs ? " · genre observé par l’auteur dans la nature" : ""}`}</div>
             {montrer && (
-                <div style={{ columnWidth: 170, columnGap: 18, marginTop: 10, maxHeight: 300, overflowY: "auto", paddingRight: 4 }}>
+                <div style={{ marginTop: 10, maxHeight: 10 * 23 + 4, overflowY: "auto", overscrollBehavior: "contain", paddingRight: 6, borderBottom: sp.length > 10 ? "1px solid rgba(29,22,18,0.12)" : "none" }}>
                     {sp.map((e) => {
                         const vu = q.length >= 3 && sansAccent(e).includes(q)
-                        return <div key={e} style={{ fontFamily: serif, fontSize: 14.5, lineHeight: 1.55, breakInside: "avoid", fontStyle: "italic", fontWeight: vu ? 700 : 400 }}>{n.charAt(0)}. {e.split(" subsp. ").map((m, i) => i ? <React.Fragment key={i}><span style={{ fontStyle: "normal", fontFamily: sans, fontSize: 12.5 }}> subsp. </span>{m}</React.Fragment> : m)}</div>
+                        return <div key={e} style={{ fontFamily: serif, fontSize: 14.5, lineHeight: "23px", height: 23, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontStyle: "italic", fontWeight: vu ? 700 : 400 }}>{n.charAt(0)}. {e.split(" subsp. ").map((m, i) => i ? <React.Fragment key={i}><span style={{ fontStyle: "normal", fontFamily: sans, fontSize: 12.5 }}> subsp. </span>{m}</React.Fragment> : m)}</div>
                     })}
                 </div>
             )}
+            {montrer && sp.length > 10 && <div style={{ fontSize: 12, opacity: 0.55, marginTop: 6 }}>Faites défiler pour voir les {sp.length} noms.</div>}
         </div>
     )
 }
