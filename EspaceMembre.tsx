@@ -457,7 +457,7 @@ function VueEnsemble({ moi, aller }: { moi: Adherent; aller: (o: any) => void })
                     <p style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 600, color: aJour ? C.txt : C.danger }}>{aJour ? `À jour pour ${annee}` : "À renouveler"}</p>
                     <p style={muted}>{derniere ? `${derniere.formule} · du ${dateFr(derniere.debut)} au ${dateFr(derniere.fin)}` : `Dernière cotisation : ${moi.cotisation_annee ?? "—"}.`}</p>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-                        {!aJour && <a href="https://www.armorique-cactus-succulentes.com/collect/choice/649064-n-campagne-d-adhesion-2026" target="_blank" rel="noopener" style={{ ...btn(), textDecoration: "none" }}>Renouveler · 20 €</a>}
+                        {!aJour && <a href="/adhesion" style={{ ...btn(), textDecoration: "none" }}>Renouveler · 20 €</a>}
                         {derniere?.recu_url && <a href={derniere.recu_url} target="_blank" rel="noreferrer" style={{ ...btn(false), textDecoration: "none" }}>Reçu {derniere.annee}</a>}
                         <button style={btn(false)} onClick={() => aller("profil")}>Mon profil</button>
                     </div>
