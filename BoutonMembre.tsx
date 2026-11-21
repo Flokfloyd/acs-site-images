@@ -70,7 +70,7 @@ export default function BoutonMembre(props: { page: string; pageAdmin: string; c
     const plein: React.CSSProperties = { ...style, background: accent, border: `1px solid ${accent}`, color: "#16120f" }
     const adh = !props.adhesion ? null
         : connecte && aJour ? <a href={page + "#profil"} title={`Adhésion ${annee} à jour`} style={plein}>{nomMembre || "Adhérent"}</a>
-        : connecte && moi ? <a href="/#adhesion" style={plein}>Renouveler · 20 €</a>
+        : connecte && moi ? <a href="https://www.armorique-cactus-succulentes.com/collect/choice/649064-n-campagne-d-adhesion-2026" target="_blank" rel="noopener" style={plein}>Renouveler · 20 €</a>
         : <a href="/#adhesion" style={plein}>Adhérer · 20 €</a>
 
     return (
