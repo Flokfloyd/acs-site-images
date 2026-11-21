@@ -619,3 +619,72 @@ begin
 end $$;
 revoke all on function public.controler_billet(text, boolean) from public, anon;
 grant execute on function public.controler_billet(text, boolean) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 15. Collection personnelle des adhérents (plantes, semis, rusticité, échanges)
+-- ---------------------------------------------------------------------
+create table if not exists public.plantes (
+  id uuid primary key default gen_random_uuid(),
+  email text not null default mon_email(),
+  auteur text,
+  espece text not null check (char_length(espece) between 1 and 200),
+  genre text,
+  type text,
+  statut text not null default 'collection' check (statut in ('collection', 'semis')),
+  code text,                -- n° d'inventaire personnel
+  origine text,             -- pays, localité
+  n_collecte text,          -- numéro de terrain (SB 127, L 1016…)
+  reference text,           -- référence du lot de graines
+  fournisseur text,         -- vendeur, producteur, donateur
+  semis text,               -- date ou année du semis
+  methode text,             -- sachet, terrine…
+  nb_graines int check (nb_graines >= 0),
+  nb_leves int check (nb_leves >= 0),
+  nb_vivants int check (nb_vivants >= 0),
+  acquis text,              -- date ou année d'acquisition
+  rempotage text,
+  exposition text,
+  substrat int check (substrat between 1 and 6),
+  t_min numeric(4,1),
+  arrosage text,
+  exemplaires int not null default 1 check (exemplaires >= 0),
+  notes text check (char_length(notes) <= 2000),
+  a_echanger boolean not null default false,
+  graines_a_donner boolean not null default false,
+  cree_le timestamptz not null default now(),
+  modifie_le timestamptz not null default now()
+);
+create index if not exists plantes_email on public.plantes (email);
+create index if not exists plantes_echange on public.plantes (a_echanger, graines_a_donner) where a_echanger or graines_a_donner;
+alter table public.plantes enable row level security;
+drop policy if exists plante_lecture on public.plantes;
+create policy plante_lecture on public.plantes for select using (email = mon_email() or est_admin());
+drop policy if exists plante_ajout on public.plantes;
+create policy plante_ajout on public.plantes for insert with check (email = mon_email() and (est_membre() or est_admin()));
+drop policy if exists plante_modif on public.plantes;
+create policy plante_modif on public.plantes for update using (email = mon_email()) with check (email = mon_email());
+drop policy if exists plante_suppression on public.plantes;
+create policy plante_suppression on public.plantes for delete using (email = mon_email());
+grant select, insert, update, delete on public.plantes to authenticated;
+
+create or replace function public.plante_maj() returns trigger language plpgsql as $$
+begin new.modifie_le := now(); return new; end $$;
+drop trigger if exists plante_maj on public.plantes;
+create trigger plante_maj before update on public.plantes for each row execute function public.plante_maj();
+
+-- Bourse d'échange : les plantes proposées par les autres adhérents.
+-- L'adresse e-mail n'est donnée que si l'adhérent apparaît dans l'annuaire.
+create or replace function public.echanges() returns table (
+  id uuid, espece text, type text, statut text, origine text, n_collecte text, exemplaires int,
+  a_echanger boolean, graines_a_donner boolean, auteur text, contact text, modifie_le timestamptz)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.espece, p.type, p.statut, p.origine, p.n_collecte, p.exemplaires, p.a_echanger, p.graines_a_donner,
+         coalesce(nullif(trim(concat_ws(' ', a.prenom, left(a.nom, 1) || '.')), '.'), p.auteur),
+         case when a.annuaire then a.email end, p.modifie_le
+  from plantes p join adherents a on a.email = p.email and a.actif
+  where (p.a_echanger or p.graines_a_donner) and (est_membre() or est_admin())
+  order by p.modifie_le desc
+  limit 500
+$$;
+revoke all on function public.echanges() from public, anon;
+grant execute on function public.echanges() to authenticated;
