@@ -60,7 +60,7 @@ export default function EspaceMembre(props: { lienSemestriels: string; demo: "no
         return () => { fini = true }
     }, [sessionEmail])
 
-    const wrap = (children: React.ReactNode) => <div style={{ width: "100%", color: C.txt, ...font }}>{children}</div>
+    const wrap = (children: React.ReactNode) => <div className="acs-large" style={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowWrap: "anywhere", overflowX: "clip", color: C.txt, ...font }}><style>{".acs-large input,.acs-large select,.acs-large textarea{max-width:100%;min-width:0;box-sizing:border-box}.acs-large img{max-width:100%}"}</style>{children}</div>
 
     if (!client) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>) // page pré-générée côté serveur : la base se branche dans le navigateur
     if (!ready) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
@@ -245,7 +245,7 @@ function Sondages({ moi }: { moi: Adherent }) {
     if (!liste) return <div style={box}><p style={muted}>Chargement…</p></div>
     if (!liste.length) return <div style={box}><p style={muted}>Aucun sondage en cours pour le moment.</p></div>
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             {liste.map((so) => {
                 const rep = mes[so.id]
                 const evt = so.evenement_id && evts[so.evenement_id]
@@ -299,7 +299,7 @@ function FormulaireSondage({ so, rep, moi, fini }: { so: any; rep: any; moi: Adh
         )
     }
     return (
-        <div style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 18, display: "grid", gap: 20 }}>
+        <div style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 18, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 20 }}>
             {questions.map((q) => (
                 <div key={q.id}>
                     <span style={{ display: "block", fontWeight: 600, marginBottom: 8 }}>{q.intitule}{q.obligatoire ? " *" : ""}{q.type === "multiple" ? <span style={{ color: C.mute, fontWeight: 400, fontSize: 13 }}> (plusieurs choix possibles)</span> : null}</span>
@@ -325,7 +325,7 @@ function ResultatsSondage({ so, detail }: { so: any; detail?: boolean }) {
     if (!r) return null
     const qs: Question[] = so.questions || []
     return (
-        <div style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 14, display: "grid", gap: 16, maxWidth: 720 }}>
+        <div style={{ marginTop: 18, borderTop: `1px solid ${C.line}`, paddingTop: 14, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: 720 }}>
             <span style={{ ...label, margin: 0 }}>Résultats · {r.participants} réponse{r.participants > 1 ? "s" : ""}</span>
             {qs.map((q) => {
                 const t = r.questions?.[q.id] || {}
@@ -421,7 +421,7 @@ function Evenements() {
     const desinscrire = async (e: any) => { if (!window.confirm("Annuler votre inscription ?")) return; await client.rpc("se_desinscrire", { evt: e.id }); setMsg({ ...msg, [e.id]: { t: "Inscription annulée.", err: false } }); charger() }
     if (!evts) return <div style={box}><p style={muted}>Chargement…</p></div>
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             {evts.length === 0 && <div style={box}><p style={muted}>Aucune sortie annoncée pour le moment.</p></div>}
             {evts.map((e) => {
                 const moiInscrit = mes.find((r) => r.evenement_id === e.id)
@@ -492,7 +492,7 @@ function VueEnsemble({ moi, aller }: { moi: Adherent; aller: (o: any) => void })
     const derniere = adhesions?.[0]
     const prochaines = (inscr ?? []).filter((r) => r.evenement_id && r.statut !== "abandonne").slice(0, 3)
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
                 <div style={box}>
                     <span style={label}>Mon adhésion</span>
@@ -549,7 +549,7 @@ function Profil({ moi }: { moi: any }) {
             <div style={box}>
                 <h3 style={{ ...h2, fontSize: 20 }}>Mes coordonnées</h3>
                 <p style={{ ...muted, marginBottom: 18 }}>{[moi.prenom, moi.nom].filter(Boolean).join(" ")} · {moi.email}. Pour changer de nom ou d’adresse e-mail, écrivez au bureau.</p>
-                <div style={{ display: "grid", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14 }}>
                     {champ("conjoint", "Second adhérent du foyer", "Prénom Nom")}
                     {champ("telephone", "Téléphone", "06 12 34 56 78")}
                     {champ("adresse", "Adresse postale", "Pour l’envoi du semestriel")}
@@ -558,7 +558,7 @@ function Profil({ moi }: { moi: any }) {
             </div>
             <div style={box}>
                 <h3 style={{ ...h2, fontSize: 20 }}>Confidentialité</h3>
-                <div style={{ display: "grid", gap: 18, marginTop: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 18, marginTop: 14 }}>
                     {coche("recoit_emails", "Recevoir les e-mails de l’association", "Sorties, salon, semestriel. Les messages restent consultables ici même si vous décochez.")}
                     {coche("annuaire", "Apparaître dans l’annuaire des adhérents", "Nom, commune, e-mail et téléphone. Votre adresse postale reste visible du seul bureau.")}
                 </div>
@@ -625,7 +625,7 @@ function Historique({ moi }: { moi: Adherent }) {
     const valides = inscr?.filter((r) => r.statut !== "abandonne") ?? null
     const pastille = (st: string) => <span style={{ fontSize: 12, padding: "2px 8px", border: `1px solid ${st === "valide" ? C.accent : C.line}`, color: st === "valide" ? C.accent : C.mute, whiteSpace: "nowrap" }}>{STATUTS[st] || st}</span>
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <Tableau2 titre="Mes adhésions" entetes={["Année", "Formule", "Montant", "Période", "Reçu"]} vide="Aucune adhésion enregistrée."
                 lignes={adhesions?.map((a) => [<strong>{a.annee}</strong>, a.formule, euros(a.montant), `${dateFr(a.debut)} – ${dateFr(a.fin)}`, a.recu_url ? <a href={a.recu_url} target="_blank" rel="noreferrer" style={lien}>Télécharger</a> : <span style={{ color: C.mute }}>—</span>]) ?? null}
                 fichier={["mes-adhesions.csv", (adhesions ?? []).map((a) => [a.annee, a.formule, a.montant, a.debut, a.fin, a.recu_url])]} />
@@ -781,7 +781,7 @@ function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, pr
     if (edit) return (
         <div style={box}>
             <h3 style={{ ...h2, fontSize: 20 }}>{edit.id ? "Modifier" : "Ajouter"} · {titre}</h3>
-            <div style={{ display: "grid", gap: 16, marginTop: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, marginTop: 16 }}>
                 {champs.map((c) => <ChampForm key={c.k} c={c} v={edit[c.k]} set={(v) => setEdit({ ...edit, [c.k]: v, ...(c.k === "date_debut" && edit.date_debut && edit.date_label === JOURS_MOIS(edit.date_debut) ? { __auto: true } : {}) })} />)}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>

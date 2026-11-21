@@ -541,11 +541,11 @@ const AUTRES: Record<string, [string, string]> = {
 // ---- Fiches de culture des genres phares : caractéristiques seules, mélanges repris du guide « Des substrats à composer »
 const MELANGES = [
     "",
-    "Classique cactée : sable 40 %, terre de jardin 30 %, terreau 20 %, chabasite 10 %",
-    "Cactée gourmande : sable 35 %, terre de jardin 35 %, terreau 25 %, perlite 5 %",
-    "Cactée délicate et sud-africaine : chabasite 50 %, sable 30 %, terre 20 %",
-    "Classique succulente : terreau 50 %, sable 30 %, chabasite 20 %",
-    "Cactée épiphyte : terreau 65 %, chabasite 25 %, sable 10 %",
+    "Classique cactée : sable 40 %, terre de jardin 30 %, terreau 20 %, chabasite 10 %",
+    "Cactée gourmande : sable 35 %, terre de jardin 35 %, terreau 25 %, perlite 5 %",
+    "Cactée délicate et sud-africaine : chabasite 50 %, sable 30 %, terre 20 %",
+    "Classique succulente : terreau 50 %, sable 30 %, chabasite 20 %",
+    "Cactée épiphyte : terreau 65 %, chabasite 25 %, sable 10 %",
 ]
 // [croissance, repos, exposition, minimum hivernal, arrosage, mélange (1 à 5), multiplication, floraison, difficulté 1 à 3]
 const CULTURE: Record<string, [string, string, string, string, string, number, string, string, number]> = {
@@ -578,6 +578,210 @@ const CULTURE: Record<string, [string, string, string, string, string, number, s
     Pachypodium: ["Été", "Hiver chaud et sec (perte des feuilles)", "Plein soleil", "10 °C (12-15 °C pour plusieurs malgaches)", "Modéré en été, rien en repos", 3, "Semis", "Printemps, été", 2],
     Adenium: ["Été", "Hiver chaud et sec", "Plein soleil", "12 °C", "Régulier en été, rien en hiver", 4, "Semis, bouture, greffe", "Été", 2],
     Massonia: ["Automne à printemps", "Été (bulbe au sec)", "Lumière vive", "Hors gel (0 à 5 °C)", "Régulier en croissance, rien l’été", 3, "Semis, bouture de feuille", "Automne, hiver", 2],
+    Aztekium: ["Été",  "Hiver, au sec complet",  "Lumière vive",  "5 °C au sec",  "Très parcimonieux",  3, "Semis (très lent), greffe",  "Été",  3],
+    Pelecyphora: ["Été",  "Hiver, au sec complet",  "Plein soleil",  "5 °C au sec",  "Parcimonieux",  3, "Semis, greffe",  "Printemps",  3],
+    Strombocactus: ["Été",  "Hiver, au sec complet",  "Plein soleil",  "5 °C au sec",  "Parcimonieux",  3, "Semis (très lent), greffe",  "Printemps",  3],
+    Obregonia: ["Été",  "Hiver, au sec complet",  "Plein soleil",  "5 °C au sec",  "Prudent, laisser sécher",  3, "Semis",  "Printemps, été",  2],
+    Epithelantha: ["Été",  "Hiver, au sec complet",  "Plein soleil",  "5 °C au sec",  "Parcimonieux",  3, "Semis, greffe",  "Printemps",  3],
+    Blossfeldia: ["Été",  "Hiver, au sec complet",  "Lumière vive",  "5 °C au sec",  "Parcimonieux",  3, "Greffe, semis",  "Printemps, été",  3],
+    Leuchtenbergia: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré en été",  1, "Semis",  "Été",  1],
+    Thelocactus: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré en été",  1, "Semis",  "Printemps, été",  1],
+    Coryphantha: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré en été",  1, "Semis, rejets",  "Été",  1],
+    Echinocactus: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 à 8 °C au sec",  "Modéré en été",  1, "Semis",  "Été (plantes adultes)",  1],
+    Escobaria: ["Été",  "Hiver froid et sec",  "Plein soleil",  "0 °C au sec (plusieurs espèces plus rustiques)",  "Modéré en été",  1, "Semis, rejets",  "Printemps",  1],
+    Echinofossulocactus: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré en été",  1, "Semis",  "Fin d’hiver, printemps",  1],
+    Frailea: ["Été",  "Hiver, au sec",  "Lumière vive",  "5 °C au sec",  "Régulier en été",  1, "Semis (souvent autofertile)",  "Été",  1],
+    Sulcorebutia: ["Printemps, été",  "Hiver frais et sec",  "Plein soleil",  "0 à 5 °C au sec",  "Modéré en croissance",  1, "Rejets, semis",  "Printemps",  1],
+    Lobivia: ["Printemps, été",  "Hiver frais et sec",  "Plein soleil",  "0 à 5 °C au sec",  "Régulier en croissance",  1, "Rejets, semis",  "Printemps, été",  1],
+    Weingartia: ["Printemps, été",  "Hiver frais et sec",  "Plein soleil",  "0 à 5 °C au sec",  "Modéré en croissance",  1, "Semis, rejets",  "Printemps",  1],
+    Notocactus: ["Été",  "Hiver, au sec",  "Lumière vive",  "5 °C au sec",  "Généreux en été",  2, "Semis, rejets",  "Printemps, été",  1],
+    Trichocereus: ["Été",  "Hiver frais et sec",  "Plein soleil",  "0 à 5 °C au sec",  "Généreux en été",  2, "Bouture, semis",  "Été",  1],
+    Neoporteria: ["Été à automne",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré",  3, "Semis, greffe",  "Fin d’hiver",  2],
+    Eriosyce: ["Été à automne",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Parcimonieux",  3, "Semis, greffe",  "Printemps",  2],
+    Matucana: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré en été",  1, "Semis",  "Été, automne",  2],
+    Oreocereus: ["Été",  "Hiver frais et sec",  "Plein soleil",  "0 à 5 °C au sec",  "Modéré en été",  1, "Semis, bouture",  "Été (plantes adultes)",  1],
+    Espostoa: ["Été",  "Hiver, au sec",  "Plein soleil",  "8 à 10 °C au sec",  "Modéré en été",  1, "Semis, bouture",  "Rare en culture",  1],
+    Cleistocactus: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Régulier en été",  1, "Bouture, semis",  "Été",  1],
+    Cereus: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Régulier en été",  1, "Bouture, semis",  "Été (plantes adultes)",  1],
+    Opuntia: ["Été",  "Hiver, au sec",  "Plein soleil",  "0 °C au sec (plusieurs espèces rustiques)",  "Modéré en été",  1, "Bouture de raquette, semis",  "Printemps, été",  1],
+    Tephrocactus: ["Été",  "Hiver froid et sec",  "Plein soleil",  "0 °C au sec",  "Parcimonieux",  3, "Bouture d’articles, semis",  "Été",  2],
+    Pterocactus: ["Été",  "Hiver froid et sec",  "Plein soleil",  "0 °C au sec",  "Parcimonieux",  3, "Bouture, semis",  "Été",  2],
+    Myrtillocactus: ["Été",  "Hiver, au sec",  "Plein soleil",  "10 °C",  "Modéré en été",  1, "Bouture, semis",  "Printemps (plantes adultes)",  1],
+    Stenocereus: ["Été",  "Hiver, au sec",  "Plein soleil",  "10 °C",  "Modéré en été",  1, "Bouture, semis",  "Été (plantes adultes)",  2],
+    Pilosocereus: ["Été",  "Hiver tiède et sec",  "Plein soleil",  "12 °C",  "Modéré en été",  1, "Bouture, semis",  "Été (plantes adultes)",  2],
+    Melocactus: ["Été",  "Hiver chaud, arrosages très espacés",  "Plein soleil",  "15 °C",  "Modéré en été",  3, "Semis",  "Été (sur le céphalium)",  3],
+    Discocactus: ["Été",  "Hiver chaud et sec",  "Plein soleil",  "15 °C",  "Modéré en été",  3, "Semis",  "Été (fleurs nocturnes)",  3],
+    Uebelmannia: ["Été",  "Hiver chaud et sec",  "Lumière vive",  "15 °C",  "Modéré en été",  3, "Semis, greffe",  "Printemps, été",  3],
+    Pereskia: ["Été",  "Hiver tiède, moins d’eau",  "Plein soleil",  "10 °C",  "Régulier en été",  4, "Bouture, semis",  "Été, automne",  1],
+    Selenicereus: ["Été",  "Hiver frais (10-12 °C), moins d’eau",  "Mi-ombre lumineuse",  "10 °C",  "Régulier en été",  5, "Bouture",  "Été (fleurs nocturnes)",  1],
+    Disocactus: ["Été",  "Hiver frais, moins d’eau",  "Mi-ombre lumineuse",  "10 °C",  "Régulier en été",  5, "Bouture",  "Printemps",  1],
+    Hatiora: ["Été",  "Hiver frais (10-12 °C)",  "Mi-ombre",  "10 °C",  "Régulier, sans détremper",  5, "Bouture d’articles",  "Printemps",  1],
+    Rhipsalidopsis: ["Été",  "Hiver frais (10-12 °C), moins d’eau",  "Mi-ombre",  "10 °C",  "Régulier, sans détremper",  5, "Bouture d’articles",  "Printemps (Pâques)",  1],
+    Argyroderma: ["Automne et hiver",  "Été (dormance)",  "Plein soleil",  "5 °C au sec",  "Léger en croissance, rien l’été",  3, "Semis",  "Automne",  2],
+    Dinteranthus: ["Fin d’été à automne",  "Hiver et printemps (mue), plein été",  "Plein soleil",  "5 °C au sec",  "Très parcimonieux",  3, "Semis",  "Automne",  3],
+    Titanopsis: ["Automne à printemps",  "Plein été",  "Plein soleil",  "5 °C au sec",  "Modéré en croissance",  3, "Semis, division",  "Automne, hiver",  2],
+    Fenestraria: ["Automne à printemps",  "Plein été",  "Plein soleil",  "5 °C au sec",  "Modéré en croissance",  3, "Semis, division",  "Fin d’été, automne",  2],
+    Frithia: ["Été",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré en été",  3, "Semis, division",  "Été",  2],
+    Aloinopsis: ["Automne à printemps",  "Été, plus au sec",  "Plein soleil",  "0 à 5 °C au sec",  "Modéré en croissance",  3, "Semis, division",  "Fin d’hiver, printemps",  1],
+    Faucaria: ["Été à automne",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré",  4, "Division, semis",  "Automne",  1],
+    Glottiphyllum: ["Printemps et automne",  "Hiver et plein été (ralenti)",  "Plein soleil",  "5 °C au sec",  "Parcimonieux (sinon la plante s’amollit)",  4, "Bouture, division, semis",  "Automne, hiver",  1],
+    Trichodiadema: ["Été",  "Hiver, plus au sec",  "Plein soleil",  "5 °C au sec",  "Modéré",  3, "Bouture, semis",  "Été",  1],
+    Delosperma: ["Printemps à automne",  "Hiver dehors ou sous abri",  "Plein soleil",  "Rustique selon espèces (jusqu’à −15 °C au sec)",  "Modéré",  1, "Bouture, semis",  "Été",  1],
+    Operculicarya: ["Été",  "Hiver tiède et sec",  "Plein soleil",  "12 °C",  "Régulier en été, rien en repos",  4, "Semis, bouture",  "Rare en culture",  2],
+    Uncarina: ["Été",  "Hiver tiède et sec (perte des feuilles)",  "Plein soleil",  "12 °C",  "Régulier en été",  4, "Semis, bouture",  "Été",  2],
+    Adansonia: ["Été",  "Hiver tiède et sec (perte des feuilles)",  "Plein soleil",  "12 °C",  "Régulier en été",  4, "Semis",  "Rare en culture",  2],
+    Cyphostemma: ["Été",  "Hiver au sec (perte des feuilles)",  "Plein soleil",  "10 °C",  "Modéré en été",  3, "Semis",  "Été",  2],
+    Fockea: ["Été",  "Hiver plus au sec",  "Plein soleil",  "8 °C",  "Modéré en été",  3, "Semis",  "Été",  2],
+    Tylecodon: ["Automne et hiver",  "Été (dormance, perte des feuilles)",  "Plein soleil",  "5 °C au sec",  "En croissance seulement",  3, "Semis, bouture",  "Été",  2],
+    Beaucarnea: ["Été",  "Hiver plus au sec",  "Plein soleil",  "5 °C",  "Modéré, laisser sécher",  4, "Semis",  "Rare en culture",  1],
+    Fouquieria: ["Été",  "Hiver au sec",  "Plein soleil",  "5 à 10 °C selon espèces",  "Parcimonieux",  3, "Semis",  "Printemps, été",  3],
+    Dioscorea: ["Automne à printemps (D. elephantipes)",  "Été (tiges sèches)",  "Plein soleil",  "5 °C",  "En croissance seulement",  3, "Semis",  "Automne",  2],
+    Sinningia: ["Printemps, été",  "Hiver (tubercule au sec)",  "Lumière vive sans soleil brûlant",  "10 °C",  "Régulier en croissance",  4, "Semis, bouture",  "Été",  1],
+    Bursera: ["Été",  "Hiver au sec (perte des feuilles)",  "Plein soleil",  "10 °C",  "Modéré en été",  3, "Bouture, semis",  "Printemps",  2],
+    Dorstenia: ["Été",  "Hiver tiède, moins d’eau",  "Lumière vive",  "15 °C",  "Régulier en été",  4, "Semis (graines projetées), bouture",  "Toute l’année en serre chaude",  2],
+    Ibervillea: ["Été",  "Hiver (tiges sèches)",  "Plein soleil",  "5 °C",  "Régulier en croissance",  4, "Semis",  "Été",  1],
+    Matelea: ["Été",  "Hiver au sec",  "Plein soleil",  "10 °C",  "Modéré en été",  3, "Semis",  "Été",  2],
+    Pachyphytum: ["Printemps à automne",  "Hiver, plus au sec",  "Plein soleil",  "5 °C au sec",  "Modéré, jamais dans la rosette",  4, "Bouture de feuille",  "Printemps",  1],
+    Graptopetalum: ["Printemps à automne",  "Hiver, plus au sec",  "Plein soleil",  "5 °C au sec",  "Modéré",  4, "Bouture de feuille",  "Printemps",  1],
+    Dudleya: ["Automne à printemps",  "Été (dormance)",  "Plein soleil",  "5 °C au sec",  "En croissance seulement, jamais sur la pruine",  3, "Semis",  "Printemps",  2],
+    Sedum: ["Printemps à automne",  "Hiver",  "Plein soleil",  "Rustique pour beaucoup d’espèces, 5 °C pour les mexicaines",  "Modéré",  4, "Bouture",  "Été",  1],
+    Orostachys: ["Printemps à automne",  "Hiver dehors",  "Plein soleil",  "Rustique",  "Peu, la pluie suffit souvent",  1, "Rejets",  "Automne (la rosette fleurie meurt)",  1],
+    Kalanchoe: ["Printemps à automne",  "Hiver tiède, plus au sec",  "Plein soleil",  "10 °C",  "Modéré",  4, "Bouture, plantules",  "Hiver, printemps",  1],
+    Cotyledon: ["Automne à printemps",  "Été (ralenti)",  "Plein soleil",  "5 °C au sec",  "Modéré",  4, "Bouture",  "Été",  1],
+    Portulacaria: ["Été",  "Hiver, plus au sec",  "Plein soleil",  "8 °C",  "Modéré",  4, "Bouture",  "Rare en culture",  1],
+    Anacampseros: ["Printemps à automne",  "Hiver, au sec",  "Plein soleil",  "5 °C au sec",  "Modéré",  3, "Semis, bouture",  "Été (l’après-midi)",  2],
+    Curio: ["Automne à printemps",  "Été (ralenti)",  "Lumière vive",  "5 °C au sec",  "Modéré",  4, "Bouture",  "Été",  1],
+    Stapelia: ["Été",  "Hiver tiède et sec",  "Plein soleil",  "10 °C",  "Modéré en été",  3, "Bouture, semis",  "Été, automne",  1],
+    Huernia: ["Été",  "Hiver tiède et sec",  "Lumière vive",  "10 °C",  "Modéré en été",  3, "Bouture, semis",  "Été",  2],
+    Hoodia: ["Été",  "Hiver chaud et sec",  "Plein soleil",  "12 °C",  "Très parcimonieux",  3, "Semis, greffe",  "Été",  3],
+    Yucca: ["Été",  "Hiver, au sec",  "Plein soleil",  "Rustique selon espèces (jusqu’à −15 °C au sec)",  "Modéré en été",  1, "Rejets, semis",  "Été",  1],
+    Welwitschia: ["Été",  "Hiver tiède, arrosages espacés",  "Plein soleil",  "12 °C",  "Régulier en été (racine profonde)",  3, "Semis (pot très profond)",  "Cônes sur plantes adultes",  3],
+    Calandrinia: ["Printemps, été",  "Hiver",  "Plein soleil",  "Hors gel",  "Modéré",  4, "Semis, bouture",  "Été",  1],
+    Haemanthus: ["Selon espèces : été ou hiver",  "Saison opposée (bulbe au sec)",  "Lumière vive",  "5 °C",  "En croissance seulement",  4, "Semis, caïeux",  "Été, automne",  1],
+    Ledebouria: ["Printemps, été",  "Hiver, plus au sec",  "Lumière vive",  "5 °C au sec",  "Modéré",  4, "Division, semis",  "Printemps",  1],
+    Drimiopsis: ["Printemps, été",  "Hiver, plus au sec",  "Lumière vive",  "5 °C au sec",  "Modéré",  4, "Division",  "Printemps",  1],
+    Bowiea: ["Selon les plantes : hiver ou été",  "Saison opposée (tiges sèches)",  "Lumière vive",  "5 °C au sec",  "En croissance seulement",  3, "Semis, écailles du bulbe",  "Pendant la croissance",  1],
+    Albuca: ["Automne à printemps",  "Été (bulbe au sec)",  "Plein soleil",  "5 °C au sec",  "En croissance seulement",  3, "Semis, caïeux",  "Printemps",  1],
+    Eriospermum: ["Automne à printemps",  "Été (tubercule au sec)",  "Plein soleil",  "5 °C au sec",  "En croissance seulement",  3, "Semis, division",  "Fin d’été, avant les feuilles",  2],
+    Boophone: ["Printemps, été",  "Hiver au sec complet",  "Plein soleil",  "5 °C",  "En croissance seulement",  3, "Semis",  "Fin d’été, avant les feuilles",  3],
+}
+// [milieu, climat, températures du milieu naturel, altitude, CITES, état des populations]
+const BOTA: Record<string, [string, string, string, string, string, string]> = {
+    Lithops: ["Plaines caillouteuses, graviers de quartz", "Pluies faibles, d’hiver ou d’été selon les régions", "env. 0 à 40 °C", "0 à 2 000 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Conophytum: ["Fissures de rochers, plaques de quartz", "Pluies d’hiver, été sec, brouillards", "env. 0 à 35 °C", "0 à 1 500 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Pleiospilos: ["Plaines caillouteuses du Karoo", "Pluies faibles, surtout d’été", "env. −5 à 40 °C", "500 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Argyroderma: ["Plaines de quartz du Knersvlakte", "Pluies d’hiver, été sec", "env. 0 à 40 °C", "100 à 400 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Dinteranthus: ["Plaines caillouteuses, graviers de quartz", "Pluies d’été rares", "env. 0 à 40 °C", "500 à 1 200 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Titanopsis: ["Affleurements calcaires", "Pluies faibles, surtout d’été", "env. −5 à 35 °C", "500 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Fenestraria: ["Sables côtiers, à demi enterrée", "Désert côtier, brouillards, pluie presque nulle", "env. 5 à 30 °C", "0 à 200 m", "", "Peu menacé dans l’ensemble"],
+    Frithia: ["Graviers sur dalles rocheuses", "Pluies d’été, hiver sec", "env. −5 à 30 °C", "1 200 à 1 800 m", "", "Aire très réduite, menacée"],
+    Aloinopsis: ["Plateaux caillouteux du Karoo", "Pluies faibles, hivers froids", "env. −10 à 35 °C", "1 000 à 1 800 m", "", "Peu menacé dans l’ensemble"],
+    Faucaria: ["Pentes rocheuses, fourrés bas", "Pluies faibles toute l’année", "env. 0 à 35 °C", "200 à 1 000 m", "", "Peu menacé dans l’ensemble"],
+    Glottiphyllum: ["Plaines du Karoo, sols argileux", "Pluies faibles toute l’année", "env. −5 à 40 °C", "200 à 1 000 m", "", "Peu menacé dans l’ensemble"],
+    Trichodiadema: ["Pentes rocheuses, fourrés bas", "Pluies faibles, surtout d’été", "env. −5 à 35 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Delosperma: ["Prairies et rochers, jusqu’en montagne", "Pluies d’été, hivers froids en altitude", "env. −15 à 30 °C", "0 à 3 000 m", "", "Peu menacé dans l’ensemble"],
+    Ariocarpus: ["Collines calcaires, plaines de gypse", "Pluies d’été, hiver sec", "env. −5 à 40 °C", "200 à 2 000 m", "Annexe I", "Nombreuses espèces menacées (collecte, perte d’habitat)"],
+    Astrophytum: ["Collines calcaires, matorral", "Pluies d’été, hiver sec", "env. −5 à 40 °C", "400 à 1 800 m", "Annexe II (certaines espèces en annexe I)", "Plusieurs espèces menacées"],
+    Turbinicarpus: ["Collines calcaires et gypseuses", "Pluies d’été, hiver sec", "env. −5 à 35 °C", "1 000 à 2 400 m", "Annexe I", "Nombreuses espèces menacées (collecte, perte d’habitat)"],
+    Copiapoa: ["Collines côtières de l’Atacama", "Désert côtier, brouillards, pluie presque nulle", "env. 5 à 30 °C", "0 à 1 500 m", "Annexe II", "Plusieurs espèces menacées"],
+    Gymnocalycium: ["Prairies, pentes rocheuses, sous les buissons", "Pluies d’été, hiver sec et frais", "env. −10 à 35 °C", "100 à 3 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Mammillaria: ["Très varié : rochers, plaines, forêts sèches", "Surtout pluies d’été", "env. −5 à 40 °C", "0 à 3 000 m", "Annexe II (certaines espèces en annexe I)", "Plusieurs espèces menacées"],
+    Echinopsis: ["Prairies et pentes rocheuses", "Pluies d’été, hiver sec et frais", "env. −5 à 35 °C", "100 à 3 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Rebutia: ["Pentes rocheuses andines, prairies d’altitude", "Pluies d’été, hiver sec et froid", "env. −10 à 25 °C", "1 500 à 4 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Parodia: ["Prairies et rochers, souvent humides", "Pluies réparties, saison sèche courte", "env. −5 à 35 °C", "0 à 3 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Echinocereus: ["Déserts, prairies, forêts claires de montagne", "Pluies d’été et d’hiver, hivers froids", "env. −20 à 40 °C", "0 à 3 000 m", "Annexe II (certaines espèces en annexe I)", "Peu menacé dans l’ensemble"],
+    Ferocactus: ["Déserts et pentes rocheuses", "Pluies irrégulières, surtout d’été", "env. −5 à 45 °C", "0 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Schlumbergera: ["Sur arbres et rochers, forêt atlantique", "Humide toute l’année, brouillards", "env. 5 à 30 °C", "700 à 2 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Rhipsalis: ["Sur arbres, forêts humides", "Tropical humide, pluies presque toute l’année", "env. 10 à 30 °C", "0 à 2 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Epiphyllum: ["Sur arbres, forêts humides", "Tropical humide, pluies presque toute l’année", "env. 10 à 32 °C", "0 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Haworthia: ["Sous les buissons, entre rochers", "Pluies faibles, d’hiver ou toute l’année", "env. −5 à 35 °C", "0 à 1 500 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Gasteria: ["Pentes rocheuses ombragées, fourrés", "Pluies faibles toute l’année", "env. 0 à 35 °C", "0 à 1 200 m", "", "Peu menacé dans l’ensemble"],
+    Aloe: ["Très varié : savanes, rochers, falaises, déserts", "Surtout pluies d’été, saison sèche marquée", "env. −5 à 40 °C", "0 à 3 000 m", "Annexe II (certaines espèces en annexe I)", "Plusieurs espèces menacées"],
+    Echeveria: ["Rochers et falaises de montagne", "Pluies d’été, hiver sec", "env. −5 à 30 °C", "500 à 3 500 m", "", "Plusieurs espèces menacées"],
+    Crassula: ["Très varié, surtout rochers et fourrés", "Pluies d’hiver ou d’été selon espèces", "env. −5 à 35 °C", "0 à 3 000 m", "", "Peu menacé dans l’ensemble"],
+    Euphorbia: ["Fourrés secs, rochers, savanes", "Saison sèche longue", "env. 0 à 40 °C", "0 à 2 500 m", "Annexe II (certaines espèces en annexe I)", "Nombreuses espèces menacées (collecte, perte d’habitat)"],
+    Agave: ["Déserts, pentes rocheuses, forêts sèches", "Pluies d’été, hiver sec", "env. −15 à 45 °C", "0 à 3 000 m", "A. victoriae-reginae en annexe II", "Plusieurs espèces menacées"],
+    Sempervivum: ["Rochers et pelouses de montagne", "Montagnard : neige en hiver, été frais", "env. −25 à 30 °C", "500 à 3 000 m", "", "Peu menacé dans l’ensemble"],
+    Aeonium: ["Rochers et falaises des îles atlantiques", "Pluies d’hiver, été sec", "env. 5 à 30 °C", "0 à 2 000 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Pachypodium: ["Rochers, fourrés secs, dalles granitiques", "Saison sèche longue", "env. 0 à 40 °C", "0 à 2 000 m", "Annexe II (certaines espèces en annexe I)", "Nombreuses espèces menacées (collecte, perte d’habitat)"],
+    Adenium: ["Savanes et fourrés secs", "Tropical à saison sèche marquée", "env. 10 à 40 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Massonia: ["Plaines et pentes, sous-bois bas", "Pluies d’hiver, été sec", "env. −5 à 35 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Aztekium: ["Parois de gypse et de schiste", "Pluies d’été, hiver sec", "env. 0 à 35 °C", "500 à 1 200 m", "Annexe II (A. ritteri en annexe I)", "Aires minuscules, très menacé"],
+    Pelecyphora: ["Collines calcaires", "Pluies d’été, hiver sec", "env. −5 à 35 °C", "1 000 à 2 000 m", "Annexe I", "Nombreuses espèces menacées (collecte, perte d’habitat)"],
+    Strombocactus: ["Parois de schiste", "Pluies d’été, hiver sec", "env. 0 à 35 °C", "1 100 à 1 700 m", "Annexe I", "Plusieurs espèces menacées"],
+    Obregonia: ["Collines calcaires, matorral", "Pluies d’été, hiver sec", "env. 0 à 35 °C", "600 à 1 400 m", "Annexe I", "Plusieurs espèces menacées"],
+    Epithelantha: ["Collines calcaires", "Pluies d’été, hiver sec", "env. −10 à 40 °C", "500 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Blossfeldia: ["Fissures de rochers andins", "Pluies d’été, longue saison sèche", "env. −5 à 30 °C", "1 200 à 3 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Leuchtenbergia: ["Plaines et collines calcaires", "Pluies d’été, hiver sec", "env. −5 à 40 °C", "800 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Thelocactus: ["Plaines et collines calcaires", "Pluies d’été, hiver sec", "env. −10 à 40 °C", "500 à 2 500 m", "Annexe II", "Plusieurs espèces menacées"],
+    Coryphantha: ["Prairies, plaines et collines", "Pluies d’été, hiver sec", "env. −10 à 40 °C", "0 à 2 500 m", "Annexe II (certaines espèces en annexe I)", "Plusieurs espèces menacées"],
+    Echinocactus: ["Déserts et collines calcaires", "Pluies d’été, hiver sec", "env. −10 à 45 °C", "0 à 2 400 m", "Annexe II", "Plusieurs espèces menacées"],
+    Escobaria: ["Prairies, déserts, montagnes", "Pluies d’été, hivers froids", "env. −25 à 40 °C", "0 à 2 800 m", "Annexe II (certaines espèces en annexe I)", "Plusieurs espèces menacées"],
+    Echinofossulocactus: ["Prairies et pentes rocheuses", "Pluies d’été, hiver sec", "env. −5 à 35 °C", "1 000 à 2 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Frailea: ["Prairies et rochers", "Pluies réparties, saison sèche courte", "env. 0 à 35 °C", "0 à 1 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Sulcorebutia: ["Pentes rocheuses andines", "Pluies d’été, hiver sec et froid", "env. −10 à 25 °C", "2 000 à 3 800 m", "Annexe II", "Plusieurs espèces menacées"],
+    Lobivia: ["Pentes rocheuses et puna andine", "Pluies d’été, hiver sec et froid", "env. −15 à 25 °C", "1 500 à 4 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Weingartia: ["Pentes rocheuses andines", "Pluies d’été, hiver sec et froid", "env. −10 à 25 °C", "1 500 à 3 500 m", "Annexe II", "Plusieurs espèces menacées"],
+    Notocactus: ["Prairies et affleurements rocheux", "Pluies réparties, hiver frais", "env. −5 à 35 °C", "0 à 1 500 m", "Annexe II", "Plusieurs espèces menacées"],
+    Trichocereus: ["Vallées et pentes andines", "Pluies d’été, hiver sec et froid", "env. −10 à 30 °C", "500 à 4 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Neoporteria: ["Collines côtières du Chili", "Pluies d’hiver, été sec, brouillards", "env. 0 à 30 °C", "0 à 2 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Eriosyce: ["Collines désertiques du Chili", "Pluies d’hiver, été sec, brouillards", "env. −5 à 35 °C", "0 à 3 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Matucana: ["Pentes rocheuses andines", "Pluies d’été, hiver sec", "env. 0 à 30 °C", "1 000 à 4 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Oreocereus: ["Hauts plateaux andins", "Pluies d’été, hiver sec et froid", "env. −15 à 25 °C", "2 500 à 4 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Espostoa: ["Vallées sèches andines", "Saison sèche longue", "env. 5 à 35 °C", "500 à 2 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Cleistocactus: ["Vallées et pentes andines", "Pluies d’été, hiver sec", "env. −5 à 35 °C", "200 à 3 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Cereus: ["Forêts sèches, savanes, rochers", "Tropical à saison sèche marquée", "env. 0 à 40 °C", "0 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Opuntia: ["Très varié : déserts, prairies, montagnes", "Très variable", "env. −30 à 45 °C", "0 à 3 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Tephrocactus: ["Pentes rocheuses d’Argentine", "Pluies d’été, hiver sec et froid", "env. −10 à 35 °C", "500 à 3 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Pterocactus: ["Steppes de Patagonie et d’Argentine", "Pluies faibles, hivers froids", "env. −15 à 35 °C", "0 à 3 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Myrtillocactus: ["Forêts sèches, matorral", "Pluies d’été, hiver sec", "env. 0 à 40 °C", "500 à 2 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Stenocereus: ["Forêts sèches, déserts", "Tropical à saison sèche marquée", "env. 0 à 45 °C", "0 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Pilosocereus: ["Forêts sèches, rochers", "Tropical à saison sèche marquée", "env. 10 à 40 °C", "0 à 2 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Melocactus: ["Rochers, côtes, forêts sèches", "Tropical à saison sèche marquée", "env. 15 à 40 °C", "0 à 1 500 m", "Annexe II (certaines espèces en annexe I)", "Plusieurs espèces menacées"],
+    Discocactus: ["Sables et graviers du Brésil", "Tropical à saison sèche marquée", "env. 10 à 40 °C", "200 à 1 500 m", "Annexe I", "Nombreuses espèces menacées (collecte, perte d’habitat)"],
+    Uebelmannia: ["Rochers de quartzite, campos rupestres", "Tropical à saison sèche marquée", "env. 10 à 35 °C", "600 à 1 400 m", "Annexe II (U. pectinifera en annexe I)", "Nombreuses espèces menacées (collecte, perte d’habitat)"],
+    Pereskia: ["Forêts sèches et humides", "Tropical à saison sèche marquée", "env. 10 à 35 °C", "0 à 2 000 m", "Non concerné (feuillu primitif)", "Peu menacé dans l’ensemble"],
+    Selenicereus: ["Sur arbres et rochers, forêts", "Tropical humide, pluies presque toute l’année", "env. 10 à 35 °C", "0 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Disocactus: ["Sur arbres, forêts de montagne", "Tropical humide, pluies presque toute l’année", "env. 8 à 30 °C", "0 à 2 500 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Hatiora: ["Sur arbres, forêt atlantique", "Humide toute l’année", "env. 5 à 30 °C", "0 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Rhipsalidopsis: ["Sur arbres, forêt atlantique d’altitude", "Humide toute l’année", "env. 5 à 28 °C", "1 000 à 2 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Operculicarya: ["Fourrés secs épineux", "Saison sèche longue", "env. 5 à 40 °C", "0 à 1 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Uncarina: ["Fourrés secs et forêts sèches", "Saison sèche longue", "env. 5 à 40 °C", "0 à 1 000 m", "Certaines espèces en annexe II", "Plusieurs espèces menacées"],
+    Adansonia: ["Savanes et forêts sèches", "Tropical à saison sèche marquée", "env. 5 à 40 °C", "0 à 1 200 m", "", "Plusieurs espèces menacées"],
+    Cyphostemma: ["Savanes, rochers, fourrés secs", "Tropical à saison sèche marquée", "env. 0 à 40 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Fockea: ["Fourrés secs, sous les buissons", "Pluies faibles", "env. −5 à 40 °C", "0 à 1 500 m", "", "Plusieurs espèces menacées"],
+    Tylecodon: ["Pentes rocheuses, quartz", "Pluies d’hiver, été sec", "env. 0 à 40 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Beaucarnea: ["Forêts sèches, pentes rocheuses", "Tropical à saison sèche marquée", "env. 0 à 40 °C", "0 à 2 000 m", "Annexe II", "Plusieurs espèces menacées"],
+    Fouquieria: ["Déserts et forêts sèches", "Désert, pluies rares et irrégulières", "env. −10 à 45 °C", "0 à 2 000 m", "Certaines espèces en annexes I et II", "Peu menacé dans l’ensemble"],
+    Dioscorea: ["Pentes rocheuses, fourrés", "Pluies d’hiver, été sec (D. elephantipes)", "env. −5 à 35 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Sinningia: ["Rochers et falaises humides", "Pluies d’été, hiver plus sec", "env. 5 à 35 °C", "0 à 2 000 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Bursera: ["Forêts sèches", "Tropical à saison sèche marquée", "env. 5 à 40 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Dorstenia: ["Rochers calcaires, fourrés secs", "Saison sèche longue", "env. 15 à 40 °C", "0 à 1 500 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Ibervillea: ["Broussailles sèches", "Désert, pluies rares et irrégulières", "env. −10 à 45 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Matelea: ["Forêts sèches, rochers", "Tropical à saison sèche marquée", "env. 5 à 40 °C", "500 à 2 000 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Pachyphytum: ["Falaises et rochers de montagne", "Pluies d’été, hiver sec", "env. −5 à 30 °C", "1 000 à 2 500 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Graptopetalum: ["Falaises et rochers de montagne", "Pluies d’été, hiver sec", "env. −5 à 30 °C", "1 000 à 2 500 m", "", "Espèces souvent très localisées, plusieurs menacées"],
+    Dudleya: ["Falaises côtières, rochers", "Pluies d’hiver, été sec, brouillards", "env. 0 à 35 °C", "0 à 2 500 m", "Certaines espèces en annexe I", "Plusieurs espèces menacées"],
+    Sedum: ["Rochers, murets, pelouses sèches", "Très variable", "env. −30 à 35 °C", "0 à 4 000 m", "", "Peu menacé dans l’ensemble"],
+    Orostachys: ["Rochers et pentes sèches", "Continental : hiver froid et sec", "env. −30 à 30 °C", "0 à 2 500 m", "", "Peu menacé dans l’ensemble"],
+    Kalanchoe: ["Rochers, fourrés secs, savanes", "Tropical à saison sèche marquée", "env. 5 à 40 °C", "0 à 2 500 m", "", "Plusieurs espèces menacées"],
+    Cotyledon: ["Pentes rocheuses, fourrés", "Pluies faibles", "env. −5 à 35 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Portulacaria: ["Fourrés secs (spekboom)", "Pluies faibles toute l’année", "env. −5 à 40 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Anacampseros: ["Plaines caillouteuses, quartz", "Pluies faibles", "env. −5 à 40 °C", "0 à 2 000 m", "Annexe II", "Peu menacé dans l’ensemble"],
+    Curio: ["Rochers, fourrés bas", "Pluies faibles", "env. 0 à 35 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Stapelia: ["Fourrés secs, sous les buissons", "Pluies faibles, surtout d’été", "env. 0 à 40 °C", "0 à 1 500 m", "", "Peu menacé dans l’ensemble"],
+    Huernia: ["Rochers et fourrés secs", "Pluies faibles, surtout d’été", "env. 0 à 40 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Hoodia: ["Plaines et collines désertiques", "Désert, pluies rares et irrégulières", "env. 0 à 45 °C", "0 à 1 500 m", "Annexe II", "Récolte sauvage (usage « coupe-faim »)"],
+    Yucca: ["Déserts, prairies, dunes, forêts claires", "Très variable, hivers froids pour beaucoup", "env. −25 à 45 °C", "0 à 3 000 m", "", "Peu menacé dans l’ensemble"],
+    Welwitschia: ["Plaines désertiques du Namib", "Désert côtier, brouillards, pluie presque nulle", "env. 0 à 45 °C", "0 à 1 200 m", "Annexe II", "Peu menacé, mais croissance et renouvellement très lents"],
+    Calandrinia: ["Sols sableux et rocailles", "Pluies faibles et irrégulières", "env. −5 à 35 °C", "0 à 3 000 m", "", "Peu menacé dans l’ensemble"],
+    Haemanthus: ["Pentes rocheuses, fourrés, prairies", "Pluies d’hiver ou d’été selon espèces", "env. −5 à 35 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Ledebouria: ["Prairies et savanes", "Pluies d’été, hiver sec", "env. −5 à 35 °C", "0 à 2 500 m", "", "Peu menacé dans l’ensemble"],
+    Drimiopsis: ["Prairies, sous-bois clairs", "Pluies d’été, hiver sec", "env. 0 à 35 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Bowiea: ["Fourrés et rochers ombragés", "Pluies d’hiver ou d’été selon les plantes", "env. −5 à 35 °C", "0 à 2 000 m", "", "Récolte pour la médecine traditionnelle"],
+    Albuca: ["Prairies, plaines caillouteuses", "Pluies d’hiver ou d’été selon espèces", "env. −5 à 35 °C", "0 à 2 500 m", "", "Peu menacé dans l’ensemble"],
+    Eriospermum: ["Plaines sableuses et caillouteuses", "Pluies d’hiver, été sec", "env. −5 à 35 °C", "0 à 2 000 m", "", "Peu menacé dans l’ensemble"],
+    Boophone: ["Prairies et savanes", "Pluies d’été, hiver sec", "env. −10 à 35 °C", "0 à 2 500 m", "", "Récolte pour la médecine traditionnelle ; bulbe très toxique"],
 }
 const DIFF = ["", "Facile", "Moyen", "Délicat"]
 export const GENRES: Genre[] = D.map(([n, c, p, zone, pays, note]) => ({ n, c, zone, note, pays: pays.split("|"), pts: p.split(";").map((x) => x.split(",").map(Number) as [number, number]) }))
@@ -625,23 +829,26 @@ function useInat(nom: string | null) {
     return nom ? cache.get(nom) : undefined
 }
 
-function Culture({ c }: { c: [string, string, string, string, string, number, string, string, number] }) {
-    const [croit, repos, expo, tmin, eau, mel, mult, flo, diff] = c
-    const lignes: [string, React.ReactNode][] = [
-        ["Croissance", croit], ["Repos", repos], ["Exposition", expo], ["Minimum en hiver", tmin], ["Arrosage", eau],
-        ["Substrat", <>{MELANGES[mel]} <a href="/guides/substrats" style={{ color: "inherit", whiteSpace: "nowrap" }}>Voir le guide →</a></>],
-        ["Multiplication", /semis/i.test(mult) ? <>{mult} <a href="/guides/semis" style={{ color: "inherit", whiteSpace: "nowrap" }}>Guide des semis →</a></> : mult],
-        ["Floraison", flo], ["Difficulté", DIFF[diff]],
-    ]
+function Grille({ titre, lignes, pied }: { titre: string; lignes: [string, React.ReactNode][]; pied?: string }) {
     return (
         <div style={{ marginTop: 16, borderTop: "1px solid rgba(29,22,18,0.16)", paddingTop: 12 }}>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Culture</div>
-            <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 14px", marginTop: 8, fontSize: 14, lineHeight: 1.45 }}>
-                {lignes.map(([k, v]) => <React.Fragment key={k}><span style={{ opacity: 0.6, whiteSpace: "nowrap" }}>{k}</span><span>{v}</span></React.Fragment>)}
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{titre}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "auto minmax(0, 1fr)", gap: "6px 14px", marginTop: 8, fontSize: 14, lineHeight: 1.45 }}>
+                {lignes.filter(([, v]) => v).map(([k, v]) => <React.Fragment key={k}><span style={{ opacity: 0.6 }}>{k}</span><span>{v}</span></React.Fragment>)}
             </div>
-            <div style={{ fontSize: 12, opacity: 0.55, marginTop: 8 }}>Repères indicatifs pour une culture en serre ou sous abri en Bretagne, à adapter à vos conditions.</div>
+            {pied && <div style={{ fontSize: 12, opacity: 0.55, marginTop: 8 }}>{pied}</div>}
         </div>
     )
+}
+
+function Botanique({ b }: { b: [string, string, string, string, string, string] }) {
+    const [milieu, climat, temp, alt, cites, etat] = b
+    return <Grille titre="Botanique" lignes={[["Milieu", milieu], ["Climat", climat], ["Températures", temp], ["Altitude", alt], ["CITES", cites || "Non inscrit"], ["Populations", etat]]} pied="Valeurs moyennes pour le genre : chaque espèce peut s’en écarter. CITES : réglementation du commerce international (annexe I : la plus stricte)." />
+}
+
+function Culture({ c }: { c: [string, string, string, string, string, number, string, string, number] }) {
+    const [croit, repos, expo, tmin, eau, mel, mult, flo, diff] = c
+    return <Grille titre="Culture" lignes={[["Croissance", croit], ["Repos", repos], ["Exposition", expo], ["Minimum en hiver", tmin], ["Arrosage", eau], ["Substrat", MELANGES[mel]], ["Multiplication", mult], ["Floraison", flo], ["Difficulté", DIFF[diff]]]} pied="Repères indicatifs pour une culture en serre ou sous abri en Bretagne, à adapter à vos conditions." />
 }
 
 function Especes({ n, l, q, source }: { n: string; l: [string, number, number, string]; q: string; source?: string }) {
@@ -894,7 +1101,7 @@ export default function CarteMonde(props) {
                     {infos && typeof infos === "object" && infos.nomFr && <div style={{ fontSize: 14, opacity: 0.7, marginTop: 2 }}>{infos.nomFr}</div>}
                     <div style={{ fontSize: 15, marginTop: 12, lineHeight: 1.5 }}><span style={{ opacity: 0.6 }}>Origine · </span>{g.zone}</div>
                     <div style={{ fontSize: 14, marginTop: 4, lineHeight: 1.5, opacity: 0.75 }}>{g.pays.join(", ")}</div>
-                    {g.note && <p style={{ fontSize: 16, lineHeight: 1.6, margin: "14px 0 0" }}>{g.note}</p>}
+                    {BOTA[g.n] && <Botanique b={BOTA[g.n]} />}
                     {CULTURE[g.n] && <Culture c={CULTURE[g.n]} />}
                     {LODE[g.n] && <Especes n={g.n} l={LODE[g.n]} q={qq} />}
                     {!LODE[g.n] && AUTRES[g.n] && <Especes n={g.n} l={["", AUTRES[g.n][1].split("|").length, 0, AUTRES[g.n][1]]} source={AUTRES[g.n][0]} q={qq} />}
@@ -929,7 +1136,7 @@ export default function CarteMonde(props) {
                     <p style={{ fontSize: 16, lineHeight: 1.65, margin: "12px 0 0", opacity: 0.85 }}>
                         {etroit ? "Touchez" : "Cliquez sur"} un point de la carte, cherchez un nom ou ouvrez un continent : la fiche affiche l'aire d'origine, une photo et les observations faites dans la nature, grâce aux données ouvertes d'iNaturalist.
                     </p>
-                    <p style={{ fontSize: 14, lineHeight: 1.6, margin: "10px 0 0", opacity: 0.8 }}>{Object.keys(CULTURE).length} genres phares ont une fiche de culture : saisons, exposition, arrosage et mélange conseillé, en lien avec nos guides.</p>
+                    <p style={{ fontSize: 14, lineHeight: 1.6, margin: "10px 0 0", opacity: 0.8 }}>{Object.keys(CULTURE).length} genres phares ont une fiche de culture : saisons, exposition, arrosage et substrat conseillé.</p>
                     <div style={{ fontSize: 13, opacity: 0.65, marginTop: 18 }}>Pour commencer :</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                         {["Lithops", "Ariocarpus", "Massonia", "Pachypodium", "Copiapoa", "Turbinicarpus"].map((n) => (

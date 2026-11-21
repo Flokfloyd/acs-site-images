@@ -64,7 +64,7 @@ export default function Administration(props: { pageMembre: string }) {
     const aller = (o: O) => { setO(o); try { history.replaceState(null, "", "#" + o) } catch (e) {} ; window.scrollTo({ top: 0, behavior: "smooth" }) }
     const ouvrirCampagne = (id: string) => { setCampagneOuverte(id); aller("campagnes") }
 
-    const wrap = (c: React.ReactNode) => <div style={{ width: "100%", color: C.txt, ...font }}>{c}</div>
+    const wrap = (c: React.ReactNode) => <div className="acs-large" style={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowWrap: "anywhere", overflowX: "clip", color: C.txt, ...font }}><style>{".acs-large input,.acs-large select,.acs-large textarea{max-width:100%;min-width:0;box-sizing:border-box}.acs-large img{max-width:100%}"}</style>{c}</div>
     if (!client) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>) // page pré-générée côté serveur : la base se branche dans le navigateur
     if (etat === "chargement") return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
     if (etat === "deconnecte") return wrap(<div style={box}><h2 style={h2}>Réservé aux administrateurs</h2><p style={{ ...muted, marginBottom: 18 }}>Connectez-vous d’abord à l’espace membre.</p><a href={props.pageMembre || "/espace-membre"} style={{ ...btn(), textDecoration: "none", display: "inline-block" }}>Se connecter</a></div>)
@@ -228,7 +228,7 @@ function ControleBillets() {
         inconnu: "Billet inconnu", format: "Numéro incomplet", refuse: "Réservé aux administrateurs", erreur: "Erreur",
     }
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <Aide>À l’entrée, scannez le QR code du billet (sur téléphone ou papier) ou tapez son numéro, puis validez l’entrée. Un billet ne peut être validé qu’une fois. Vous pouvez aussi scanner le QR code avec l’appareil photo du téléphone : il ouvre directement cette page.</Aide>
             <div style={box}>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
@@ -575,7 +575,7 @@ function Agenda({ moi, ouvrirCampagne, etroit }: { moi: string; ouvrirCampagne: 
     const nouveau = (d?: string) => { setMsg({ t: "", err: false }); setSel({ titre: "", date_debut: d || "", date_fin: "", heure: "", date_label: "", lieu: "", description: "", reserve_membres: false, inscription_ouverte: false, prix: 0, places: "", publie: true, __annoncer: false }) }
 
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <div style={box}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -686,7 +686,7 @@ function FicheEvenement({ e, setE, moi, fermer, recharger, ouvrirCampagne }: { e
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
                 {champs.filter((c) => c.type !== "bool" && c.type !== "textarea").map((c) => <ChampForm key={c.k} c={c} v={e[c.k]} set={(v) => set(c.k, v)} />)}
             </div>
-            <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 14, marginTop: 16 }}>
                 {champs.filter((c) => c.type === "textarea").map((c) => <ChampForm key={c.k} c={c} v={e[c.k]} set={(v) => set(c.k, v)} />)}
                 {champs.filter((c) => c.type === "bool").map((c) => <ChampForm key={c.k} c={c} v={e[c.k]} set={(v) => set(c.k, v)} />)}
                 <ChampForm c={{ k: "publie", t: "Publié sur le site", type: "bool" }} v={e.publie !== false} set={(v) => set("publie", v)} />
@@ -804,7 +804,7 @@ function Compta() {
     const ligne = (t: string, v: number, fort = false) => <div key={t} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "7px 0", borderTop: `1px solid ${C.line}`, fontWeight: fort ? 700 : 400 }}><span>{t}</span><span>{euros(v)}</span></div>
 
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <div style={box}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -869,7 +869,7 @@ function SondagesAdmin({ moi, ouvrirCampagne }: { moi: string; ouvrirCampagne: (
         : <EditeurSondage so={sel} setSo={setSel} evts={evts} retour={() => { setSel(null); charger() }} voirResultats={() => setVue("resultats")} />
 
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <Aide>Créez un sondage pour les adhérents : qui vient au repas d’une sortie, précommandes de la boutique, choix d’une date… Il apparaît dans leur espace membre tant qu’il est ouvert, et peut être lié à un événement.</Aide>
             <div style={box}>
                 <span style={label}>Nouveau sondage</span>
@@ -920,7 +920,7 @@ function EditeurSondage({ so, setSo, evts, retour, voirResultats }: { so: any; s
                 <h3 style={{ ...h2, fontSize: 22, margin: 0 }}>{so.id ? "Modifier le sondage" : "Nouveau sondage"}</h3>
                 <span style={{ display: "flex", gap: 8 }}>{so.id && <button style={small()} onClick={voirResultats}>Voir les résultats</button>}<button style={small()} onClick={retour}>Retour à la liste</button></span>
             </div>
-            <div style={{ display: "grid", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
                 <div><span style={label}>Titre *</span><input style={input} value={so.titre} onChange={(e) => setSo({ ...so, titre: e.target.value })} placeholder="Qui vient au repas du 14 juin ?" /></div>
                 <div><span style={label}>Présentation</span><textarea style={{ ...input, minHeight: 70, resize: "vertical" }} value={so.description || ""} onChange={(e) => setSo({ ...so, description: e.target.value })} /></div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
@@ -931,7 +931,7 @@ function EditeurSondage({ so, setSo, evts, retour, voirResultats }: { so: any; s
             <div style={{ marginTop: 24 }}>
                 <span style={label}>Questions</span>
                 {qs.map((q, k) => (
-                    <div key={q.id} style={{ border: `1px solid ${C.line}`, padding: 14, marginTop: 10, display: "grid", gap: 10 }}>
+                    <div key={q.id} style={{ border: `1px solid ${C.line}`, padding: 14, marginTop: 10, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 10 }}>
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                             <input style={{ ...input, flex: "3 1 280px", width: "auto" }} value={q.intitule} placeholder={`Question ${k + 1}`} onChange={(e) => setQ(k, { intitule: e.target.value })} />
                             <select style={{ ...input, flex: "1 1 160px", width: "auto" }} value={q.type} onChange={(e) => setQ(k, { type: e.target.value as any, options: q.options?.length ? q.options : ["Oui", "Non"] })}>{TYPES_Q.map(([t, l]) => <option key={t} value={t}>{l}</option>)}</select>
@@ -949,7 +949,7 @@ function EditeurSondage({ so, setSo, evts, retour, voirResultats }: { so: any; s
                 ))}
                 <button style={{ ...btn(false), marginTop: 10 }} onClick={() => setSo({ ...so, questions: [...qs, { id: nid(), intitule: "", type: "unique", options: ["Oui", "Non"], obligatoire: false }] })}>Ajouter une question</button>
             </div>
-            <div style={{ display: "grid", gap: 12, marginTop: 24 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12, marginTop: 24 }}>
                 {coche("ouvert", "Ouvert aux adhérents", "Décoché : brouillon, invisible des adhérents. Le sondage se ferme seul après la date limite.")}
                 {coche("resultats_visibles", "Montrer les résultats aux adhérents", "Totaux seulement, sans les noms ni les réponses libres.")}
             </div>
@@ -981,7 +981,7 @@ function ResultatsAdmin({ so, retour, editer, moi, ouvrirCampagne }: { so: any; 
         ouvrirCampagne(data.id)
     }
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <div style={box}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                     <div><span style={label}>{etatSondage(so)}{so.cloture_le ? ` · jusqu’au ${dateFr(so.cloture_le)}` : ""}</span><h3 style={{ ...h2, fontSize: 22, margin: 0 }}>{so.titre}</h3></div>
@@ -1071,7 +1071,7 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                     <button style={small()} onClick={() => { setC(null); setMsg({ t: "", err: false }) }}>Retour à la liste</button>
                 </div>
                 {envoyee && <p style={{ ...muted, marginBottom: 16 }}>Envoyée le {dateFr(c.envoyee_le, true)} à {c.nb_envois} personne(s).</p>}
-                <fieldset disabled={envoyee || occupe} style={{ border: "none", padding: 0, margin: 0, display: "grid", gap: 16 }}>
+                <fieldset disabled={envoyee || occupe} style={{ border: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
                     <div><span style={label}>Destinataires</span>
                         <select style={input} value={c.cible} onChange={(e) => setC({ ...c, cible: e.target.value })}>{CIBLES.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
                         <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Seuls les adhérents qui acceptent les e-mails (option du profil) sont concernés.{nb != null ? ` ${nb} destinataire(s).` : c.id ? "" : " Enregistrez le brouillon pour voir le nombre de destinataires."}</span></div>
@@ -1095,7 +1095,7 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
     }
 
     return (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <Aide>Écrivez à tous les adhérents, à ceux qui doivent renouveler leur cotisation, au bureau ou aux inscrits d’une sortie. Envoyez-vous d’abord un test pour vérifier le rendu.</Aide>
             <div style={box}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
@@ -1104,7 +1104,7 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                 </div>
                 {liste.length === 0 && <p style={muted}>Aucune campagne pour l’instant.</p>}
                 {liste.map((r) => (
-                    <button key={r.id} onClick={() => { setMsg({ t: "", err: false }); setC(r) }} style={{ display: "flex", width: "100%", justifyContent: "space-between", gap: 12, textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "12px 0", color: C.txt, font: "inherit", cursor: "pointer" }}>
+                    <button key={r.id} onClick={() => { setMsg({ t: "", err: false }); setC(r) }} style={{ display: "flex", width: "100%", justifyContent: "space-between", gap: "4px 12px", flexWrap: "wrap", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "12px 0", color: C.txt, font: "inherit", cursor: "pointer" }}>
                         <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.sujet}<span style={{ color: C.mute, fontSize: 13 }}> · {CIBLES.find(([k]) => k === r.cible)?.[1]}</span></span>
                         <span style={{ flex: "0 0 auto", fontSize: 13, color: r.statut === "envoyee" ? C.accent : r.statut === "erreur" ? C.danger : C.mute }}>{STAT[r.statut]}{r.statut === "envoyee" ? ` · ${dateFr(r.envoyee_le)} · ${r.nb_envois}` : ""}</span>
                     </button>
