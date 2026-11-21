@@ -4,6 +4,7 @@ import * as React from "react"
 import { C, font, serif } from "./AcsBase.tsx"
 
 const URL_ESPECES = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@64adc7b/data/especes.json"
+const URL_LODE = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@509be86/data/lode-index.json"
 const URL_XLSX = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm"
 
 export type Plante = {
@@ -51,6 +52,9 @@ const ExpoTxt = ({ e }: { e?: string | null }) => (e ? <span style={{ display: "
 const subAff = (n?: number | null, court = true) => (n ? `${CERCLES[n]} ${(court ? SUB_COURT : SUBSTRATS)[n]}` : "")
 type Genres = Record<string, [string, string, [number | null, number, string, string] | null, string]>
 let ESPECES: Promise<Genres> | null = null
+type Lode = { acc: string[]; syn: Record<string, string>; nd: string[] }
+let LODE: Promise<Lode | null> | null = null
+const chargerLode = () => (LODE ??= fetch(URL_LODE).then((r) => r.json()).catch(() => { LODE = null; return null }))
 const chargerEspeces = () => (ESPECES ??= fetch(URL_ESPECES).then((r) => r.json()).then((j) => j.genres as Genres).catch(() => { ESPECES = null; return {} as Genres }))
 
 const sansAccent = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -142,6 +146,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const [etq, setEtq] = React.useState(false)
     const [cmd, setCmd] = React.useState(false)
     const [verif, setVerif] = React.useState(false)
+    const [verifMsg, setVerifMsg] = React.useState("")
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(900)
     const etroit = w < 720
@@ -288,15 +293,13 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     <label style={{ ...bouton(false), display: "inline-flex", alignItems: "center" }}>Importer Excel<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = "" }} /></label>
                     <button style={bouton(false)} onClick={exporter} disabled={!plantes.length}>Exporter Excel</button>
                     {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setAide(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
-                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setCmd((x) => !x); setEtq(false); setAide(false); setVerif(false) }} aria-expanded={cmd}>Importer une commande</button>}
-                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setVerif((x) => !x); setCmd(false); setEtq(false); setAide(false) }} aria-expanded={verif}>Vérifier les noms</button>}
+                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setCmd((x) => !x); setEtq(false); setAide(false) }} aria-expanded={cmd}>Importer une commande</button>}
                     <button style={{ ...bouton(false), border: "none", textDecoration: "underline", textUnderlineOffset: 3, paddingLeft: 6, paddingRight: 6 }} onClick={() => setAide((a) => !a)} aria-expanded={aide}>Comment importer sa collection ?</button>
                 </div>
                 {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
                 {msg && <p style={{ margin: "12px 0 0", fontSize: 14, color: /impossible|Erreur|Aucune/.test(msg) ? C.danger : C.accent }}>{msg}</p>}
             </div>
 
-            {verif && <PanneauVerif plantes={plantes} genres={genres} client={client} email={email} onFermer={(ok) => { setVerif(false); if (ok) { charger(); setMsg(ok) } }} />}
             {cmd && <PanneauCommande plantes={plantes} genres={genres} client={client} email={email} auteur={auteur} onFermer={(ok) => { setCmd(false); if (ok) { charger(); setVue("semis"); setMsg(ok) } }} />}
             {etq && vue !== "echanges" && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} onFermer={() => setEtq(false)} />}
             {imp && <ApercuImport imp={imp} onAnnuler={() => setImp(null)} onValider={validerImport} />}
@@ -320,6 +323,17 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     {nEch > 0 && vue !== "rusticite" && <p style={{ margin: "14px 0 0", fontSize: 13, color: C.mute, padding: etroit ? "0 2px" : 0 }}>{nEch} plante{nEch > 1 ? "s" : ""} proposée{nEch > 1 ? "s" : ""} dans la bourse d’échange.</p>}
                 </div>
             )}
+
+            {vue !== "echanges" && plantes.length > 0 && (verif
+                ? <PanneauVerif plantes={plantes} genres={genres} client={client} email={email} onFermer={(ok) => { setVerif(false); setVerifMsg(ok || ""); if (ok) charger() }} />
+                : <div style={{ ...box, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ flex: "1 1 280px", minWidth: 0 }}>
+                        <h3 style={{ fontFamily: serif, fontSize: 20, margin: 0, fontWeight: 600 }}>Vérifier les noms de cactus</h3>
+                        <p style={{ margin: "4px 0 0", fontSize: 14, color: C.mute }}>Compare vos noms à l’index des taxons et synonymes de Joël Lodé et propose les noms acceptés.</p>
+                        {verifMsg && <p style={{ margin: "6px 0 0", fontSize: 14, color: C.accent }}>{verifMsg}</p>}
+                    </div>
+                    <button style={bouton(false)} onClick={() => { setVerif(true); setVerifMsg("") }}>Lancer la vérification</button>
+                </div>)}
         </div>
     )
 }
@@ -545,24 +559,26 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
 }
 
 // ---------- vérification des noms de cactus (index Lodé) ----------
-const ORDRE_VERIF = ["GENRE", "SYNONYME", "RANG", "PROCHE", "INCONNUE", "INCONNU", "INFRA"]
+const ORDRE_VERIF = ["SYNONYME", "GENRE", "RANG", "PROCHE", "DOUTE", "NONRETENU", "INCONNUE", "INCONNU", "INFRA"]
 function PanneauVerif({ plantes, genres, client, email, onFermer }: { plantes: Plante[]; genres: Genres; client: any; email: string; onFermer: (ok?: string) => void }) {
     const [infra, setInfra] = React.useState(false)
     const [props, setProps] = React.useState<Record<string, string>>({})
     const [coches, setCoches] = React.useState<Set<string> | null>(null)
     const [occupe, setOccupe] = React.useState(false)
     const [err, setErr] = React.useState("")
+    const [lode, setLode] = React.useState<Lode | null | undefined>(undefined)
+    React.useEffect(() => { chargerLode().then((l) => setLode(l)) }, [])
     const res = React.useMemo(() => {
-        if (!Object.keys(genres).length) return null
-        const ix = indexLode(genres)
+        if (!Object.keys(genres).length || lode === undefined) return null
+        const ix = indexLode(genres, lode)
         const compte = new Map<string, number>()
         for (const p of plantes) if ((p.type || genres[genreDe(p.espece)]?.[0]) === "Cactus" || ix.genres.has(normTaxo(genreDe(p.espece)))) compte.set(p.espece, (compte.get(p.espece) || 0) + 1)
         const l: Verif[] = []
         for (const [nom, n] of compte) { const v = verifierNom(nom, ix); if (v.statut !== "OK") l.push({ ...v, n }) }
         l.sort((a, b) => ORDRE_VERIF.indexOf(a.statut) - ORDRE_VERIF.indexOf(b.statut) || a.nom.localeCompare(b.nom))
         return { l, total: compte.size }
-    }, [plantes, genres])
-    if (!res) return <div style={box}><p style={{ margin: 0, color: C.mute }}>Chargement de l’index…</p></div>
+    }, [plantes, genres, lode])
+    if (!res) return <div style={box}><p style={{ margin: 0, color: C.mute }}>Chargement de l’index de Joël Lodé…</p></div>
     const vis = res.l.filter((v) => infra || v.statut !== "INFRA")
     const parDefaut = new Set(res.l.filter((v) => v.proposition && ["GENRE", "SYNONYME", "RANG", "PROCHE"].includes(v.statut)).map((v) => v.nom))
     const sel = coches ?? parDefaut
@@ -580,7 +596,7 @@ function PanneauVerif({ plantes, genres, client, email, onFermer }: { plantes: P
         setOccupe(false)
         onFermer(`${aAppliquer.length} nom${aAppliquer.length > 1 ? "s" : ""} corrigé${aAppliquer.length > 1 ? "s" : ""} (${n} plante${n > 1 ? "s" : ""}).`)
     }
-    const COUL: Record<string, string> = { GENRE: "#d7b56d", SYNONYME: "#d7b56d", RANG: "#9bbd8a", PROCHE: "#b9a3d6", INCONNUE: "#e08a73", INCONNU: "#e08a73", INFRA: "rgba(246,240,230,0.5)" }
+    const COUL: Record<string, string> = { GENRE: "#d7b56d", SYNONYME: "#d7b56d", DOUTE: "#d7b56d", RANG: "#9bbd8a", PROCHE: "#b9a3d6", NONRETENU: "#e08a73", INCONNUE: "#e08a73", INCONNU: "#e08a73", INFRA: "rgba(246,240,230,0.5)" }
     const nInfra = res.l.filter((v) => v.statut === "INFRA").length
     return (
         <div style={{ ...box, border: `1px solid ${C.accent}` }}>
@@ -588,8 +604,9 @@ function PanneauVerif({ plantes, genres, client, email, onFermer }: { plantes: P
                 <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Vérifier les noms de cactus</h3>
                 <button onClick={() => onFermer()} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Comparaison avec l’index de Joël Lodé (Taxonomie des Cactaceae, vol. 3 à 6, 2026) : {res.total} noms de cactus vérifiés, {res.l.length - nInfra} à revoir. Les propositions sont modifiables ; seules les lignes cochées sont appliquées, à toutes vos plantes portant ce nom.</p>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Comparaison avec l’index des taxons et synonymes de Joël Lodé (Taxonomy of the Cactaceae, version en ligne 2026.2) : {res.total} noms de cactus vérifiés, {res.l.length - nInfra} à revoir. Les propositions sont modifiables ; seules les lignes cochées sont appliquées, à toutes vos plantes portant ce nom.</p>
             <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, marginTop: 10, cursor: "pointer" }}><input type="checkbox" style={coche} checked={infra} onChange={(e) => setInfra(e.target.checked)} />Afficher aussi les variétés et formes non distinguées par Lodé ({nInfra})</label>
+            {lode === null && <p style={{ margin: "8px 0 0", fontSize: 13, color: C.danger }}>L’index complet n’a pas pu être chargé : vérification limitée aux noms acceptés, sans les synonymes.</p>}
             {vis.length === 0 ? <p style={{ margin: "14px 0 0", color: C.accent }}>Tous les noms sont conformes à l’index.</p> : (
                 <div style={{ marginTop: 12, border: `1px solid ${C.line}`, maxHeight: 460, overflow: "auto" }}>
                     <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 860 }}>
@@ -1424,33 +1441,46 @@ const normTaxo = (s: string) => sansAccent(s).replace(/-/g, "").replace(/[^a-z0-
 const RANGS: Record<string, string> = { "subsp.": "subsp.", "ssp.": "subsp.", "var.": "var.", "v.": "var.", "fma.": "fma.", "f.": "fma.", "fa.": "fma." }
 const GROUPES = [["eriosyce", "neoporteria", "guerreroa", "islaya", "thelocephala", "horridocactus", "pyrrhocactus", "rodentiophila"], ["sulcorebutia", "weingartia", "cintia"], ["turbinicarpus", "rapicactus", "gymnocactus", "kadenicarpus"], ["notocactus", "parodia", "eriocephala", "brasiliparodia", "acanthocephala", "wigginsia", "malacocarpus"], ["rebutia", "aylostera", "mediolobivia", "digitorebutia"], ["echinopsis", "lobivia", "trichocereus", "soehrensia", "chamaecereus", "leucostele"], ["echinofossulocactus", "stenocactus"], ["neolloydia", "cumarinia"], ["coryphantha", "lepidocoryphantha", "escobaria", "neobesseya"], ["hamatocactus", "glandulicactus", "ancistrocactus", "sclerocactus", "ferocactus", "thelocactus"]]
 
-type IndexTaxo = { orig: Map<string, string>; taxa: Set<string>; parGenre: Map<string, string[]>; parEpithete: Map<string, string[]>; exGenre: Map<string, string>; exEpithete: Map<string, string>; genres: Map<string, string> }
+type IndexTaxo = { orig: Map<string, string>; taxa: Set<string>; parGenre: Map<string, string[]>; parEpithete: Map<string, string[]>; exGenre: Map<string, string>; exEpithete: Map<string, string>; genres: Map<string, string>; syn: Map<string, string>; nr: Set<string>; complet: boolean }
 let INDEX: IndexTaxo | null = null
-export function indexLode(genres: Genres): IndexTaxo {
-    if (INDEX) return INDEX
-    const ix: IndexTaxo = { orig: new Map(), taxa: new Set(), parGenre: new Map(), parEpithete: new Map(), exGenre: new Map(), exEpithete: new Map(), genres: new Map() }
+// clé normalisée « genre espece [subsp. x] » (rangs unifiés)
+export const cleTaxo = (nom: string) => normTaxo(nom).split(" ").map((m) => RANGS[m] || m).join(" ")
+export function indexLode(genres: Genres, lode?: Lode | null): IndexTaxo {
+    if (INDEX && (INDEX.complet || !lode)) return INDEX
+    const ix: IndexTaxo = { orig: new Map(), taxa: new Set(), parGenre: new Map(), parEpithete: new Map(), exGenre: new Map(), exEpithete: new Map(), genres: new Map(), syn: new Map(), nr: new Set(), complet: !!lode }
+    const ajouter = (gAff: string, gn: string, sp: string, aff: string) => {
+        const cle = `${gn} ${sp}`
+        if (ix.taxa.has(cle)) return
+        ix.taxa.add(cle); ix.orig.set(cle, aff)
+        if (!ix.genres.has(gn)) ix.genres.set(gn, gAff)
+        ix.parGenre.set(gn, [...(ix.parGenre.get(gn) || []), sp])
+        const ep = sp.split(" ")[0]
+        if (!sp.includes(" ")) ix.parEpithete.set(ep, [...(ix.parEpithete.get(ep) || []), cle])
+        const m = sp.match(/subsp\. (\S+)$/)
+        if (m) ix.parEpithete.set("subsp:" + m[1], [...(ix.parEpithete.get("subsp:" + m[1]) || []), cle])
+    }
     for (const [g, v] of Object.entries(genres)) {
         if (v[0] !== "Cactus" || !v[1]) continue
         const gn = normTaxo(g)
         ix.genres.set(gn, g)
-        const liste: string[] = []
         for (const brut of v[1].split("|")) {
             const ex = brut.match(/\((?:ex|maintenant)\s+([^)]+)\)/i)
             const sp = normTaxo(brut.replace(/\([^)]*\)/g, ""))
             if (!sp) continue
             const cle = `${gn} ${sp}`
-            ix.taxa.add(cle); liste.push(sp); ix.orig.set(cle, `${g} ${brut.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim()}`)
-            const ep = sp.split(" ")[0]
-            if (!sp.includes(" ")) ix.parEpithete.set(ep, [...(ix.parEpithete.get(ep) || []), cle])
-            const m = sp.match(/subsp\. (\S+)$/)
-            if (m) ix.parEpithete.set("subsp:" + m[1], [...(ix.parEpithete.get("subsp:" + m[1]) || []), cle])
+            ajouter(g, gn, sp, `${g} ${brut.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim()}`)
             if (ex && !/^maintenant/i.test(ex[0].slice(1))) {
                 const a = ex[1].trim()
                 if (/^[A-Z]/.test(a)) { const ancien = normTaxo(a.replace(/^Ech\.?$/, "Echinopsis")); ix.exGenre.set(`${ancien} ${sp}`, cle) }
                 else ix.exEpithete.set(`${gn} ${normTaxo(a)}`, cle)
             }
         }
-        ix.parGenre.set(gn, liste)
+    }
+    // index complet de Lodé (2026.2) : noms acceptés, synonymes et noms non retenus
+    if (lode) {
+        for (const a of lode.acc) { const k = cleTaxo(a); const [gn, ...r] = k.split(" "); if (gn && r.length) ajouter(a.split(" ")[0], gn, r.join(" "), a) }
+        for (const [a, b] of Object.entries(lode.syn)) ix.syn.set(cleTaxo(a), b)
+        for (const a of lode.nd) ix.nr.add(cleTaxo(a))
     }
     return (INDEX = ix)
 }
@@ -1485,11 +1515,19 @@ export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
     const g = normTaxo(genre), e = normTaxo(espece)
     const base = { nom }
     if (!g || !e || /hybride|^hort/i.test(nom)) return { ...base, statut: "OK", libelle: "", proposition: "", note: "" }
-    const recompose = (cle: string, ancienGenre?: string) => {
-        const nouveau = sansAccent(affiche(ix, cle).split(" ")[0])
-        const extra = annexes.filter((a) => !(ancienGenre && sansAccent(a).includes(sansAccent(ancienGenre))) && !(/^\(=/.test(a) && sansAccent(a).startsWith("(=" + nouveau)))
+    const recompose = (cle: string, ancienGenre?: string, aff?: string) => {
+        const nom2 = aff || affiche(ix, cle)
+        const nouveau = sansAccent(nom2.split(" ")[0])
+        const nouveauNorm = normTaxo(nom2), nouvelEp = nouveauNorm.split(" ").slice(1)
+        const redit = (a: string) => {
+            const x = normTaxo(a.replace(/^\(=?|\)$/g, "")); if (!x) return false
+            if (x === nouveauNorm || nouvelEp.includes(x) || nouveauNorm.endsWith(" " + x)) return true
+            const [g0, ...r] = x.split(" ")   // (=W. mentosa) quand la proposition est Weingartia mentosa subsp. …
+            return r.length > 0 && nouveauNorm.startsWith(g0.replace(/\.$/, "")) && r.every((m) => nouvelEp.includes(m))
+        }
+        const extra = annexes.filter((a) => !redit(a) && !(ancienGenre && sansAccent(a).includes(sansAccent(ancienGenre))) && !(/^\(=/.test(a) && sansAccent(a).startsWith("(=" + nouveau)))
         if (ancienGenre && !annexes.some((a) => sansAccent(a).includes(sansAccent(ancienGenre)))) extra.push(`(=${ancienGenre})`)
-        return [affiche(ix, cle), ...extra].join(" ")
+        return [nom2, ...extra].join(" ")
     }
     const avecInfra = (cle: string) => {
         // garde la sous-espèce d’origine si elle existe sous le nouveau nom
@@ -1498,6 +1536,21 @@ export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
         return cle
     }
     const cle = `${g} ${e}`
+    // synonyme donné par l’index de Lodé
+    const parSyn = (cible: string, src: string, garderInfra = false) => {
+        const sur = /\?\s*$/.test(cible), c = cible.replace(/\?\s*$/, "").trim()
+        const k = cleTaxo(c)
+        const k2 = k.split(" ").length === 2 ? avecInfra(k) : k
+        let aff = ix.orig.get(k2) ?? (k2 === k ? c : affiche(ix, k2))
+        const cibleAff = aff
+        // la variété ou forme d’origine est conservée quand Lodé ne rattache que l’espèce
+        if (garderInfra && k2 === k && k.split(" ").length === 2 && infra.length) aff += " " + infra.map(([r, x]) => `${r} ${x}`).join(" ")
+        const autreGenre = k.split(" ")[0] !== g
+        return { ...base, statut: sur ? "DOUTE" : "SYNONYME", libelle: sur ? "Synonyme probable" : autreGenre ? "Synonyme, autre genre" : "Synonyme", proposition: recompose(k2, autreGenre ? maj1(genre) : undefined, aff), note: `${src} = ${cibleAff} chez Lodé${sur ? " (rattachement marqué « ? » dans l’index)" : ""}` }
+    }
+    const [r0, ep0] = infra[0] || []
+    const complet = r0 && ep0 ? `${cle} ${r0} ${normTaxo(ep0)}` : ""
+    if (complet && !ix.taxa.has(complet) && ix.syn.has(complet)) return parSyn(ix.syn.get(complet)!, `${maj1(genre)} ${espece} ${r0} ${ep0}`)
     // 1. espèce reconnue
     if (ix.taxa.has(cle)) {
         const [r, ep] = infra[0] || []
@@ -1510,13 +1563,23 @@ export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
         if (ix.taxa.has(ce)) return { ...base, statut: "RANG", libelle: "Rang différent", proposition: recompose(ce), note: `${ep} est une espèce à part entière chez Lodé` }
         return { ...base, statut: "INFRA", libelle: "Variété ou forme non retenue", proposition: "", note: `${affiche(ix, cle)} est valide ; ${r} ${ep} n’est pas distingué dans l’index` }
     }
+    // 1 ter. synonyme de l’espèce dans l’index de Lodé
+    if (ix.syn.has(cle)) return parSyn(ix.syn.get(cle)!, `${maj1(genre)} ${espece}`, true)
+    // même nom dans un genre équivalent (Sulcorebutia albissima = Weingartia albissima)
+    for (const ga of [...(GROUPES.find((l) => l.includes(g)) || []), ...annexes.map((a) => normTaxo((a.match(/^\(=?\s*([A-Z][a-z]+)/) || [])[1] || ""))]) {
+        if (!ga || ga === g) continue
+        if (ix.syn.has(`${ga} ${e}`)) return parSyn(ix.syn.get(`${ga} ${e}`)!, `${maj1(genre)} ${espece}`, true)
+    }
     // 1 bis. nom indiqué entre parenthèses : (=Eriocephala), (=Sclerocactus papyracanthus)
     for (const a of annexes) {
-        const m = a.match(/^\(=?\s*([A-Z][a-z]+)(?:\s+([a-z-]+))?/)
+        const m = a.match(/^\(=?\s*([A-Z][a-z]*)(\.?)(?:\s+([a-z-]+))?/)
         if (!m) continue
-        const gp = normTaxo(m[1]), ep = m[2] ? normTaxo(m[2]) : e
+        const ep = m[3] ? normTaxo(m[3]) : e
+        let gp = normTaxo(m[1])
+        if (m[2]) { const c = [...ix.genres.keys()].filter((k) => k.startsWith(gp) && ix.taxa.has(`${k} ${ep}`)); if (c.length !== 1) continue; gp = c[0] }
+        else if (m[1].length < 3) continue
         const c = `${gp} ${ep}`
-        if (gp !== g && ix.taxa.has(c)) return { ...base, statut: "GENRE", libelle: "Nom accepté entre parenthèses", proposition: recompose(avecInfra(c), maj1(genre) + (m[2] ? " " + espece : "")), note: `${affiche(ix, c)} est le nom retenu par Lodé` }
+        if (gp !== g && ix.taxa.has(c)) return { ...base, statut: "GENRE", libelle: "Nom accepté entre parenthèses", proposition: recompose(avecInfra(c), maj1(genre) + (m[3] ? " " + espece : "")), note: `${affiche(ix, c)} est le nom retenu par Lodé` }
     }
     // 2. ancienne épithète (ex …) dans le même genre
     const exE = ix.exEpithete.get(cle)
@@ -1533,12 +1596,14 @@ export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
     const groupe = GROUPES.find((l) => l.includes(g)) || []
     const choix = ailleurs.find((c) => groupe.includes(c.split(" ")[0]) || annexes.some((a) => sansAccent(a).includes(c.split(" ")[0]))) || ""
     if (choix && choix.split(" ")[0] !== g) return { ...base, statut: "GENRE", libelle: genreConnu ? "Autre genre chez Lodé" : "Genre non retenu", proposition: recompose(avecInfra(choix), maj1(genre)), note: `${espece} est classé en ${affiche(ix, choix).split(" ")[0]}${ailleurs.length > 1 ? ` (aussi : ${ailleurs.filter((c) => c !== choix).map((c) => affiche(ix, c)).join(", ")})` : ""}` }
+    // 5 bis. nom cité par Lodé sans nom de rattachement
+    if (ix.nr.has(cle) || (complet && ix.nr.has(complet))) return { ...base, statut: "NONRETENU", libelle: "Nom non retenu", proposition: "", note: `Lodé cite ${maj1(genre)} ${espece}${complet && ix.nr.has(complet) ? ` ${r0} ${ep0}` : ""} sans le rattacher à une espèce acceptée` }
     // 6. faute de frappe probable dans le genre
     if (genreConnu) {
         const max = Math.max(1, Math.floor(e.length / 5))
         let best = "", d = 99
         for (const sp of ix.parGenre.get(g)!) { if (sp.includes(" ") || sp[0] !== e[0]) continue; const x = lev(e, sp); if (x < d) { d = x; best = sp } }
-        if (best && d <= max) return { ...base, statut: "PROCHE", libelle: "Orthographe proche", proposition: recompose(`${g} ${best}`), note: `vouliez-vous dire ${affiche(ix, `${g} ${best}`)} ?` }
+        if (best && d <= max) return { ...base, statut: "PROCHE", libelle: "Orthographe proche", proposition: recompose(avecInfra(`${g} ${best}`)), note: `vouliez-vous dire ${affiche(ix, `${g} ${best}`)} ?` }
         return { ...base, statut: "INCONNUE", libelle: "Espèce absente de l’index", proposition: "", note: `${maj1(genre)} existe, mais pas ${espece}${ailleurs.length ? ` (présent en : ${ailleurs.slice(0, 3).map((c) => affiche(ix, c)).join(", ")})` : ""}` }
     }
     let gBest = "", gd = 99
