@@ -65,7 +65,7 @@ export default function Administration(props: { pageMembre: string }) {
     const ouvrirCampagne = (id: string) => { setCampagneOuverte(id); aller("campagnes") }
 
     const wrap = (c: React.ReactNode) => <div style={{ width: "100%", color: C.txt, ...font }}>{c}</div>
-    if (!client) return wrap(<div style={box}><p style={muted}>Administration bientôt disponible.</p></div>)
+    if (!client) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>) // page pré-générée côté serveur : la base se branche dans le navigateur
     if (etat === "chargement") return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
     if (etat === "deconnecte") return wrap(<div style={box}><h2 style={h2}>Réservé aux administrateurs</h2><p style={{ ...muted, marginBottom: 18 }}>Connectez-vous d’abord à l’espace membre.</p><a href={props.pageMembre || "/espace-membre"} style={{ ...btn(), textDecoration: "none", display: "inline-block" }}>Se connecter</a></div>)
     if (etat === "refuse") return wrap(<div style={box}><h2 style={h2}>Accès réservé</h2><p style={muted}>{email} n’est pas administrateur de l’association.</p></div>)
