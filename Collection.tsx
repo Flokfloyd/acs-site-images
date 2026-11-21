@@ -141,6 +141,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const [aide, setAide] = React.useState(false)
     const [etq, setEtq] = React.useState(false)
     const [cmd, setCmd] = React.useState(false)
+    const [verif, setVerif] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(900)
     const etroit = w < 720
@@ -287,13 +288,15 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     <label style={{ ...bouton(false), display: "inline-flex", alignItems: "center" }}>Importer Excel<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = "" }} /></label>
                     <button style={bouton(false)} onClick={exporter} disabled={!plantes.length}>Exporter Excel</button>
                     {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setAide(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
-                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setCmd((x) => !x); setEtq(false); setAide(false) }} aria-expanded={cmd}>Importer une commande</button>}
+                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setCmd((x) => !x); setEtq(false); setAide(false); setVerif(false) }} aria-expanded={cmd}>Importer une commande</button>}
+                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setVerif((x) => !x); setCmd(false); setEtq(false); setAide(false) }} aria-expanded={verif}>Vérifier les noms</button>}
                     <button style={{ ...bouton(false), border: "none", textDecoration: "underline", textUnderlineOffset: 3, paddingLeft: 6, paddingRight: 6 }} onClick={() => setAide((a) => !a)} aria-expanded={aide}>Comment importer sa collection ?</button>
                 </div>
                 {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
                 {msg && <p style={{ margin: "12px 0 0", fontSize: 14, color: /impossible|Erreur|Aucune/.test(msg) ? C.danger : C.accent }}>{msg}</p>}
             </div>
 
+            {verif && <PanneauVerif plantes={plantes} genres={genres} client={client} email={email} onFermer={(ok) => { setVerif(false); if (ok) { charger(); setMsg(ok) } }} />}
             {cmd && <PanneauCommande plantes={plantes} genres={genres} client={client} email={email} auteur={auteur} onFermer={(ok) => { setCmd(false); if (ok) { charger(); setVue("semis"); setMsg(ok) } }} />}
             {etq && vue !== "echanges" && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} onFermer={() => setEtq(false)} />}
             {imp && <ApercuImport imp={imp} onAnnuler={() => setImp(null)} onValider={validerImport} />}
@@ -536,6 +539,77 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
                 <button style={bouton(false)} onClick={() => onFermer(false)}>Annuler</button>
                 {f.id && <button style={bouton(false)} onClick={dupliquer} title="Créer une nouvelle fiche à partir de celle-ci">Dupliquer</button>}
                 {f.id && <button style={{ ...bouton(false), color: C.danger, borderColor: C.danger, marginLeft: "auto" }} onClick={supprimer}>Supprimer</button>}
+            </div>
+        </div>
+    )
+}
+
+// ---------- vérification des noms de cactus (index Lodé) ----------
+const ORDRE_VERIF = ["GENRE", "SYNONYME", "RANG", "PROCHE", "INCONNUE", "INCONNU", "INFRA"]
+function PanneauVerif({ plantes, genres, client, email, onFermer }: { plantes: Plante[]; genres: Genres; client: any; email: string; onFermer: (ok?: string) => void }) {
+    const [infra, setInfra] = React.useState(false)
+    const [props, setProps] = React.useState<Record<string, string>>({})
+    const [coches, setCoches] = React.useState<Set<string> | null>(null)
+    const [occupe, setOccupe] = React.useState(false)
+    const [err, setErr] = React.useState("")
+    const res = React.useMemo(() => {
+        if (!Object.keys(genres).length) return null
+        const ix = indexLode(genres)
+        const compte = new Map<string, number>()
+        for (const p of plantes) if ((p.type || genres[genreDe(p.espece)]?.[0]) === "Cactus" || ix.genres.has(normTaxo(genreDe(p.espece)))) compte.set(p.espece, (compte.get(p.espece) || 0) + 1)
+        const l: Verif[] = []
+        for (const [nom, n] of compte) { const v = verifierNom(nom, ix); if (v.statut !== "OK") l.push({ ...v, n }) }
+        l.sort((a, b) => ORDRE_VERIF.indexOf(a.statut) - ORDRE_VERIF.indexOf(b.statut) || a.nom.localeCompare(b.nom))
+        return { l, total: compte.size }
+    }, [plantes, genres])
+    if (!res) return <div style={box}><p style={{ margin: 0, color: C.mute }}>Chargement de l’index…</p></div>
+    const vis = res.l.filter((v) => infra || v.statut !== "INFRA")
+    const parDefaut = new Set(res.l.filter((v) => v.proposition && ["GENRE", "SYNONYME", "RANG", "PROCHE"].includes(v.statut)).map((v) => v.nom))
+    const sel = coches ?? parDefaut
+    const proposition = (v: Verif) => props[v.nom] ?? v.proposition
+    const aAppliquer = vis.filter((v) => sel.has(v.nom) && proposition(v).trim() && proposition(v).trim() !== v.nom)
+    const appliquer = async () => {
+        setOccupe(true); setErr("")
+        let n = 0
+        for (const v of aAppliquer) {
+            const nouveau = proposition(v).trim()
+            const { error } = await client.from("plantes").update({ espece: nouveau, genre: genreDe(nouveau) || null }).eq("email", email.toLowerCase()).eq("espece", v.nom)
+            if (error) { setErr(error.message); setOccupe(false); return }
+            n += v.n
+        }
+        setOccupe(false)
+        onFermer(`${aAppliquer.length} nom${aAppliquer.length > 1 ? "s" : ""} corrigé${aAppliquer.length > 1 ? "s" : ""} (${n} plante${n > 1 ? "s" : ""}).`)
+    }
+    const COUL: Record<string, string> = { GENRE: "#d7b56d", SYNONYME: "#d7b56d", RANG: "#9bbd8a", PROCHE: "#b9a3d6", INCONNUE: "#e08a73", INCONNU: "#e08a73", INFRA: "rgba(246,240,230,0.5)" }
+    const nInfra = res.l.filter((v) => v.statut === "INFRA").length
+    return (
+        <div style={{ ...box, border: `1px solid ${C.accent}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Vérifier les noms de cactus</h3>
+                <button onClick={() => onFermer()} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Comparaison avec l’index de Joël Lodé (Taxonomie des Cactaceae, vol. 3 à 6, 2026) : {res.total} noms de cactus vérifiés, {res.l.length - nInfra} à revoir. Les propositions sont modifiables ; seules les lignes cochées sont appliquées, à toutes vos plantes portant ce nom.</p>
+            <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, marginTop: 10, cursor: "pointer" }}><input type="checkbox" style={coche} checked={infra} onChange={(e) => setInfra(e.target.checked)} />Afficher aussi les variétés et formes non distinguées par Lodé ({nInfra})</label>
+            {vis.length === 0 ? <p style={{ margin: "14px 0 0", color: C.accent }}>Tous les noms sont conformes à l’index.</p> : (
+                <div style={{ marginTop: 12, border: `1px solid ${C.line}`, maxHeight: 460, overflow: "auto" }}>
+                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 860 }}>
+                        <thead><tr>{["", "Nom actuel", "Constat", "Proposition", "Explication"].map((t) => <th key={t} style={{ ...th, cursor: "default" }}>{t}</th>)}</tr></thead>
+                        <tbody>{vis.map((v) => (
+                            <tr key={v.nom}>
+                                <td style={td}><input type="checkbox" style={coche} disabled={!proposition(v).trim()} checked={sel.has(v.nom)} onChange={() => setCoches(() => { const x = new Set(sel); x.has(v.nom) ? x.delete(v.nom) : x.add(v.nom); return x })} /></td>
+                                <td style={{ ...td, whiteSpace: "normal", minWidth: 200 }}><NomEspece p={{ espece: v.nom }} />{v.n > 1 && <span style={{ color: C.mute, fontSize: 12 }}> ×{v.n}</span>}</td>
+                                <td style={{ ...td, color: COUL[v.statut], fontWeight: 600, fontSize: 13 }}>{v.libelle}</td>
+                                <td style={{ ...td, minWidth: 240 }}><input value={proposition(v)} placeholder="—" onChange={(e) => setProps((x) => ({ ...x, [v.nom]: e.target.value }))} style={{ ...champ, padding: "6px 8px", fontSize: 14, fontStyle: "italic" }} /></td>
+                                <td style={{ ...td, whiteSpace: "normal", fontSize: 13, color: C.mute, minWidth: 220 }}>{v.note}</td>
+                            </tr>
+                        ))}</tbody>
+                    </table>
+                </div>
+            )}
+            {err && <p style={{ margin: "12px 0 0", color: C.danger, fontSize: 14 }}>{err}</p>}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+                <button style={bouton()} onClick={appliquer} disabled={occupe || !aAppliquer.length}>{occupe ? "Correction…" : `Appliquer les corrections cochées (${aAppliquer.length})`}</button>
+                <button style={bouton(false)} onClick={() => onFermer()}>Fermer</button>
             </div>
         </div>
     )
@@ -1339,4 +1413,136 @@ export function lireCommande(texte: string, force?: Four | ""): { fournisseur: F
     const fournisseur = force || detecterFournisseur(lignes)
     const articles = fournisseur === "ADBLPS" ? parserADBLPS(lignes) : fournisseur === "Köhres Kakteen" ? parserKohres(lignes) : fournisseur === "Cono’s Paradise" ? parserCono(lignes) : fournisseur === "Uhlig Kakteen" ? parserUhlig(lignes) : parserSuccSeed(lignes)
     return { fournisseur, articles: articles.filter((a) => a.nom && /^[A-Z][a-z]/.test(a.nom)) }
+}
+
+// =====================================================================================
+// VALIDATION TAXONOMIQUE DES CACTUS — index de Joël Lodé (Taxonomie des Cactaceae, vol. 3 à 6, 2026)
+// d’après le module de validation de Florentin Guitton (LINAD 2026, v3.1)
+// =====================================================================================
+export type Verif = { nom: string; statut: string; libelle: string; proposition: string; note: string; n: number }
+const normTaxo = (s: string) => sansAccent(s).replace(/-/g, "").replace(/[^a-z0-9 .]/g, " ").replace(/\s+/g, " ").trim()
+const RANGS: Record<string, string> = { "subsp.": "subsp.", "ssp.": "subsp.", "var.": "var.", "v.": "var.", "fma.": "fma.", "f.": "fma.", "fa.": "fma." }
+const GROUPES = [["eriosyce", "neoporteria", "guerreroa", "islaya", "thelocephala", "horridocactus", "pyrrhocactus", "rodentiophila"], ["sulcorebutia", "weingartia", "cintia"], ["turbinicarpus", "rapicactus", "gymnocactus", "kadenicarpus"], ["notocactus", "parodia", "eriocephala", "brasiliparodia", "acanthocephala", "wigginsia", "malacocarpus"], ["rebutia", "aylostera", "mediolobivia", "digitorebutia"], ["echinopsis", "lobivia", "trichocereus", "soehrensia", "chamaecereus", "leucostele"], ["echinofossulocactus", "stenocactus"], ["neolloydia", "cumarinia"], ["coryphantha", "lepidocoryphantha", "escobaria", "neobesseya"], ["hamatocactus", "glandulicactus", "ancistrocactus", "sclerocactus", "ferocactus", "thelocactus"]]
+
+type IndexTaxo = { orig: Map<string, string>; taxa: Set<string>; parGenre: Map<string, string[]>; parEpithete: Map<string, string[]>; exGenre: Map<string, string>; exEpithete: Map<string, string>; genres: Map<string, string> }
+let INDEX: IndexTaxo | null = null
+export function indexLode(genres: Genres): IndexTaxo {
+    if (INDEX) return INDEX
+    const ix: IndexTaxo = { orig: new Map(), taxa: new Set(), parGenre: new Map(), parEpithete: new Map(), exGenre: new Map(), exEpithete: new Map(), genres: new Map() }
+    for (const [g, v] of Object.entries(genres)) {
+        if (v[0] !== "Cactus" || !v[1]) continue
+        const gn = normTaxo(g)
+        ix.genres.set(gn, g)
+        const liste: string[] = []
+        for (const brut of v[1].split("|")) {
+            const ex = brut.match(/\((?:ex|maintenant)\s+([^)]+)\)/i)
+            const sp = normTaxo(brut.replace(/\([^)]*\)/g, ""))
+            if (!sp) continue
+            const cle = `${gn} ${sp}`
+            ix.taxa.add(cle); liste.push(sp); ix.orig.set(cle, `${g} ${brut.replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim()}`)
+            const ep = sp.split(" ")[0]
+            if (!sp.includes(" ")) ix.parEpithete.set(ep, [...(ix.parEpithete.get(ep) || []), cle])
+            const m = sp.match(/subsp\. (\S+)$/)
+            if (m) ix.parEpithete.set("subsp:" + m[1], [...(ix.parEpithete.get("subsp:" + m[1]) || []), cle])
+            if (ex && !/^maintenant/i.test(ex[0].slice(1))) {
+                const a = ex[1].trim()
+                if (/^[A-Z]/.test(a)) { const ancien = normTaxo(a.replace(/^Ech\.?$/, "Echinopsis")); ix.exGenre.set(`${ancien} ${sp}`, cle) }
+                else ix.exEpithete.set(`${gn} ${normTaxo(a)}`, cle)
+            }
+        }
+        ix.parGenre.set(gn, liste)
+    }
+    return (INDEX = ix)
+}
+const lev = (a: string, b: string) => {
+    if (Math.abs(a.length - b.length) > 5) return 99
+    const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)])
+    for (let j = 1; j <= b.length; j++) d[0][j] = j
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    return d[a.length][b.length]
+}
+const affiche = (ix: IndexTaxo, cle: string) => { if (ix.orig.has(cle)) return ix.orig.get(cle)!; const [g, ...r] = cle.split(" "); return [ix.genres.get(g) || g, ...r].join(" ") }
+
+// décompose « Genre espèce subsp. x 'Cultivar' (=Synonyme) »
+function decomposer(nom: string) {
+    const annexes: string[] = []
+    let t = nom.replace(/\([^)]*\)?/g, (x) => (annexes.push(x.trim()), " ")).replace(/['‘][^'’]*['’]?/g, (x) => (annexes.push(x.trim()), " "))
+    const cv = t.search(/\s(cv\.|x\s|×)/i)
+    if (cv > 0) { annexes.unshift(t.slice(cv).trim()); t = t.slice(0, cv) }
+    const mots = t.trim().split(/\s+/).filter(Boolean)
+    const genre = mots[0] || "", espece = (mots[1] || "").toLowerCase()
+    const infra: [string, string][] = []
+    for (let i = 2; i < mots.length; i++) {
+        const r = RANGS[mots[i].toLowerCase()]
+        if (r && mots[i + 1]) { infra.push([r, mots[i + 1].toLowerCase()]); i++ }
+        else if (/^\(/.test(mots[i])) break
+    }
+    return { genre, espece, infra, annexes: annexes.filter((a) => !/^\(\s*(\?|subsp\.?|var\.?|ssp\.?)\s*\)$/i.test(a)) }
+}
+
+export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
+    const { genre, espece, infra, annexes } = decomposer(nom)
+    const g = normTaxo(genre), e = normTaxo(espece)
+    const base = { nom }
+    if (!g || !e || /hybride|^hort/i.test(nom)) return { ...base, statut: "OK", libelle: "", proposition: "", note: "" }
+    const recompose = (cle: string, ancienGenre?: string) => {
+        const nouveau = sansAccent(affiche(ix, cle).split(" ")[0])
+        const extra = annexes.filter((a) => !(ancienGenre && sansAccent(a).includes(sansAccent(ancienGenre))) && !(/^\(=/.test(a) && sansAccent(a).startsWith("(=" + nouveau)))
+        if (ancienGenre && !annexes.some((a) => sansAccent(a).includes(sansAccent(ancienGenre)))) extra.push(`(=${ancienGenre})`)
+        return [affiche(ix, cle), ...extra].join(" ")
+    }
+    const avecInfra = (cle: string) => {
+        // garde la sous-espèce d’origine si elle existe sous le nouveau nom
+        const [r, ep] = infra[0] || []
+        if (r && ep && ep !== e) { const c2 = `${cle} subsp. ${normTaxo(ep)}`; if (ix.taxa.has(c2)) return c2 }
+        return cle
+    }
+    const cle = `${g} ${e}`
+    // 1. espèce reconnue
+    if (ix.taxa.has(cle)) {
+        const [r, ep] = infra[0] || []
+        if (!r || normTaxo(ep) === e) return { ...base, statut: "OK", libelle: "", proposition: "", note: "" }
+        const cs = `${cle} subsp. ${normTaxo(ep)}`
+        if (ix.taxa.has(cs)) return r === "subsp." ? { ...base, statut: "OK", libelle: "", proposition: "", note: "" }
+            : { ...base, statut: "RANG", libelle: "Rang différent", proposition: recompose(cs), note: `${r} ${ep} est une sous-espèce chez Lodé` }
+        // l’épithète infra est-elle une espèce à part entière ?
+        const ce = `${g} ${normTaxo(ep)}`
+        if (ix.taxa.has(ce)) return { ...base, statut: "RANG", libelle: "Rang différent", proposition: recompose(ce), note: `${ep} est une espèce à part entière chez Lodé` }
+        return { ...base, statut: "INFRA", libelle: "Variété ou forme non retenue", proposition: "", note: `${affiche(ix, cle)} est valide ; ${r} ${ep} n’est pas distingué dans l’index` }
+    }
+    // 1 bis. nom indiqué entre parenthèses : (=Eriocephala), (=Sclerocactus papyracanthus)
+    for (const a of annexes) {
+        const m = a.match(/^\(=?\s*([A-Z][a-z]+)(?:\s+([a-z-]+))?/)
+        if (!m) continue
+        const gp = normTaxo(m[1]), ep = m[2] ? normTaxo(m[2]) : e
+        const c = `${gp} ${ep}`
+        if (gp !== g && ix.taxa.has(c)) return { ...base, statut: "GENRE", libelle: "Nom accepté entre parenthèses", proposition: recompose(avecInfra(c), maj1(genre) + (m[2] ? " " + espece : "")), note: `${affiche(ix, c)} est le nom retenu par Lodé` }
+    }
+    // 2. ancienne épithète (ex …) dans le même genre
+    const exE = ix.exEpithete.get(cle)
+    if (exE) return { ...base, statut: "SYNONYME", libelle: "Synonyme", proposition: recompose(exE), note: `${espece} = ${affiche(ix, exE)}` }
+    // 3. genre transféré, indiqué dans l’index (ex Genre)
+    const exG = ix.exGenre.get(cle)
+    if (exG) return { ...base, statut: "GENRE", libelle: "Genre transféré", proposition: recompose(avecInfra(exG), maj1(genre)), note: `${maj1(genre)} ${espece} est classé en ${affiche(ix, exG).split(" ")[0]}` }
+    const genreConnu = ix.parGenre.has(g)
+    // 4. épithète devenue sous-espèce dans le même genre (Sulcorebutia candiae -> S. arenacea subsp. candiae)
+    const sub = (ix.parEpithete.get("subsp:" + e) || []).filter((c) => c.startsWith(g + " "))
+    if (sub.length) return { ...base, statut: "SYNONYME", libelle: "Devenue sous-espèce", proposition: recompose(sub[0]), note: `${espece} est une sous-espèce chez Lodé` }
+    // 5. même épithète dans un genre équivalent ou ailleurs dans l’index
+    const ailleurs = ix.parEpithete.get(e) || []
+    const groupe = GROUPES.find((l) => l.includes(g)) || []
+    const choix = ailleurs.find((c) => groupe.includes(c.split(" ")[0]) || annexes.some((a) => sansAccent(a).includes(c.split(" ")[0]))) || ""
+    if (choix && choix.split(" ")[0] !== g) return { ...base, statut: "GENRE", libelle: genreConnu ? "Autre genre chez Lodé" : "Genre non retenu", proposition: recompose(avecInfra(choix), maj1(genre)), note: `${espece} est classé en ${affiche(ix, choix).split(" ")[0]}${ailleurs.length > 1 ? ` (aussi : ${ailleurs.filter((c) => c !== choix).map((c) => affiche(ix, c)).join(", ")})` : ""}` }
+    // 6. faute de frappe probable dans le genre
+    if (genreConnu) {
+        const max = Math.max(1, Math.floor(e.length / 5))
+        let best = "", d = 99
+        for (const sp of ix.parGenre.get(g)!) { if (sp.includes(" ") || sp[0] !== e[0]) continue; const x = lev(e, sp); if (x < d) { d = x; best = sp } }
+        if (best && d <= max) return { ...base, statut: "PROCHE", libelle: "Orthographe proche", proposition: recompose(`${g} ${best}`), note: `vouliez-vous dire ${affiche(ix, `${g} ${best}`)} ?` }
+        return { ...base, statut: "INCONNUE", libelle: "Espèce absente de l’index", proposition: "", note: `${maj1(genre)} existe, mais pas ${espece}${ailleurs.length ? ` (présent en : ${ailleurs.slice(0, 3).map((c) => affiche(ix, c)).join(", ")})` : ""}` }
+    }
+    let gBest = "", gd = 99
+    for (const k of ix.genres.keys()) { const x = lev(g, k); if (x < gd) { gd = x; gBest = k } }
+    if (gBest && gd <= Math.max(2, Math.floor(g.length / 3)) && ix.taxa.has(`${gBest} ${e}`)) return { ...base, statut: "PROCHE", libelle: "Orthographe du genre", proposition: recompose(`${gBest} ${e}`), note: `vouliez-vous dire ${affiche(ix, `${gBest} ${e}`)} ?` }
+    return { ...base, statut: "INCONNU", libelle: "Genre absent de l’index", proposition: "", note: ailleurs.length ? `${espece} présent en : ${ailleurs.slice(0, 3).map((c) => affiche(ix, c)).join(", ")}` : gBest && gd <= 2 ? `genre proche : ${ix.genres.get(gBest)}` : "" }
 }
