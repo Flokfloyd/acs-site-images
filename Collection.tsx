@@ -120,6 +120,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const [msg, setMsg] = React.useState("")
     const [genres, setGenres] = React.useState<Genres>({})
     const [limite, setLimite] = React.useState(200)
+    const [aide, setAide] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(900)
     const etroit = w < 720
@@ -185,6 +186,46 @@ export default function Collection({ client, email, auteur }: { client: any; ema
         } catch (e: any) { setMsg("Export impossible : " + (e?.message || e)) }
     }
 
+    const modele = async () => {
+        const X: any = await import(/* @vite-ignore */ URL_XLSX)
+        const wb = X.utils.book_new()
+        const lignes = [
+            { "N°": "0-01", Espèce: "Ariocarpus retusus", Type: "Cactus", Liste: "Collection", Origine: "Mexique : San Luis Potosi", "N° collecte": "SB 127", Exposition: "☀️", Substrat: 3, "T(°C)": -4, Arrosage: "💧", Semis: "", Méthode: "", Graines: "", Levées: "", Vivants: "", "Réf.": "", Acquis: 2023, Rempotage: 2024, Achat: "Pépinière X", Exemplaires: 1, "À échanger": "", "Graines à donner": "oui", Notes: "" },
+            { "N°": "1", Espèce: "Lithops lesliei var. albinica", Type: "Aizoacées", Liste: "Semis", Origine: "Afrique du Sud", "N° collecte": "C 141", Exposition: "⛅", Substrat: 6, "T(°C)": 5, Arrosage: "💧💧", Semis: "14/04/2025", Méthode: "Sachet", Graines: 20, Levées: 13, Vivants: 9, "Réf.": "[PR/20]", Acquis: "", Rempotage: "", Achat: "Producteur Y", Exemplaires: 1, "À échanger": "", "Graines à donner": "", Notes: "Semis en sachet de congélation" },
+        ]
+        const ws = X.utils.json_to_sheet(lignes)
+        ws["!cols"] = Object.keys(lignes[0]).map((k) => ({ wch: k === "Espèce" ? 38 : k === "Origine" || k === "Notes" ? 28 : 12 }))
+        X.utils.book_append_sheet(wb, ws, "Ma collection")
+        const aideL = [
+            ["Comment remplir ce fichier"],
+            [""],
+            ["Une ligne par plante (ou par lot de semis). Gardez la première ligne de titres telle quelle ; remplacez les deux exemples par vos plantes."],
+            ["Seule la colonne Espèce est obligatoire. Les colonnes inutiles peuvent rester vides ou être supprimées."],
+            [""],
+            ["Colonne", "Ce qu’il faut écrire"],
+            ["Espèce", "Nom latin : genre, espèce, puis var., subsp., fma. ou ‘Cultivar’ si besoin."],
+            ["Type", "Cactus, Aizoacées, Caudex, Autres succulentes, Bulbes ou Autre. Vide : déduit du genre."],
+            ["Liste", "Collection (plantes installées) ou Semis (lots de graines en cours)."],
+            ["N°", "Votre numéro d’étiquette ou d’inventaire."],
+            ["Exposition", "☀️ ou Soleil · ⛅ ou Mi-ombre · ☁️ ou Ombre."],
+            ["Substrat", "Numéro du mélange de l’article « Des substrats à composer » : 1 à 6."],
+            ["", "1 Classique cactée · 2 Cactée gourmande · 3 Cactée délicate et sud-africaine · 4 Classique succulente · 5 Cactée épiphyte · 6 Semis"],
+            ["T(°C)", "Température minimale supportée (rusticité), par exemple -4."],
+            ["Arrosage", "💧 faible · 💧💧 modéré · 💧💧💧 régulier (ou 1, 2, 3)."],
+            ["Semis, Acquis, Rempotage", "Une année (2024) ou une date (14/04/2024)."],
+            ["Graines, Levées, Vivants", "Pour les semis : nombre de graines semées, de levées, de plants encore vivants."],
+            ["Réf., N° collecte, Achat", "Référence du lot, numéro de terrain (SB 127…), vendeur ou donateur."],
+            ["Exemplaires", "Nombre de plantes identiques (1 par défaut)."],
+            ["À échanger, Graines à donner", "Écrivez oui ou x pour proposer la plante dans la bourse d’échange."],
+            [""],
+            ["Ensuite : espace membre › Ma collection › Importer Excel. Un aperçu s’affiche avant l’enregistrement ; les lignes déjà présentes sont ignorées."],
+        ]
+        const wa = X.utils.aoa_to_sheet(aideL)
+        wa["!cols"] = [{ wch: 28 }, { wch: 110 }]
+        X.utils.book_append_sheet(wb, wa, "Mode d’emploi")
+        X.writeFile(wb, "Modele collection ACS.xlsx")
+    }
+
     const importer = async (f: File) => {
         setMsg("Lecture du fichier…")
         try {
@@ -225,7 +266,9 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     {vue !== "echanges" && <button style={bouton()} onClick={() => setEdit(nouvelle())}>{vue === "semis" ? "Nouveau semis" : "Ajouter une plante"}</button>}
                     <label style={{ ...bouton(false), display: "inline-flex", alignItems: "center" }}>Importer Excel<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = "" }} /></label>
                     <button style={bouton(false)} onClick={exporter} disabled={!plantes.length}>Exporter Excel</button>
+                    <button style={{ ...bouton(false), border: "none", textDecoration: "underline", textUnderlineOffset: 3, paddingLeft: 6, paddingRight: 6 }} onClick={() => setAide((a) => !a)} aria-expanded={aide}>Comment importer sa collection ?</button>
                 </div>
+                {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
                 {msg && <p style={{ margin: "12px 0 0", fontSize: 14, color: /impossible|Erreur|Aucune/.test(msg) ? C.danger : C.accent }}>{msg}</p>}
             </div>
 
@@ -474,6 +517,29 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
     )
 }
 
+// ---------- mode d’emploi de l’import ----------
+function AideImport({ onModele, onFermer }: { onModele: () => void; onFermer: () => void }) {
+    const etape = (n: number, titre: string, texte: React.ReactNode) => (
+        <div style={{ display: "grid", gridTemplateColumns: "28px minmax(0, 1fr)", gap: 10, padding: "10px 0", borderTop: `1px solid ${C.line}` }}>
+            <span style={{ fontFamily: serif, fontSize: 20, color: C.accent, lineHeight: 1.2 }}>{n}</span>
+            <div><div style={{ fontWeight: 600, fontSize: 15 }}>{titre}</div><div style={{ fontSize: 14, color: C.mute, marginTop: 2 }}>{texte}</div></div>
+        </div>
+    )
+    return (
+        <div style={{ marginTop: 16, border: `1px solid ${C.line}`, background: C.bg, padding: "16px 18px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, marginBottom: 6 }}>
+                <span style={{ fontFamily: serif, fontSize: 20, fontWeight: 600 }}>Comment importer sa collection ?</span>
+                <button onClick={onFermer} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
+            </div>
+            {etape(1, "Téléchargez le modèle", <>Un fichier Excel avec les bonnes colonnes, deux lignes d’exemple et un onglet « Mode d’emploi ». <button onClick={onModele} style={{ ...petit(true), marginTop: 8, display: "inline-block" }}>Télécharger le modèle Excel</button></>)}
+            {etape(2, "Remplissez une ligne par plante", <>Seule la colonne <strong>Espèce</strong> est obligatoire. Mettez <em>Semis</em> dans la colonne Liste pour un lot de graines. Exposition : ☀️ ⛅ ☁️ ; substrat : 1 à 6 (les mélanges de l’article sur les substrats) ; arrosage : 💧 à 💧💧💧 ; T(°C) : la température minimale.</>)}
+            {etape(3, "Importez le fichier", <>Bouton <strong>Importer Excel</strong> ci-dessus. Un aperçu montre ce qui sera ajouté avant d’enregistrer ; les lignes déjà présentes ne sont pas dupliquées.</>)}
+            {etape(4, "Vous avez déjà votre propre tableau ?", <>Importez-le tel quel : les colonnes sont reconnues par leur titre (Espèce ou Nom, Origine, T(°C), Semis, Acquis, N° collecte, Taux « 13/20 »…). Si une colonne n’est pas lue, renommez son titre comme dans le modèle.</>)}
+            <div style={{ fontSize: 13, color: C.mute, borderTop: `1px solid ${C.line}`, paddingTop: 10 }}>Pour sauvegarder ou partager votre collection, <strong style={{ color: C.txt }}>Exporter Excel</strong> produit un fichier au même format, réimportable.</div>
+        </div>
+    )
+}
+
 // ---------- aperçu avant import ----------
 function ApercuImport({ imp, onAnnuler, onValider }: { imp: { lignes: Plante[]; maj: { id: string; t_min: number }[]; ignores: string[]; doublons: number }; onAnnuler: () => void; onValider: () => void }) {
     const nC = imp.lignes.filter((p) => p.statut === "collection").length, nS = imp.lignes.length - nC
@@ -559,7 +625,7 @@ const substratDe = (v: any) => {
     const k2 = SUB_COURT.findIndex((x) => x && sansAccent(x) === sansAccent(t)); return k2 > 0 ? k2 : null
 }
 const expoDe = (v: any) => { const t = texte(v); if (!t) return null; if (/☀|soleil/i.test(t)) return "Soleil"; if (/⛅|🌤|🌥|◐|◑|mi-?ombre|vive|lumi/i.test(t)) return "Mi-ombre"; if (/☁|ombre/i.test(t)) return "Ombre"; return t }
-const arrosageDe = (v: any) => { const t = texte(v); if (!t) return null; const g = (t.match(/[💧💦●•]/gu) || []).length; if (g) return g >= 3 ? "Régulier" : g === 2 ? "Modéré" : "Faible"; return t }
+const arrosageDe = (v: any) => { const t = texte(v); if (!t) return null; const g = (t.match(/[💧💦●•]/gu) || []).length; if (g) return g >= 3 ? "Régulier" : g === 2 ? "Modéré" : "Faible"; if (/^[123]$/.test(t)) return ["Faible", "Modéré", "Régulier"][Number(t) - 1]; if (/faible|peu/i.test(t)) return "Faible"; if (/mod/i.test(t)) return "Modéré"; if (/r[ée]gul|abond|g[ée]n[ée]r/i.test(t)) return "Régulier"; return t }
 
 export function lireClasseur(X: any, wb: any, existantes: Plante[], genres: Genres, email: string, auteur: string) {
     const lignes: Plante[] = [], maj: { id: string; t_min: number }[] = [], ignores: string[] = []
@@ -572,6 +638,7 @@ export function lireClasseur(X: any, wb: any, existantes: Plante[], genres: Genr
     const estNom = (v: any) => typeof v === "string" && /^[A-Z][a-zë-]+( [a-z(×x‘'"]|$)/.test(v.trim()) && !/^(TOTAL|SEMIS)/i.test(v.trim())
 
     for (const nomFeuille of wb.SheetNames) {
+        if (/mode d.emploi|^aide|notice|lisez/i.test(nomFeuille)) continue
         const rows: any[][] = X.utils.sheet_to_json(wb.Sheets[nomFeuille], { header: 1, raw: true, defval: null })
         const fsemis = /semis/i.test(nomFeuille)
         const frustique = /rustic/i.test(nomFeuille)
