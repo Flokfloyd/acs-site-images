@@ -64,7 +64,7 @@ export default function Administration(props: { pageMembre: string }) {
     const aller = (o: O) => { setO(o); try { history.replaceState(null, "", "#" + o) } catch (e) {} ; window.scrollTo({ top: 0, behavior: "smooth" }) }
     const ouvrirCampagne = (id: string) => { setCampagneOuverte(id); aller("campagnes") }
 
-    const wrap = (c: React.ReactNode) => <div className="acs-large" style={{ width: "100%", maxWidth: "100%", minWidth: 0, overflowWrap: "anywhere", overflowX: "clip", color: C.txt, ...font }}><style>{".acs-large input,.acs-large select,.acs-large textarea{max-width:100%;min-width:0;box-sizing:border-box}.acs-large img{max-width:100%}"}</style>{c}</div>
+    const wrap = (c: React.ReactNode) => <div className="acs-large" style={{ width: "100%", maxWidth: "100%", minWidth: 0, contain: "inline-size", overflowWrap: "anywhere", overflowX: "clip", color: C.txt, ...font }}><style>{".acs-large input,.acs-large select,.acs-large textarea{max-width:100%;min-width:0;box-sizing:border-box}.acs-large img{max-width:100%}"}</style>{c}</div>
     if (!client) return wrap(<div style={box}><p style={muted}>Chargement…</p></div>) // page pré-générée côté serveur : la base se branche dans le navigateur
     if (etat === "chargement") return wrap(<div style={box}><p style={muted}>Chargement…</p></div>)
     if (etat === "deconnecte") return wrap(<div style={box}><h2 style={h2}>Réservé aux administrateurs</h2><p style={{ ...muted, marginBottom: 18 }}>Connectez-vous d’abord à l’espace membre.</p><a href={props.pageMembre || "/espace-membre"} style={{ ...btn(), textDecoration: "none", display: "inline-block" }}>Se connecter</a></div>)
@@ -74,8 +74,8 @@ export default function Administration(props: { pageMembre: string }) {
         <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <Sauvegarde />
             {etroit ? (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ ...small(), padding: "9px 12px", fontSize: 14, fontWeight: 600, background: onglet === k ? C.accent : "transparent", color: onglet === k ? C.accentDark : C.txt, borderColor: onglet === k ? C.accent : C.line }}>{t}</button>)}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+                    {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ ...small(), padding: "10px 8px", textAlign: "center", fontSize: 14, fontWeight: 600, background: onglet === k ? C.accent : "transparent", color: onglet === k ? C.accentDark : C.txt, borderColor: onglet === k ? C.accent : C.line }}>{t}</button>)}
                 </div>
             ) : (
                 <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
@@ -578,11 +578,11 @@ function Agenda({ moi, ouvrirCampagne, etroit }: { moi: string; ouvrirCampagne: 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <div style={box}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: etroit ? "wrap" : "nowrap", flex: etroit ? "1 1 100%" : "0 1 auto", justifyContent: etroit ? "space-between" : "flex-start" }}>
                         <button style={small()} onClick={() => setMois(new Date(mois.getFullYear(), mois.getMonth() - 1, 1))} aria-label="Mois précédent">‹</button>
                         <h3 style={{ ...h2, fontSize: etroit ? 18 : 22, margin: "0 4px", minWidth: etroit ? 120 : 170, textAlign: "center", textTransform: "capitalize", whiteSpace: "nowrap" }}>{mois.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</h3>
                         <button style={small()} onClick={() => setMois(new Date(mois.getFullYear(), mois.getMonth() + 1, 1))} aria-label="Mois suivant">›</button>
-                        <button style={{ ...small(), marginLeft: 6 }} onClick={() => setMois(new Date(auj.getFullYear(), auj.getMonth(), 1))}>Aujourd’hui</button>
+                        <button style={{ ...small(), marginLeft: etroit ? 0 : 6, whiteSpace: "nowrap", flex: etroit ? "1 1 100%" : "0 0 auto" }} onClick={() => setMois(new Date(auj.getFullYear(), auj.getMonth(), 1))}>{etroit ? "Revenir à aujourd’hui" : "Aujourd’hui"}</button>
                     </div>
                     <button style={{ ...btn(), ...(etroit ? { width: "100%" } : {}) }} onClick={() => nouveau()}>Nouvel événement</button>
                 </div>

@@ -51,7 +51,7 @@ export default function AgendaLive(props: { max: number; lienMembre: string }) {
     }, [max])
     const etroit = w < 640
     return (
-        <div ref={ref} style={{ width: "100%", color: C.txt, ...font }}>
+        <div ref={ref} style={{ width: "100%", minWidth: 0, contain: "inline-size", overflowWrap: "anywhere", color: C.txt, ...font }}>
             {evts.map((e) => (
                 <div key={e.id} style={{ display: "flex", flexDirection: etroit ? "column" : "row", gap: etroit ? 6 : 32, padding: "26px 0", borderTop: `1px solid ${C.line}` }}>
                     <div style={{ flex: "none", width: etroit ? "auto" : 160, fontFamily: serif, fontSize: 22, lineHeight: 1.2, fontWeight: 600, color: C.accent }}>{dateAffichee(e)}</div>

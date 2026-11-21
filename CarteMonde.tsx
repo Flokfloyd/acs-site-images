@@ -1136,7 +1136,7 @@ export default function CarteMonde(props) {
                     <p style={{ fontSize: 16, lineHeight: 1.65, margin: "12px 0 0", opacity: 0.85 }}>
                         {etroit ? "Touchez" : "Cliquez sur"} un point de la carte, cherchez un nom ou ouvrez un continent : la fiche affiche l'aire d'origine, une photo et les observations faites dans la nature, grâce aux données ouvertes d'iNaturalist.
                     </p>
-                    <p style={{ fontSize: 14, lineHeight: 1.6, margin: "10px 0 0", opacity: 0.8 }}>{Object.keys(CULTURE).length} genres phares ont une fiche de culture : saisons, exposition, arrosage et substrat conseillé.</p>
+                    <p style={{ fontSize: 14, lineHeight: 1.6, margin: "10px 0 0", opacity: 0.8 }}>{Object.keys(CULTURE).length} genres ont une fiche botanique (milieu, climat, protection) et une fiche de culture (saisons, arrosage, substrat).</p>
                     <div style={{ fontSize: 13, opacity: 0.65, marginTop: 18 }}>Pour commencer :</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
                         {["Lithops", "Ariocarpus", "Massonia", "Pachypodium", "Copiapoa", "Turbinicarpus"].map((n) => (
@@ -1188,7 +1188,7 @@ export default function CarteMonde(props) {
     )
 
     return (
-        <div ref={ref} style={{ width: "100%", display: "flex", flexDirection: "column", gap: etroit ? 18 : 24 }}>
+        <div ref={ref} style={{ width: "100%", minWidth: 0, contain: "inline-size", display: "flex", flexDirection: "column", gap: etroit ? 18 : 24 }}>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
                 {recherche}
                 <div style={{ display: "flex", gap: 6, flexWrap: etroit ? "nowrap" : "wrap", overflowX: etroit ? "auto" : "visible", maxWidth: "100%" }}>
