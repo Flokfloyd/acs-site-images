@@ -32,7 +32,6 @@ const D: [string, Cat, string, string, string, string][] = [
     ["Leuchtenbergia", "Cactées", "-103.2,26.6", "Désert de Chihuahua", "Mexique", "Longs tubercules qui lui donnent l'allure d'un agave."],
     ["Thelocactus", "Cactées", "-100.8,24.6", "Nord du Mexique, Texas", "Mexique|États-Unis", "Fleurs parmi les plus grandes des petits cactus."],
     ["Coryphantha", "Cactées", "-102.4,25.4", "Mexique et sud des États-Unis", "Mexique|États-Unis", "Cactus à tubercules sillonnés, fleurs jaunes ou roses."],
-    ["Stenocactus", "Cactées", "-100.0,21.4", "Plateau central mexicain", "Mexique", "Côtes très nombreuses et ondulées, comme un cerveau."],
     ["Mammillaria", "Cactées", "-99.3,20.4", "Mexique surtout, jusqu'aux Caraïbes et au Venezuela", "Mexique|États-Unis|Guatemala|Colombie|Venezuela", "Le plus grand genre de cactus, avec plusieurs centaines d'espèces."],
     ["Echinocactus", "Cactées", "-99.9,21.8;-115.6,36.4", "Mexique et sud-ouest des États-Unis", "Mexique|États-Unis", "Comprend le coussin de belle-mère, devenu rare dans la nature."],
     ["Ferocactus", "Cactées", "-110.8,29.2;-114.6,33.4", "Sonora, Basse-Californie, Arizona", "Mexique|États-Unis", "Gros cactus barils aux épines crochues et colorées."],
@@ -65,6 +64,154 @@ const D: [string, Cat, string, string, string, string][] = [
     ["Espostoa", "Cactées", "-78.6,-6.6", "Andes du Pérou et de l'Équateur", "Pérou|Équateur", "Cactus colonnaires couverts d'une laine blanche."],
     ["Copiapoa", "Cactées", "-70.6,-26.4", "Désert d'Atacama", "Chili", "Cactus du littoral chilien, nourris par les brouillards côtiers."],
     ["Eriosyce", "Cactées", "-71.2,-30.6", "Chili et ouest de l'Argentine", "Chili|Argentine|Pérou", "Comprend Neoporteria et Thelocephala, du désert côtier."],
+    // Genres ajoutés d'après l'index de J. Lodé, Taxonomie des Cactaceae (vol. 3 à 6)
+    ["Acanthocalycium", "Cactées", "-66.2,-27.4", "Nord-ouest de l'Argentine", "Argentine", ""],
+    ["Acanthocephala", "Cactées", "-53.2,-29.6", "Rio Grande do Sul", "Brésil", ""],
+    ["Acanthocereus", "Cactées", "-96.4,16.6", "Mexique, Amérique centrale, Caraïbes, Floride", "Mexique|Guatemala|Cuba|États-Unis|Colombie", ""],
+    ["Acharagma", "Cactées", "-100.4,25.2", "Nord-est du Mexique", "Mexique", ""],
+    ["Airampoa", "Cactées", "-65.8,-22.6", "Andes, du Pérou à l'Argentine", "Pérou|Bolivie|Argentine|Chili", ""],
+    ["Aporocactus", "Cactées", "-98.4,19.8", "Hidalgo à Oaxaca", "Mexique", ""],
+    ["Armatocereus", "Cactées", "-78.6,-7.6", "Vallées sèches des Andes du nord", "Pérou|Équateur|Colombie", ""],
+    ["Arrojadoa", "Cactées", "-42.0,-13.0", "Bahia et Minas Gerais", "Brésil", ""],
+    ["Arrojadoopsis", "Cactées", "-42.6,-14.2", "Est du Brésil", "Brésil", ""],
+    ["Arthrocereus", "Cactées", "-43.8,-19.6", "Minas Gerais", "Brésil", ""],
+    ["Austrocactus", "Cactées", "-69.4,-41.0", "Patagonie", "Argentine|Chili", ""],
+    ["Austrocylindropuntia", "Cactées", "-77.2,-10.2", "Andes de l'Équateur à l'Argentine", "Pérou|Équateur|Bolivie|Argentine", ""],
+    ["Aylostera", "Cactées", "-64.8,-22.2", "Sud de la Bolivie, nord de l'Argentine", "Bolivie|Argentine", ""],
+    ["Azureocereus", "Cactées", "-73.6,-13.6", "Vallées andines du Pérou", "Pérou", ""],
+    ["Backebergia", "Cactées", "-101.2,18.4", "Guerrero et Michoacán", "Mexique", ""],
+    ["Bergerocactus", "Cactées", "-116.8,32.2", "Côte de Basse-Californie et de Californie", "Mexique|États-Unis", ""],
+    ["Blossfeldia", "Cactées", "-65.2,-23.2", "Fissures rocheuses des Andes", "Argentine|Bolivie", ""],
+    ["Bolivicactus", "Cactées", "-64.6,-18.6", "Bolivie centrale", "Bolivie", ""],
+    ["Bolivicereus", "Cactées", "-65.2,-17.6", "Andes boliviennes", "Bolivie", ""],
+    ["Borzicactus", "Cactées", "-79.2,-3.6", "Sud de l'Équateur, nord du Pérou", "Équateur|Pérou", ""],
+    ["Brachycereus", "Cactées", "-91.2,-0.4", "Îles Galápagos", "Équateur", ""],
+    ["Bragaia", "Cactées", "-43.0,-16.4", "Minas Gerais", "Brésil", ""],
+    ["Brasilicereus", "Cactées", "-42.4,-15.2", "Est du Brésil", "Brésil", ""],
+    ["Brasiliopuntia", "Cactées", "-50.0,-20.0", "Forêts d'Amérique du Sud", "Brésil|Paraguay|Bolivie|Argentine", ""],
+    ["Brasiliparodia", "Cactées", "-51.0,-29.8", "Sud du Brésil", "Brésil", ""],
+    ["Browningia", "Cactées", "-71.8,-17.2", "Andes du sud du Pérou au nord du Chili", "Pérou|Bolivie|Chili", ""],
+    ["Caerulocereus", "Cactées", "-74.4,-14.2", "Andes du Pérou", "Pérou", ""],
+    ["Calymmanthium", "Cactées", "-78.8,-5.8", "Vallée du Marañón", "Pérou", ""],
+    ["Castellanosia", "Cactées", "-63.4,-18.0", "Est de la Bolivie", "Bolivie", ""],
+    ["Cephalocleistocactus", "Cactées", "-65.6,-17.2", "Andes boliviennes", "Bolivie", ""],
+    ["Chamaecereus", "Cactées", "-65.8,-26.8", "Tucumán et Salta", "Argentine", ""],
+    ["Cipocereus", "Cactées", "-43.6,-19.0", "Serra do Cipó, Minas Gerais", "Brésil", ""],
+    ["Cochemiea", "Cactées", "-111.6,25.6", "Basse-Californie", "Mexique", ""],
+    ["Coleocephalocereus", "Cactées", "-41.0,-17.2", "Bahia, Minas Gerais, Espírito Santo", "Brésil", ""],
+    ["Consolea", "Cactées", "-77.4,19.6", "Caraïbes et Floride", "Cuba|Jamaïque|Haïti|Porto Rico|États-Unis", ""],
+    ["Corryocactus", "Cactées", "-71.4,-16.2", "Andes du sud du Pérou", "Pérou|Bolivie|Chili", ""],
+    ["Corynopuntia", "Cactées", "-103.2,26.2", "Désert de Chihuahua", "Mexique|États-Unis", ""],
+    ["Cremnocereus", "Cactées", "-42.4,-16.0", "Minas Gerais", "Brésil", ""],
+    ["Cumarinia", "Cactées", "-99.8,23.2", "San Luis Potosí et Tamaulipas", "Mexique", ""],
+    ["Cumulopuntia", "Cactées", "-69.6,-17.6", "Hauts plateaux andins", "Pérou|Bolivie|Chili|Argentine", ""],
+    ["Deamia", "Cactées", "-92.2,16.4", "Forêts du Mexique à la Colombie", "Mexique|Guatemala|Colombie", ""],
+    ["Denmoza", "Cactées", "-67.6,-30.2", "Ouest de l'Argentine", "Argentine", ""],
+    ["Diaguita", "Cactées", "-70.0,-29.2", "Région du peuple diaguita (à confirmer)", "Chili|Argentine", ""],
+    ["Disocactus", "Cactées", "-92.6,15.4", "Forêts du sud du Mexique et d'Amérique centrale", "Mexique|Guatemala|Honduras", ""],
+    ["Echinofossulocactus", "Cactées", "-100.0,21.4", "Plateau central mexicain", "Mexique", "Aussi appelé Stenocactus : côtes très nombreuses et ondulées, comme un cerveau."],
+    ["Epithelantha", "Cactées", "-103.2,28.6", "Désert de Chihuahua", "Mexique|États-Unis", ""],
+    ["Eriocephala", "Cactées", "-52.6,-29.2", "Sud du Brésil", "Brésil", ""],
+    ["Escontria", "Cactées", "-97.6,18.2", "Puebla et Oaxaca", "Mexique", ""],
+    ["Espostoopsis", "Cactées", "-40.8,-12.0", "Bahia", "Brésil", ""],
+    ["Estevesia", "Cactées", "-46.0,-14.0", "Centre du Brésil", "Brésil", ""],
+    ["Eulychnia", "Cactées", "-71.0,-28.0", "Désert côtier chilien", "Chili|Pérou", ""],
+    ["Facheiroa", "Cactées", "-41.6,-11.6", "Bahia", "Brésil", ""],
+    ["Floribunda", "Cactées", "-46.6,-14.6", "Centre du Brésil", "Brésil", ""],
+    ["Geohintonia", "Cactées", "-100.0,24.8", "Nuevo León, falaises de gypse", "Mexique", ""],
+    ["Glandulicactus", "Cactées", "-102.6,27.2", "Désert de Chihuahua", "Mexique|États-Unis", ""],
+    ["Grusonia", "Cactées", "-102.0,26.6", "Coahuila", "Mexique", ""],
+    ["Guerreroa", "Cactées", "-70.4,-25.2", "Désert côtier chilien", "Chili", ""],
+    ["Haageocereus", "Cactées", "-77.0,-12.0", "Désert côtier du Pérou", "Pérou|Chili", ""],
+    ["Hamatocactus", "Cactées", "-98.6,26.6", "Nord-est du Mexique, sud du Texas", "Mexique|États-Unis", ""],
+    ["Harrisia", "Cactées", "-77.0,18.2;-60.2,-24.2", "Caraïbes, Floride, Chaco", "Cuba|Jamaïque|États-Unis|Argentine|Paraguay|Bolivie", ""],
+    ["Hatiora", "Cactées", "-46.2,-23.6", "Forêt atlantique", "Brésil", ""],
+    ["Homalocephala", "Cactées", "-100.4,29.4", "Texas et nord du Mexique", "États-Unis|Mexique", ""],
+    ["Horridocactus", "Cactées", "-71.2,-32.6", "Chili central", "Chili", ""],
+    ["Isolatocereus", "Cactées", "-100.2,20.6", "Centre du Mexique", "Mexique", ""],
+    ["Jasminocereus", "Cactées", "-90.4,-0.8", "Îles Galápagos", "Équateur", ""],
+    ["Kadenicarpus", "Cactées", "-99.6,23.8", "Nord-est du Mexique", "Mexique", ""],
+    ["Kimnachia", "Cactées", "-84.0,10.0", "Forêts tropicales d'Amérique", "Mexique|Costa Rica|Jamaïque|Venezuela|Brésil", ""],
+    ["Kroenleinia", "Cactées", "-99.8,21.0", "Querétaro et Hidalgo", "Mexique", ""],
+    ["Lagenosocereus", "Cactées", "-82.0,22.6", "Cuba", "Cuba", ""],
+    ["Lasiocereus", "Cactées", "-78.4,-6.6", "Nord du Pérou", "Pérou", ""],
+    ["Lemaireocereus", "Cactées", "-97.4,18.4", "Puebla et Oaxaca", "Mexique", ""],
+    ["Lepidocoryphantha", "Cactées", "-101.6,25.2", "Nord du Mexique, Texas", "Mexique|États-Unis", ""],
+    ["Lepismium", "Cactées", "-55.0,-26.0", "Forêts d'Amérique du Sud", "Brésil|Argentine|Bolivie|Paraguay", ""],
+    ["Leptocereus", "Cactées", "-76.0,20.0", "Grandes Antilles", "Cuba|Haïti|Porto Rico", ""],
+    ["Leucostele", "Cactées", "-68.0,-23.0", "Puna et désert d'Atacama", "Chili|Argentine|Bolivie", ""],
+    ["Leuenbergeria", "Cactées", "-72.0,19.0", "Caraïbes et nord de l'Amérique du Sud", "Cuba|Haïti|Mexique|Venezuela", ""],
+    ["Lobivia", "Cactées", "-65.8,-20.2", "Andes de Bolivie et du Pérou", "Bolivie|Pérou|Argentine", ""],
+    ["Lophocereus", "Cactées", "-112.0,29.0", "Désert de Sonora", "Mexique|États-Unis", ""],
+    ["Lophophora", "Cactées", "-100.6,25.0", "Désert de Chihuahua", "Mexique|États-Unis", ""],
+    ["Loxanthocereus", "Cactées", "-76.6,-12.0", "Pentes andines du Pérou", "Pérou", ""],
+    ["Lymanbensonia", "Cactées", "-78.0,-7.2", "Nord du Pérou", "Pérou", ""],
+    ["Maihuenia", "Cactées", "-70.0,-38.0", "Patagonie et Andes du sud", "Chili|Argentine", ""],
+    ["Maihueniopsis", "Cactées", "-67.0,-26.0", "Andes", "Argentine|Chili|Bolivie|Pérou", ""],
+    ["Mariottia", "Cactées", "-43.4,-16.2", "Est du Brésil", "Brésil", ""],
+    ["Marshallocereus", "Cactées", "-110.4,29.2", "Désert de Sonora", "Mexique|États-Unis", ""],
+    ["Micranthocereus", "Cactées", "-41.8,-13.6", "Bahia", "Brésil", ""],
+    ["Micropuntia", "Cactées", "-113.6,37.4", "Grand Bassin et Chihuahua", "États-Unis|Mexique", ""],
+    ["Mila", "Cactées", "-76.8,-11.8", "Andes du Pérou central", "Pérou", ""],
+    ["Miqueliopuntia", "Cactées", "-71.0,-28.6", "Désert côtier chilien", "Chili", ""],
+    ["Mitrocereus", "Cactées", "-97.6,18.0", "Puebla et Oaxaca", "Mexique", ""],
+    ["Monvillea", "Cactées", "-58.0,-22.0", "Chaco et forêts sèches", "Brésil|Paraguay|Bolivie|Argentine", ""],
+    ["Morangaya", "Cactées", "-110.2,23.6", "Sud de la Basse-Californie", "Mexique", ""],
+    ["Myrtillocactus", "Cactées", "-101.0,21.6", "Centre du Mexique", "Mexique|Guatemala", ""],
+    ["Neobesseya", "Cactées", "-101.0,40.0", "Grandes Plaines", "États-Unis|Canada|Mexique", ""],
+    ["Neolloydia", "Cactées", "-100.2,23.6", "Nord-est du Mexique", "Mexique|États-Unis", ""],
+    ["Neomapuchea", "Cactées", "-71.8,-34.6", "Chili central", "Chili", ""],
+    ["Neoporteria", "Cactées", "-71.4,-31.0", "Chili central", "Chili", ""],
+    ["Neoraimondia", "Cactées", "-77.6,-10.0", "Désert côtier du Pérou", "Pérou|Chili", ""],
+    ["Neowerdermannia", "Cactées", "-66.6,-21.6", "Altiplano", "Bolivie|Argentine|Chili|Pérou", ""],
+    ["Notocactus", "Cactées", "-54.6,-31.0", "Sud du Brésil et Uruguay", "Brésil|Uruguay|Argentine|Paraguay", ""],
+    ["Nyctocereus", "Cactées", "-102.2,19.8", "Ouest du Mexique", "Mexique|Guatemala", ""],
+    ["Obregonia", "Cactées", "-99.2,23.8", "Tamaulipas", "Mexique", ""],
+    ["Oroya", "Cactées", "-75.8,-11.4", "Hauts plateaux du Pérou central", "Pérou", ""],
+    ["Ortegocactus", "Cactées", "-98.0,17.4", "Oaxaca", "Mexique", ""],
+    ["Peniocereus", "Cactées", "-110.0,28.0", "Sonora et Sinaloa", "Mexique|États-Unis", ""],
+    ["Pereskia", "Cactées", "-45.0,-15.0", "Amérique du Sud tropicale", "Brésil|Argentine|Paraguay|Bolivie|Pérou", ""],
+    ["Pereskiopsis", "Cactées", "-103.4,19.6", "Ouest du Mexique", "Mexique|Guatemala", ""],
+    ["Perucactus", "Cactées", "-77.4,-9.2", "Andes du Pérou", "Pérou", ""],
+    ["Pfeiffera", "Cactées", "-64.6,-19.2", "Forêts andines", "Bolivie|Argentine|Pérou", ""],
+    ["Pierrebraunia", "Cactées", "-41.4,-12.8", "Bahia", "Brésil", ""],
+    ["Polaskia", "Cactées", "-97.2,18.0", "Puebla et Oaxaca", "Mexique", ""],
+    ["Praecereus", "Cactées", "-58.0,-16.0", "Amérique du Sud tropicale", "Brésil|Bolivie|Pérou|Paraguay", ""],
+    ["Pseudorhipsalis", "Cactées", "-84.0,10.4", "Forêts d'Amérique centrale", "Costa Rica|Mexique|Jamaïque", ""],
+    ["Pterocactus", "Cactées", "-68.2,-33.4", "Ouest et sud de l'Argentine", "Argentine", ""],
+    ["Pterocereus", "Cactées", "-93.0,16.6", "Chiapas", "Mexique", ""],
+    ["Punotia", "Cactées", "-70.0,-15.6", "Région de Puno", "Pérou", ""],
+    ["Pyrrhocactus", "Cactées", "-68.6,-30.6", "Andes d'Argentine", "Argentine|Chili", ""],
+    ["Quiabentia", "Cactées", "-62.0,-20.0", "Chaco", "Bolivie|Paraguay|Argentine|Brésil", ""],
+    ["Rapicactus", "Cactées", "-100.4,24.2", "Nord-est du Mexique", "Mexique", ""],
+    ["Rauhocereus", "Cactées", "-78.6,-5.8", "Nord du Pérou", "Pérou", ""],
+    ["Reicheocactus", "Cactées", "-66.8,-27.2", "Nord-ouest de l'Argentine", "Argentine", ""],
+    ["Rhipsalidopsis", "Cactées", "-50.0,-26.0", "Sud du Brésil", "Brésil", ""],
+    ["Rimacactus", "Cactées", "-70.2,-18.4", "Région d'Arica", "Chili", ""],
+    ["Salmonopuntia", "Cactées", "-62.2,-22.2", "Chaco", "Argentine|Bolivie|Paraguay|Brésil", ""],
+    ["Samaipaticereus", "Cactées", "-63.9,-18.2", "Région de Samaipata", "Bolivie", ""],
+    ["Selenicereus", "Cactées", "-88.0,17.0", "Mexique, Amérique centrale, Caraïbes", "Mexique|Guatemala|Cuba|Colombie", ""],
+    ["Serrulatocereus", "Cactées", "-72.4,18.6", "Hispaniola", "Haïti", ""],
+    ["Setiechinopsis", "Cactées", "-63.6,-28.0", "Santiago del Estero", "Argentine", ""],
+    ["Sicobaccatus", "Cactées", "-42.8,-15.6", "Est du Brésil", "Brésil", ""],
+    ["Soehrensia", "Cactées", "-67.2,-27.0", "Andes d'Argentine", "Argentine|Chili|Bolivie", ""],
+    ["Sphaeropuntia", "Cactées", "-68.0,-24.0", "Andes", "Argentine|Bolivie|Chili|Pérou", ""],
+    ["Stenocereus", "Cactées", "-104.2,20.0", "Mexique et Amérique centrale", "Mexique|Guatemala|Venezuela", ""],
+    ["Stephanocereus", "Cactées", "-41.4,-12.4", "Bahia", "Brésil", ""],
+    ["Stetsonia", "Cactées", "-62.6,-24.0", "Chaco", "Argentine|Bolivie|Paraguay", ""],
+    ["Strophocactus", "Cactées", "-60.0,-3.0", "Amazonie", "Brésil|Venezuela|Colombie", ""],
+    ["Tacinga", "Cactées", "-39.0,-8.0", "Caatinga du Nordeste", "Brésil", ""],
+    ["Tephrocactus", "Cactées", "-67.6,-28.6", "Ouest de l'Argentine", "Argentine", ""],
+    ["Thrixanthocereus", "Cactées", "-78.2,-7.0", "Nord du Pérou", "Pérou", ""],
+    ["Trichocereus", "Cactées", "-65.6,-25.6", "Andes", "Argentine|Bolivie|Pérou|Chili|Équateur", ""],
+    ["Vatricania", "Cactées", "-63.6,-19.6", "Sud-est de la Bolivie", "Bolivie", ""],
+    ["Weberbauerocereus", "Cactées", "-72.6,-15.6", "Sud du Pérou", "Pérou", ""],
+    ["Weberocereus", "Cactées", "-84.0,9.6", "Forêts d'Amérique centrale", "Costa Rica|Panama|Nicaragua", ""],
+    ["Weingartia", "Cactées", "-65.0,-19.8", "Andes de Bolivie", "Bolivie|Argentine", ""],
+    ["Wigginsia", "Cactées", "-56.0,-32.0", "Uruguay et sud du Brésil", "Uruguay|Brésil|Argentine", ""],
+    ["Xiquexique", "Cactées", "-42.8,-10.6", "Bahia", "Brésil", ""],
+    ["Yavia", "Cactées", "-65.6,-22.4", "Jujuy", "Argentine", ""],
+    ["Yungasocereus", "Cactées", "-67.0,-16.4", "Yungas", "Bolivie", ""],
     // ---- Mésembs (Aizoacées)
     ["Lithops", "Mésembs", "17.9,-29.3;16.0,-25.9", "Namaqualand, Karoo, sud de la Namibie", "Afrique du Sud|Namibie|Botswana", "Les « cailloux vivants », camouflés parmi les pierres."],
     ["Conophytum", "Mésembs", "18.8,-31.0", "Succulent Karoo", "Afrique du Sud|Namibie", "Minuscules corps charnus, en repos l'été."],
@@ -127,10 +274,200 @@ const D: [string, Cat, string, string, string, string][] = [
     ["Bowiea", "Bulbes", "30.2,-28.6", "Afrique australe et de l'Est", "Afrique du Sud|Kenya", "Gros bulbe vert à tiges grimpantes."],
     ["Albuca", "Bulbes", "20.0,-33.4", "Afrique et péninsule Arabique", "Afrique du Sud|Namibie", "Comprend les albucas aux feuilles en tire-bouchon."],
 ]
+// Index des espèces et sous-espèces : Joël Lodé, Taxonomie des Cactaceae, vol. 3 à 6 (référence, nombre, genre observé dans l'habitat par l'auteur, espèces)
+const LODE: Record<string, [string, number, number, string]> = {
+    "Acanthocalycium": ["vol. 3 p.32, 375", 9, 1, "ferrarii|glaucum|klimpelianum|klinglerianum (ex Echinopsis)|leucanthum (ex Echinopsis)|rhodotrichum (ex Echinopsis)|rhodotrichum subsp. chacoanum (ex Ech.)|spiniflorum|thionanthum"],
+    "Acanthocephala": ["vol. 3 p.35, 378", 2, 0, "graessneri|haselbergii"],
+    "Acanthocereus": ["vol. 3 p.36, 378", 23, 1, "atropurpureus|baxaniensis|canoensis|castellae|chiapensis|colombianus|cuixmalensis|fosterianus|griseus|haackeanus|hesperius|hirschtianus|horridus|lempirensis|macdougallii|maculatus|marnierianus|oaxacensis|paradoxus|rosei|subinermis|tepalcatepecanus|tetragonus"],
+    "Acharagma": ["vol. 3 p.44, 385", 4, 0, "aguirreanum|galeanense|huasteca|roseanum"],
+    "Airampoa": ["vol. 3 p.46, 386", 12, 1, "albisaetascens|armata|aurata|chilensis|corrugata|erectoclada|microdisca|minuscula|orurensis|picardoi|soehrensii|tilcarensis"],
+    "Aporocactus": ["vol. 3 p.50, 388", 2, 0, "flagelliformis|martianus"],
+    "Ariocarpus": ["vol. 3 p.51, 389", 10, 1, "agavoides|agavoides subsp. sanluisensis|bravoanus|bravoanus subsp. hintonii|fissuratus|fissuratus subsp. lloydii|kotschoubeyanus|retusus|scaphirostris|trigonus"],
+    "Armatocereus": ["vol. 3 p.54, 393", 13, 1, "brevispinus|cartwrightianus|godingianus|laetus|mataranus|mataranus subsp. ancashensis|matucanensis|oligogonus|procerus|rauhii|rauhii subsp. balsasensis|riomajensis|rupicola"],
+    "Arrojadoa": ["vol. 3 p.58, 397", 13, 1, "albiflora|beateae|dinae|dinae subsp. nana|eriocaulis|horstiana|multiflora|olsthoorniana|penicillata|penicillata subsp. grandis|rhodantha|rhodantha subsp. aureispina|rhodantha subsp. reflexa"],
+    "Arrojadoopsis": ["vol. 3 p.62, 400", 1, 0, "marylaniae"],
+    "Arthrocereus": ["vol. 3 p.63, 400", 10, 1, "campos-portoi|glaziovii|grandiflorus|melanurus|melanurus subsp. estevesii|melanurus subsp. magnus|microsphaericus|odorus|rondonianus|spinosissimus"],
+    "Astrophytum": ["vol. 3 p.67, 403", 6, 1, "asterias|capricorne|caput-medusae|coahuilense|myriostigma|ornatum"],
+    "Austrocactus": ["vol. 3 p.78, 406", 19, 0, "aonikenkensis|bertinii|coxii|coxii subsp. colloncurensis|decorus|diamantinus|elegans|ferrarii|hibernus|hibernus subsp. robustior|implexus (ex intertextus)|longicarpus|nobilis|occidentalis|pauxillus|philippii|praecox|spiniflorus|subandinus"],
+    "Austrocylindropuntia": ["vol. 3 p.77, 411", 10, 1, "cylindrica|floccosa|floccosa subsp. yanganucensis|machacana|pachypus|shaferi|subulata|subulata subsp. exaltata|teres|vestita"],
+    "Aylostera": ["vol. 3 p.80, 415", 35, 0, "albiflora|albopectinata|aureiflora|azurduyensis|cajasensis|deminuta|donaldiana|einsteinii|eos|fiebrigii|flavistyla|fulviseta|fusca|heliosa|hoffmanii|huasiensis|juckeri|kupperiana|malochii|mamillosa|muscula|narvaecensis|perplexa|pseudodeminuta|pulvinosa|pygmaea|ritteri|robustispina|spegazziniana|spinosissima|steinmannii|tarijensis|tuberosa|vulpina|walteri"],
+    "Aztekium": ["vol. 3 p.92, 422", 3, 1, "hintonii|ritteri|valdezii"],
+    "Azureocereus": ["vol. 3 p.93, 424", 3, 0, "columnaris|hertlingianus|viridis"],
+    "Backebergia": ["vol. 3 p.95, 425", 1, 0, "militaris (maintenant Mitrocereus)"],
+    "Bergerocactus": ["vol. 3 p.95, 426", 1, 1, "emoryi"],
+    "Blossfeldia": ["p.96, 427", 1, 1, "liliputana"],
+    "Bolivicactus": ["p.97, 428", 22, 1, "aureicentrus|chrysacanthion|columnaris|comarapanus|commutans|doranae|hausteinianus|hegeri|juckeri|larapuntensis|maassii|mairananus|ocampoi|otavianus|prestoensis|procerus|ritteri|schwebsianus|stuemeri|subterraneus|taratensis|tuberculatus"],
+    "Bolivicereus": ["p.105, 434", 4, 0, "aureispinus|colademononis|samaipatanus|samaipatanus subsp. divi-miseratus"],
+    "Borzicactus": ["p.107, 436", 20, 1, "crassiserpens|fieldianus|fieldianus subsps. cajamarcensis|fieldianus subsp. tessellatus|hutchisonii|icosagonus|icosagonus subsp. humboldtii|icosagonus subsp. roseiflorus|longiserpens|longiserpens subsp. erectus|neoroezlii|plagiostoma|samnensis|sepium|sepium subsp. leonensis|sepium subsp. morleyanus|sepium subsp. ventimigliae|sepium subsp. websterianus|silvaticus|tenuiserpens"],
+    "Brachycereus": ["vol. 3 p.115, 442", 1, 0, "nesioticus"],
+    "Bragaia": ["vol. 3 p.116, 443", 1, 0, "estevesii"],
+    "Brasilicereus": ["vol. 3 p.117, 443", 2, 0, "markgrafii|phaeacanthus"],
+    "Brasiliopuntia": ["vol. 3 p.118, 444", 2, 0, "brasiliensis|schulzii"],
+    "Brasiliparodia": ["vol. 3 p.119, 445", 2, 0, "alacriportana|rechensis"],
+    "Browningia": ["vol. 3 p.120, 446", 9, 1, "altissima|amstutziae|candelaris|chlorocarpa|hernandezii|macracantha|microsperma|pilleifera|utcubambensis"],
+    "Caerulocereus": ["vol. 3 p.123, 451", 1, 1, "bohlei"],
+    "Calymmanthium": ["vol. 3 p.124, 451", 1, 0, "substerile"],
+    "Carnegiea": ["vol. 3 p.125, 453", 1, 1, "gigantea"],
+    "Castellanosia": ["vol. 3 p.125, 454", 1, 0, "caineana"],
+    "Cephalocereus": ["vol. 3 p.126, 455", 16, 0, "apicicephalium|columna-trajani|euphorbioides|fulviceps|macrocephalus|mezcalaensis|multiareolatus|nizandensis|nudus|parvispinus|polylophus|sanchez-mejoradae|scoparius|senilis|tetetzo|totolapensis"],
+    "Cephalocleistocactus": ["vol. 3 p.132, 463", 1, 0, "chrysocephalus"],
+    "Cereus": ["vol. 3 p.133, 463", 37, 1, "adelmarii|aethiops|bambuicola|bicolor|braunii|calcirupicola|cochabambensis|comarapanus|fernambucensis|fricii|gerardi|grenadensis|hankeanus|hexagonus|hildmannianus|hildmannianus subsp. uruguayanus|hildmannianus subsp. xanthocarpus|horrispinus|huilunchu|huntingtonianus|ingens|insularis|jamacaru|lanosus|mortensenii|pachyrrizus|pierre-braunianus|repandus|ridleii|saddianus|sericifer|stenogonus|tacuaralensis|trigonodendron|validus|vargasianus|yungasensis"],
+    "Chamaecereus": ["vol. 3 p.146, 475", 5, 0, "luisramirezii|saltensis|schreiteri|silvestrii|stilowianus"],
+    "Cipocereus": ["vol. 3 p.149, 476", 5, 1, "bradei|crassisepalus|laniflorus|minensis|minensis subsp. leiocarpus"],
+    "Cleistocactus": ["vol. 3 p.150, 478", 35, 1, "aurantiacus|ayopayanus|baumannii|baumannii subsp. chacoanus|baumannii subsp. horstii|baumannii subsp. paraguariensis|baumannii subsp. santacruzensis|brevispinus|brookeae|brookeae subsp. vulpis-cauda|buchtienii|candelilla|candelilla subsp. piraymirensis|capadalensis|dependens|ferrarii|glaucus|hildegardiae|hyalacanthus|hyalacanthus subsp. tarijensis|laniceps|luribayensis|micropetalus|morawetzianus|parapetiensis|parviflorus|pungens|pycnacanthus|reae|ritteri|smaragdiflorus|strausii|tominensis|variispinus|viridiflorus"],
+    "Cochemiea": ["vol. 3 p.163, 487", 6, 1, "halei|pondii|pondii subsp. maritima|poselgeri|setispina|thomasii"],
+    "Coleocephalocereus": ["vol. 3 p.166, 489", 12, 0, "aureus|braunii|buxbaumianus|buxbaumianus subsp. flavisetus|decumbens|diersianus|estevesii|fluminensis|pluricostatus|purpureus|superbus|uebelmanniorum"],
+    "Consolea": ["p.170, 493", 15, 1, "corallicola|falcata|intermedia|macracantha|millspaughii|millspaughii subsp. caymanensis|moniliformis|moniliformis subsp. guantanamana|nashii|nashii subsp. gibarensis|picardae|rubescens|spinosissima|testudinis-crus|urbaniana"],
+    "Copiapoa": ["vol. 3 p.177, 500", 45, 0, "ahremephiana|algarrobensis|angustiflora|aphanes|armata|atacamensis|australis|bridgesii|calderana|cinerascens|cinerea|cinerea subsp. columna-alba|cinerea subsp. krainziana|coquimbana|corralensis|dealbata|decorticans|desertorum|echinoides|esmeraldana|fiedleriana|fusca|gigantea|grandiflora|griseoviolacea|hoffmanniana|humilis|humilis subsp. tenuissima|humilis subsp. tocopillana|humilis subsp. variispinata|hypogaea|laui|leonensis|longispina|longistaminea|marginata|megarhiza|mollicula|montana|rupestris|saxifraga|schulziana|serpentisulcata|solaris|taltalensis"],
+    "Corryocactus": ["vol. 3 p.194, 513", 28, 1, "acervatus|apiciflorus|aureus|ayacuchoensis|ayopayanus|brachypetalus|brevistylus|brevistylus subsp. puquiensis|chachapoyensis|charazanensis|dillonii|erectus|ericimarae|huincoensis|melaleucus|melanotrichus|odoratus|otuyensis|pilispinus|prostratus|pulquinensis|pyroporphyranthus|quadrangularis|quivillanus|serpens|squarrosus|tarijensis|tenuiculus"],
+    "Corynopuntia": ["vol. 3 p.203, 521", 21, 1, "aggeria|agglomerata|bulbispina|bulbispina subsp. basileocephala|clavata|deinacantha|densispina|emoryi|grahamii|guccinii|halophila|invicta|kunzei|marenae|moelleri|nigrispina|parishiorum|robertsii|schottii|vilis|wrightiana"],
+    "Coryphantha": ["vol. 3 p.210, 526", 57, 1, "bumamma|clavata|clavata subsp. stipitata|compacta|cornifera|delaetiana|delicata|diﬃcilis|durangensis|durangensis subsp. cuencamensis|echinoidea|echinus|elephantidens|erecta|garessii|georgii|glanduligera|glassii|gracilis|greenwoodii|hintoniorum|hintoniorum subsp. geoffreyi|ibarrana|jalpanensis|kracikii|longicornis|maiz-tablasensis|neglecta|nickelsiae|octacantha|ottonis|pallida|pallida subsp. calipensis|poselgeriana|potosiana|pseudoechinus|pseudoechinus subsp. laui|pseudonickelsiae|pulleineana|pycnacantha|radians|ramillosa|ramillosa subsp. santarosa|recurvata|recurvata subsp. canatlanensis|retusa|robustispina|robustispina subsp. scheeri|robustispina subsp. uncinata|roederiana|salinensis|sulcata|tripugionacantha|vaupeliana|vogtherriana|werdermannii|wohlschlageri"],
+    "Cremnocereus": ["vol. 3 p.230, 538", 1, 0, "albipilosus"],
+    "Cumarinia": ["vol. 3 p.231, 539", 1, 0, "odorata"],
+    "Cumulopuntia": ["vol. 3 p.231, 539", 19, 1, "boliviana|boliviana subsp. dactylifera|chichensis|corotilla|echinacea|flexibilispina|frigida|fulvicoma|galerasensis|glomerata|hystrix|ignescens|ignota|iturbicola|mistiensis|pentlandii|rossiana|subterranea|subterranea subsp. pulcherrima"],
+    "Cylindropuntia": ["vol. 3 p.239, 543", 53, 1, "abyssi|acanthocarpa|acanthocarpa subsp. ramosa|acanthocarpa subsp. thornberi|alcahes|alcahes subsp. gigantensis|alcahes subsp. mcgillii|anteojoensis|arbuscula|bernardina|bigelovii|burrageana|californica|calmalliana|caribaea|cedrosensis|cholla|chuckwallensis|ciribe|clavellina|davisii|delgadilloana|echinocarpa|fosbergii|fulgida|ganderi|ganderi subsp. catavinensis|hystrix|imbricata|imbricata subsp. spinitecta|imbricata subsp. spinosior|kleiniae|leptocaulis|libertadensis|lindsayi|molesta|multigeniculata|munzii|prolifera|ramosissima|rosarica|rosea|sanfelipensis|santamaria|tesajo|thurberi|thurberi subsp. versicolor|tunicata|waltoniorum|whipplei|whipplei subsp. enodis|wigginsii|wolfii"],
+    "Deamia": ["vol. 3 p.258, 557", 4, 0, "chontalensis|funis|montalvoae|testudo"],
+    "Denmoza": ["vol. 3 p.260, 559", 1, 1, "rhodacantha"],
+    "Diaguita": ["vol. 3 p.261, 559", 3, 0, "fankhauseri|riparia|tenebrica"],
+    "Discocactus": ["vol. 3 p.263, 560", 47, 1, "bahiensis|bahiensis subsp. gracilis|bahiensis subsp. subviridigriseus|boliviensis|braunii|cangaensis|catingicola|catingicola subsp. griseus|catingicola subsp. piauiensis|catingicola subsp. rapirhizus|cephaliaciculosus|cephaliaciculosus subsp. nudicephalus|crassispinus|crystallophilus|diersianus|estevesii|fariae-peresii|ferricola|hartmannii|hartmannii subsp. magnimammus|hartmannii subsp. patulifolius|hartmannii subsp. setosiflorus|heptacanthus|heptacanthus subsp. goiasensis|heptacanthus subsp. melanochlorus|horstii|latispinus|latispinus subsp. pseudolatispinus|latispinus subsp. pulvinicapitatus|lindanus|pachythele|petrhalfarii|piscibarbarus|placentiformis|placentiformis subsp. multicolorispinus|placentiformis subsp. pugionacanthus|prominentigibbus|pseudoinsignis|silicicola|silvaticus|squamibaccatus|subterraneo-proliferans|zehntneri|zehntneri subsp. albispinus|zehntneri subsp. boomianus|zehntneri subsp. buenekeri|zehntneri subsp. horstiorum"],
+    "Disocactus": ["vol. 3 p.282, 572", 22, 0, "ackermannii|ackermannii subsp. conzattianus|anguliger|aurantiacus|biformis|blomianus|cinnabarinus|crenatus|crenatus subsp. kimnachii|eichlamii|heterodoxus|hondurensis|lepidocarpus|lodei|macdougallii|macranthus|nelsonii|phyllanthoides|quetzaltecus|salvadorensis|speciosus|speciosus subsp. bierianus"],
+    "Echinocactus": ["vol. 3 p.290, 579", 4, 1, "horizonthalonius|horizonthalonius subsp. diabolicus|horizonthalonius subsp. nicholii|platyacanthus"],
+    "Echinocereus": ["vol. 3 p.292, 580", 152, 1, "acanthosetus|acifer|acifer subsp. tubiflorus|adustus|adustus subsp. roemerianus|adustus subsp. schwarzii|albatus (ex nivosus)|arizonicus|arizonicus subsp. matudae|arizonicus subsp. nigrihorridispinus|arizonicus subsp. oldachiorum|armatus|bakeri|barthalowianus|berlandieri|blumii|bonkerae|bonkerae subsp. apachensis|brandegeei|bristolii|canus|canyonensis|carmenensis|chisosensis|chisosensis subsp. fobeanus|chloranthus|chloranthus subsp. rhyolithensis|cinerascens|cinerascens subsp. ehrenbergii|cinerascens subsp. septentrionalis|cinerascens subsp. tulensis|coccineus|coccineus subsp. paucispinus|coccineus subsp. roemeri|coccineus subsp. rosei|coccineus subsp. transpecosensis|conglomeratus|ctenoides|dasyacanthus|davisii|engelmannii|engelmannii subsp. munzii|enneacanthus|enneacanthus subsp. carnosus|fasciculatus|fasciculatus subsp. boycethompsonii|felixianus|fendleri|fendleri subsp. hempelii|fendleri subsp. kuenzleri|fendleri subsp. rectispinus|ferreiranus|fitchii|freudenbergeri|grandis|gurneyi|huitcholensis|klapperi|knippelianus|knippelianus subsp. kruegeri|knippelianus subsp. reyesii|koehresianus|koehresianus subsp. gruberianus|kroenleinii|laui|ledingii|leucanthus|lindsayorum|llanurensis|longisetus|longisetus subsp. delaetii|mapimiensis|maritimus|maritimus subsp. hancockii|marksianus|metornii|milleri|neocapillus|nicholii|occidentalis|ortegae|pacificus|pacificus subsp. mombergerianus|palmeri|palmeri subsp. mazapil|pamanesii|pamanesii subsp. bonatzii|papillosus|parkeri|parkeri subsp. arteagensis|parkeri subsp. gonzalezii|parkeri subsp. mazapilensis|pectinatus|pectinatus subsp. rutowiorum|pectinatus subsp. wenigeri|pentalophus|pentalophus subsp. leonensis|pentalophus subsp. procumbens|perplexus|polyacanthus|poselgeri|primolanatus|pseudopectinatus|pulchellus|rayonesensis|rebmanii|reichenbachii|reichenbachii subsp. baileyi|reichenbachii subsp. burrensis|reichenbachii subsp. comanchensis|reichenbachii subsp. perbellus|relictus|rigidissimus|rigidissimus subsp. rubispinus|rischeri|russanthus|russanthus subsp. fiehnii|russanthus subsp. weedinii|salmdyckianus|sanpedroensis|santaritensis|santaritensis subsp. bacanorensis|scheeri|scheeri subsp. chaletii|scheeri subsp. gentryi|schereri|schmollii|sciurus|sciurus subsp. floresii|scopulorum|sharpii|spinigemmatus|stolonifer|stolonifer subsp. tayopensis|stramineus|subinermis|subinermis subsp. ochoterenae|tamaulipensis|topiensis|triglochidiatus|triglochidiatus subsp. mojavensis|viereckii|viereckii subsp. morricalii|viereckii subsp. santamariensis|viridiflorus|viridiflorus subsp. correllii|waldeisii|websterianus|weinbergii|weinbergii subsp. venustus|yavapaiensis|zapalinamensis"],
+    "Echinofossulocactus": ["vol. 3 p.348, 608", 14, 1, "coptonogonus|crispatus|dichroacanthus|hastatus|lamellosus|lloydii|multicostatus|obvallatus|ochoterenanus|pentacanthus|phyllacanthus|sulphureus|vaupelianus|zacatecasensis"],
+    "Echinopsis": ["vol. 3 p.354, 612", 18, 1, "adolfofriedrichii|albispinosa|aurea|aurea subsp. fallax|aurea subsp. leucomalla|aurea subsp. shaferi|breviflora|callochrysea|calochlora|calochlora subsp. glaeztleana|chrysantha (ex Lobivia)|densispina (ex Lobivia)|haematantha (ex Lobivia)|hammerschmidii|jajoana (ex Lobivia)|marsoneri (ex Lobivia)|oxygona|tubiflora"],
+    "Epiphyllum": ["vol. 3 p.362, 618", 15, 1, "baueri|cartagense|chrysocardium|grandilobum|hookeri|hookeri subsp. columbiense|hookeri subsp. guatemalense|hookeri subsp. pittieri|laui|oxypetalum|phyllanthus|phyllanthus subsp. plattsii|phyllanthus subsp. rubrocoronatum|pumilum|thomasianum|thomasianum subsp. costaricense"],
+    "Epithelantha": ["vol. 3 p.368, 623", 12, 1, "bokei|cryptica|greggii|ilariae|micromeris|pachyrhiza|pachyrhiza subsp. parvula|polycephala|potosina|pulchra|spinosior|spinosior subsp. huastecana"],
+    "Eriocephala": ["vol. 4 p.10, 368", 6, 0, "claviceps|lenninghausii|magnifica|nigrispina|schumanniana|warasii"],
+    "Eriosyce": ["vol. 4 p.13, 371", 11, 0, "aurata|aurata subsp. spinibarbis|bicolor|islayensis|islayensis subsp. divaricatiflora|islayensis subsp. flavida|islayensis subsp. grandis|islayensis subsp. omasensis|krainziana|rodentiophila|umadeave"],
+    "Escobaria": ["vol. 4 p.17, 375", 15, 1, "albicolumnaria|alversonii|chihuahuensis|chihuahuensis subsp. henricksonii|desertii|guadalupensis|hesteri|hesteri subsp. grata|laredoi|sneedii|sneedii subsp. leei|sneedii subsp. orcuttii|sneedii subsp. sandbergii|tuberculosa|vivipara"],
+    "Escontria": ["vol. 4 p.23, 379", 1, 0, "chiotilla"],
+    "Espostoa": ["vol. 4 p.24, 380", 14, 1, "calva|cremnophila|frutescens|huanucoensis|hylaea|lanata|lanata subsp. lanianuligera|lanata subsp. ruficeps|melanostele|melanostele subsp. nana|mirabilis|ritteri|superba|utcubambensis"],
+    "Espostoopsis": ["vol. 4 p.30, 385", 2, 1, "dybowskii|dybowskii subsp. contasensis"],
+    "Estevesia": ["vol. 4 p.31, 385", 1, 0, "alexbragae"],
+    "Eulychnia": ["vol. 4 p.32, 386", 10, 1, "acida|breviflora|castanea|chorosensis|elata|iquiquensis|ritteri|saintpieana|taltalensis|vallenarensis"],
+    "Facheiroa": ["vol. 4 p.36, 391", 8, 0, "bahiensis|braunii|cephaliomelana|eddie-estevesii|estevesii|squamosa|tenebrosa|ulei"],
+    "Ferocactus": ["vol. 4 p.40, 394", 43, 1, "acanthodes|acanthodes subsp. eastwoodiae|acanthodes subsp. lecontei|acanthodes subsp. rostii|alamosanus|alamosanus subsp. reppenhagenii|chrysacanthus|chrysacanthus subsp. grandiflorus|diguetii|echidne|echidne subsp. victoriensis|emoryi|emoryi subsp. rectispinus|flavovirens|fordii|fordii subsp. borealis|glaucescens|gracilis|gracilis subsp. coloratus|gracilis subsp. gatesii|gracilis subsp. tortulispinus|haematacanthus|histrix|johnstonianus|latispinus|latispinus subsp. greenwoodii|latispinus subsp. spiralis|lindsayi|macrodiscus|macrodiscus subsp. septentrionalis|peninsulae|peninsulae subsp. santamaria|peninsulae subsp. townsendianus|piliferus|pottsii|robustus|schwarzii|viridescens|viridescens subsp. littoralis|wislizeni|wislizeni subsp. ajoensis|wislizeni subsp. herrerae|wislizeni subsp. tiburonensis"],
+    "Floribunda": ["vol. 4 p.57, 406", 1, 0, "pusilliflora"],
+    "Frailea": ["vol. 4 p.58, 406", 30, 0, "alexandri|amerhauseri|angelicana|atrobella|buenekeri|buenekeri subsp. densispina|castanea|cataphracta|cataphracta subsp. duchii|cataphracta subsp. tuyensis|chiquitana|colombiana|curvispina|diersiana|erythracantha|fulviseta|gracillima|gracillima subsp. horstii|gracillima subsp. machadoi|larae|lepida|mammifera|mammifera subsp. angelesiae|moseriana|phaeodisca|pumila|pygmaea|pygmaea subsp. albicolumnaris|schilinzkyana|schilinzkyana subsp. concepcionensis"],
+    "Geohintonia": ["vol. 4 p.70, 413", 1, 1, "mexicana"],
+    "Glandulicactus": ["vol. 4 p.70, 414", 3, 1, "crassihamatus|uncinatus|uncinatus subsp. wrightii"],
+    "Grusonia": ["vol. 4 p.72, 414", 1, 1, "bradtiana"],
+    "Guerreroa": ["vol. 4 p.73, 415", 27, 1, "aerocarpa|atroviridis|calderana|caliginiphila|confinis|crispa|crispa subsp. totoralensis|eriosyzoides|eriosyzoides subsp. vallenarensis|esmeraldana|fulva|glabrescens|iquiquensis|krausii|kunzei|malleolata|occulta|odieri|pajonalensis|paucicostata|paucicostata subsp. echinus|paucicostata subsp. floccosa|recondita|sociabilis|spectabilis|taltalensis|taltalensis subsp. pygmaea"],
+    "Gymnocalycium": ["vol. 4 p.85, 422", 99, 1, "acorrugatum|alboareolatum|amerhauseri|andreae|angelae|anisitsii|anisitsii subsp. damsii|anisitsii subsp. multiproliferum|baldianum|bayrianum|berchtii|bodenbenderianum|bruchii|cabreraense|calochlorum|campestre|capillaense|cardenasianum|carolinense|castellanosii|castellanosii subsp. ferocius|catamarcense|chacoense|chiquitanum|denudatum|erinaceum|esperanzae|eurypleurum|fischeri|gaponii|gertii|gibbosum|gibbosum subsp. borthii|glaucum|hamatum|horridispinum|horridispinum subsp. achirasense|horstii|horstii subsp. buenekeri|hossei|hossei subsp. ferrarii|hyptiacanthum|hyptiacanthum subsp. leeanum|hyptiacanthum subsp. netrelianum|hyptiacanthum subsp. uruguayense|kieslingii|kroenleinii|kroenleinii subsp. funettae|leptanthum|lukasikii|marekiorum|marianae|marsoneri|marsoneri subsp. matoense|marsoneri subsp. megatae|meregallii|mesopotamicum|mihanovichii|monvillei|morroense|mostii|mostii subsp. valnicekianum|nataliae|neuhuberi|nigriareolatum|ochoterenae|ochoterenae subsp. vatteri|oenanthemum|oenanthemum subsp. ambatoense|paediophilum|papschii|paraguayense|pflanzii|pflanzii subsp. argentinense|pflanzii subsp. zegarrae|prochazkianum|pugionacanthum|quehlianum|ragonesei|reductum|rhodantherum|ritterianum|robustum|saglionis|sanluisense|schickendantzii|schickendantzii subsp. delaetii|schmidianum|schmidianum subsp. asperum|schroederianum|schroederianum subsp. bayense|schroederianum subsp. boessii|schuetzianum|spegazzinii|stenopleurum|striglianum|stuckertii|taningaense|uebelmannianum|volskyi|walteri"],
+    "Haageocereus": ["vol. 4 p.128, 448", 32, 1, "acranthus|acranthus subsp. backebergii|acranthus subsp. deflexispinus|acranthus subsp. olowinskianus|acranthus subsp. zonatus|albispinus|australis|bieblii|bieblii subsp. kuehhasii|bylesianus|chalaensis|decumbens|familiaris|fascicularis|kagenekii|lanugispinus|multicolorispinus|pacalaensis|platinospinus|pluriflorus|pseudomelanostele|pseudomelanostele subsp. acanthocladus|pseudomelanostele subsp. aureispinus|pseudomelanostele subsp. carminiflorus|pseudomelanostele subsp. setosus|pseudomelanostele subsp. turbidus|repens|subtilispinus|tenuis|versicolor|versicolor subsp. pseudoversicolor|zehnderi"],
+    "Hamatocactus": ["vol. 4 p.142, 459", 3, 1, "hamatacanthus|hamatacanthus subsp. sinuatus|setispinus"],
+    "Harrisia": ["vol. 4 p.144, 461", 20, 1, "aboriginum|adscendens|bonplandii|brookii|caymanensis|divaricata|earlei|eriophora|fernowii|fragrans|gracilis|jusbertii|martinii|pomanensis|portoricensis|regelii|taetra|tetracantha|tortuosa|tortuosa subsp. uruguayensis"],
+    "Hatiora": ["vol. 4 p.153, 468", 4, 1, "bambusoides|cylindrica|herminiae|salicornioides"],
+    "Homalocephala": ["vol. 4 p.155, 469", 4, 1, "parryi|polycephala|polycephala subsp. xeranthemoides|texensis"],
+    "Horridocactus": ["vol. 4 p.157, 471", 19, 0, "aconcaguensis|andicola|armatus|aspillagae|aspillagae subsp. maechlerorum|choapensis|curvispinus|duripulpa|engleri|garaventae|grandiflorus|horridus|jussieui|limariensis|mutabilis|napinus|napinus subsp. lembckei|orientalis|robustus"],
+    "Isolatocereus": ["vol. 4 p.165, 475", 1, 0, "dumortieri"],
+    "Jasminocereus": ["vol. 4 p.166, 476", 3, 0, "thouarsii|thouarsii subsp. delicatus|thouarsii subsp. sclerocarpus"],
+    "Kadenicarpus": ["vol. 4 p.168, 477", 5, 1, "heliae|horripilus|pseudomacrochele|pseudomacrochele subsp. krainzianus|pseudomacrochele subsp. minimus"],
+    "Kimnachia": ["vol. 4 p.170, 479", 3, 1, "ramulosa|ramulosa subsp. angustissima|ramulosa subsp. jamaicensis"],
+    "Kroenleinia": ["vol. 4 p.172, 480", 2, 1, "grusonii|grusonii subsp. capistranoensis n.n."],
+    "Lagenosocereus": ["vol. 4 p.173, 481", 1, 0, "luetzelburgii"],
+    "Lasiocereus": ["vol. 4 p.174, 481", 2, 0, "fulvus|rupicola"],
+    "Lemaireocereus": ["vol. 4 p.174, 482", 2, 0, "hollianus|lepidanthus"],
+    "Lepidocoryphantha": ["vol. 4 p.177, 483", 2, 1, "macromeris|macromeris subsp. runyonii"],
+    "Lepismium": ["vol. 4 p.178, 484", 6, 1, "aculeatum|cruciforme|houlletianum|lorentzianum|lumbricoides|warmingianum"],
+    "Leptocereus": ["vol. 4 p.181, 486", 26, 1, "albellus|arboreus|assurgens|bayahibensis|carinatus|chrysotyrius|cremnophilus|demissus|ekmanii|gonzaleztorresii|grantianus|leonii|maxonii|nudiflorus|paniculatus|prostratus|quadricostatus|rosei|santamarinae|scopulophilus|septentrionalis|sylvestris|undulosus|velozianus|weingartianus|wrightii"],
+    "Leuchtenbergia": ["vol. 4 p.192, 495", 1, 1, "principis"],
+    "Leucostele": ["vol. 4 p.193, 495", 18, 1, "atacamensis|atacamensis subsp. pasacana|bolligeriana|chiloensis|chiloensis subsp. australis|chiloensis subsp. borealis|chiloensis subsp. eburneus|chiloensis subsp. panhoplites|deserticola|faundezii|litoralis|nigripilis|pectinifera|skottsbergii|terscheckii|tunariensis|undulosa|werdermanniana"],
+    "Leuenbergeria": ["vol. 4 p.201, 501", 8, 1, "aureiflora|bleo|guamacho|lychnidiflora|marcanoi|portulacifolia|quisqueyana|ziniiflora"],
+    "Lobivia": ["vol. 4 p.205, 504", 48, 1, "ancistrophora|arachnacantha|ayopayana|backebergii|boyuibensis|bridgesii|bridgesii subsp. vallegrandensis|bridgesii subsp. yungasensis|caineana|calliantholilacina|calorubra|cardenasiana|chrysochete|cinnabarina|coronata|echinopsoides|ferox|hertrichiana|krahn-juckeri|lateritia|mamillosa|maximiliana|maximiliana subsp. caespitosa|maximiliana subsp. westii|minutiflora|obrepanda|oligotricha|pampana|pamparuizii|pentlandii|pereziensis|pilayensis|pojoensis|pugionacantha|pugionacantha subsp. haemantha|pugionacantha subsp. rossii|rauschii|rojasii|schieliana|subdenudata|sucrensis|taratensis|tegeleriana|tenuispina|tiegeliana|winteriana|wrightiana|zecheri"],
+    "Lophocereus": ["vol. 4 p.224, 519", 3, 1, "gatesii|marginatus|schottii"],
+    "Lophophora": ["vol. 4 p.225, 521", 5, 1, "albertovojtechii|diffusa|fricii|koehresii|williamsii"],
+    "Loxanthocereus": ["vol. 4 p.228, 524", 22, 1, "acanthurus|acanthurus subsp. canetensis|acanthurus subsp. faustianus|acanthurus subsp. pullatus|camanaensis|clavispinus|convergens|erectispinus|erigens|gracilis|granditessellatus|hoffmannii|hoxeyi|hoxeyi subsp. grandis|hystrix|jajoanus|pachycladus|peculiaris|riomajensis|sextonianus|sulcifer|xylorhizus"],
+    "Lymanbensonia": ["vol. 4 p.235, 530", 5, 1, "brevispina|choquequiraensis|crenata|incachacana|micrantha"],
+    "Maihuenia": ["vol. 4 p.237, 532", 2, 0, "patagonica|poeppigii"],
+    "Maihueniopsis": ["vol. 4 p.238, 533", 20, 1, "archiconoidea|atacamensis|camachoi|clavarioides|colorea|conoidea|crassispina|darwinii|domeykoensis|glochidiata|glomerata|grandiflora|hickenii|leoncito|minuta|molfinoi|ovata|platyacantha|reicheana|wagenknechtii"],
+    "Mammillaria": ["vol. 4 p.246, 539", 294, 1, "albicans|albicans subsp. slevinii|albicoma|albiflora|albilanata|albilanata subsp. oaxacana|albilanata subsp. reppenhagenii|albilanata subsp. tegelbergiana|amajacensis|angelensis|anniana|ariasii|armillata|arreola|aureilanata|backebergiana|backebergiana subsp. ernestii|barbata|baumii|beneckei|beneckei subsp. balsasoides|berkiana|bertholdii|blossfeldiana|blossfeldiana subsp. rectispina|bocasana|bocasana subsp. eschauzieri|bocensis|boelderliana|bombycina|boolii|brachytrichion|brandegeei|brandegeei subsp. gabbii|brandegeei subsp. glareosa|brandegeei subsp. lewisiana|breviplumosa|bullardiana|candida|canelensis|capensis|carmenae|carnea|carretii|cerralboa|chica|chionocephala|cielensis|coahuilensis|coahuilensis subsp. albiarmata|columbiana|columbiana subsp. hennisii|columbiana subsp. jamaicensis|columbiana subsp. ruestii|columbiana subsp. yucatanensis|compressa|compressa subsp. centralifera|crinita|crinita subsp. scheinvariana|crucigera|crucigera subsp. tlalocii|decipiens|decipiens subsp. albescens|decipiens subsp. camptotricha|deherdtiana|deherdtiana subsp. dodsonii|densispina|dioica|discolor|discolor subsp. eperanzaensis|discolor subsp. pachyrhiza|dixanthocentron|duoformis|duwei|eichlamii|ekmanii|elongata|elongata subsp. echinaria|eriacantha|eriacantha subsp. velizii|erythrosperma|estebanensis|evermanniana|fittkaui|flavicentra|formosa|formosa subsp. microthele|formosa subsp. pseudocrucigera|fraileana|geminata|geminata subsp. beiselii|geminata subsp. collinsii|geminata subsp. nejapensis|geminispina|geminispina subsp. leucocentra|gigantea|giselae|glassii|glassii subsp. ascensionis|glochidiata|goodridgei|grahamii|grusonii|grusonii subsp. pachycylindrica|grusonii subsp. zeyeriana|guelzowiana|guerreronis|guillauminiana|haageana|haageana subsp. acultzingensis|haageana subsp. conspicua|haageana subsp. elegans|haageana subsp. sanangelensis|haageana subsp. schmollii|hahniana|hahniana subsp. bravoae|hahniana subsp. mendeliana|hahniana subsp. woodsii|halbingeri|hermosana|hernandezii|herrerae|heyderi|heyderi subsp. gaumeri|heyderi subsp. gummifera|heyderi subsp. hemisphaerica|heyderi subsp. macdougallii|heyderi subsp. meiacantha|huitzilopochtli|huitzilopochtli subsp. niduliformis|humboldtii|hutchisoniana|hutchisoniana subsp. louisae|insularis|jaliscana|jaliscana subsp. zacatecasensis|johnstonii|klissingiana|knippeliana|kraehenbuehlii|lanata|lasiacantha|lasiacantha subsp. egregia|lasiacantha subsp. hyalina|laui|laui subsp. dasyacantha|laui subsp. subducta|lenta|limonensis|linaresensis|lindsayi|lloydii|longiflora|longiflora subsp. stampferi|longimamma|luethyi|magallanii|magnifica|magnimamma|mainiae|mammillaris|manana|marcosii|marksiana|mathildae|matudae|mazatlanensis|melaleuca|melanocentra|melanocentra subsp. rubrograndis|mercadensis|meyranii|microhelia|miegiana|mieheana|moelleriana|monochrysacantha|morentiniorum|morganiana|muehlenpfordtii|multidigitata|mystax|nana|nana subsp. leucantha|napina|nazasensis|neopalmeri|nivosa|nunezii|nunezii subsp. bella|occulta|orcuttii|oteroi|painteri|parkinsonii|paulii|pectinifera|peninsularis|pennispinosa|perbella|perezdelarosae|perezdelarosae subsp. andersoniana|petrophila|petrophila subsp. arida|petrophila subsp. baxteriana|petterssonii|phitauiana|picta|picta subsp. viereckii|pilispina|plumosa|polyedra|polythele|polythele subsp. durispina|polythele subsp. obconella|pottsii|pringlei|prolifera|prolifera subsp. arachnoidea|prolifera subsp. texana|pseudoperbella|rekoi|rekoi subsp. aureispina|rekoi subsp. leptacantha|rettigiana|rhodantha|rhodantha subsp. aureiceps|rhodantha subsp. ferarubra|rhodantha subsp. mccartenii|rhodantha subsp. mollendorﬃana|rischeri|ritteriana|roemeri|roseoalba|rzedowskiana|saboae|saboae subsp. goldii|saboae subsp. haudeana|saboae subsp. roczekii|sanchezmejoradae|sartorii|schiedeana|schiedeana subsp. dumetorum|schumannii|schumannii subsp. globosa|schwarzii|scrippsiana|scrippsiana subsp. schumacheri|sempervivi|senilis|sheldonii|sinforosensis|sinistrohamata|solisioides|sonorensis|sphacelata|sphacelata subsp. viperina|sphaerica|spinosissima|spinosissima subsp. pilcayensis|spinosissima subsp. tepoxtlana|standleyi|stella-de-tacubaya|supertexta|surculosa|tayloriorum|tepexicensis|tetrancistra|tezontle|theresae|thornberi|thornberi subsp. yaquensis|tonalensis|uncinata|variaculeata|vetula|vetula subsp. gracilis|voburnensis|wagneriana|weingartiana|wiesingeri|wiesingeri subsp. apamensis|wildii|winterae|winterae subsp. aramberri|wrightii|wrightii subsp. viridiflora|wrightii subsp. wilcoxii|xaltianguensis|xaltianguensis subsp. bambusiphila|zeilmanniana|zephyranthoides|zephyranthoides subsp. heidiae|zublerae"],
+    "Mariottia": ["vol. 5 p.10, 321", 1, 0, "goebeliana"],
+    "Marshallocereus": ["vol. 5 p.11, 322", 3, 1, "aragonii|aragonii subsp. eichlamii|aragonii subsp. yunckeri"],
+    "Matucana": ["vol. 5 p.13, 325", 33, 1, "aurantiaca|aureiflora|celendinensis|charlesiorum|chrysacantha|comocephala|currundayensis|formosa|fruticosa|gigantea|hastifera|haynei|haynei subsp. herzogiana|haynei subsp. hystrix|hoxeyi|huagalensis|intertexta|intertexta subsp. jankei|klopfensteinii|krahnii|madisoniorum|myriacantha|oreodoxa|paucicostata|polzii|pughii|pujupatii|rebutiiflora|ritteri|roseiflora|tuberculata|weberbaueri|winteri"],
+    "Melocactus": ["vol. 5 p.26, 336", 76, 1, "acunae|albicephalus|alexbragae|andinus|andinus subsp. hernandezii|azureus|bahiensis|bahiensis subsp. amethystinus|bellavistensis|bellavistensis subsp. onychacanthus|borhidii|bozsingianus|braunii|brederooianus|broadwayi|caloxanthus|caroli-linnaei|citrispinus|concinnus|conoideus|curvispinus|curvispinus subsp. caesius|curvispinus subsp. dawsonii|curvispinus subsp. guitarti|curvispinus subsp. koolwijkianus|curvispinus subsp. saravianus|deinacanthus|ernesti|estevesii|evae|ferreophilus|glaucescens|guanensis|guaricensis|harlowii|heimenii|holguinensis|inconcinnus|intortus|lagunaensis|lanssensianus|lemarii|levitestatus|levitestatus subsp. goianus|longicarpus|macracanthos|matanzanus|mazelianus|nagyi|neoviridescens|neryi|oreas|oreas subsp. cremnophilus|pachyacanthus|paucispinus|pedernalensis|perezassoi|peruvianus|praerupticola|praerupticola subsp. pygmaeus|radoczii|roraimensis|salvadorensis|salvadorensis subsp. oliveirae|santiagoensis|schatzlii|schatzlii subsp. chicamochaensis|sergipensis|smithii|stramineus|violaceus|violaceus subsp. margaritaceus|violaceus subsp. ritteri|zehntneri|zehntneri subsp. adpressispinus|zehntneri subsp. canescens|zehntneri subsp. douradaensis"],
+    "Micranthocereus": ["vol. 5 p.58, 361", 10, 0, "albicephalus|aureispinus|auri-azureus|flaviflorus|flaviflorus subsp. alvimii|hofackerianus|polyanthus|purpureus|streckeri|violaciflorus"],
+    "Micropuntia": ["vol. 5 p.63, 365", 6, 1, "barkleyana|brachyrhopalica|pulchella|pygmaea|tuberculosirhopalica|wiegandii"],
+    "Mila": ["vol. 5 p.65, 367", 2, 1, "caespitosa|caespitosa subsp. pugionifera"],
+    "Miqueliopuntia": ["vol. 5 p.66, 368", 1, 0, "miquelii"],
+    "Mitrocereus": ["vol. 5 p.67, 369", 1, 1, "militaris (ex Backebergia)"],
+    "Monvillea": ["vol. 5 p.69, 370", 8, 1, "albicaulis|cavendishii|estevesii|krapovickiana|minensis|phatnosperma|phatnosperma subsp. kroenleinii|spegazzinii"],
+    "Morangaya": ["vol. 5 p.73, 372", 1, 0, "pensilis"],
+    "Myrtillocactus": ["vol. 5 p.74, 373", 4, 1, "cochal|eichlamii|geometrizans|schenckii"],
+    "Neobesseya": ["vol. 5 p.76, 376", 12, 1, "abdita|cubensis|dasyacantha|dasyacantha subsp. chaffeyi|duncanii|emskoetteriana|lloydii|minima|missouriensis|missouriensis subsp. asperispina|robbinsiorum|zilziana"],
+    "Neolloydia": ["vol. 5 p.81, 378", 3, 1, "conoidea|inexpectata|matehualensis"],
+    "Neomapuchea": ["vol. 5 p.83, 379", 3, 0, "marksiana|marksiana subsp. gracilis|marksiana subsp. lissocarpa"],
+    "Neoporteria": ["vol. 5 p.85, 380", 15, 0, "castanea|chilensis|chilensis subsp. albidiflora|clavata|coimasensis|elquiensis|heinrichiana|senilis|simulans|subgibbosa|subgibbosa subsp. litoralis|subgibbosa subsp. nigrihorrida|vallenarensis|villosa|wagenknechtii"],
+    "Neoraimondia": ["vol. 5 p.91, 384", 4, 0, "arequipensis|arequipensis subsp. gigantea|arequipensis subsp. roseiflora|herzogiana"],
+    "Neowerdermannia": ["vol. 5 p.93, 386", 3, 0, "chilensis|chilensis subsp. peruviana|vorwerkii"],
+    "Notocactus": ["vol. 5 p.94, 387", 45, 1, "allosiphon|arnostianus|buiningii|carambeiensis|concinnus|concinnus subsp. agnetae|concinnus subsp. multicostatus|crassigibbus|fuscus|gaucha|glaucinus|herteri|herteri subsp. roseoluteus|horstii|ibicuiensis|linkii|mammulosus|mammulosus subsp. erythracanthus|mammulosus subsp. paulus|mammulosus subsp. turecekianus|muellermelchersii|muellermelchersii subsp. eugeniae|muellermelchersii subsp. gutierrezii|muellermelchersii subsp. hofackerianus|muellermelchersii subsp. rutilans|muellermelchersii subsp. veenianus|muellermelchersii subsp. winkleri|muricatus|neobuenekeri|ottonis|oxycostatus|pontesianus|rauschii|rudibuenekeri|schlosseri|scopa|scopa subsp. marchesii|scopa subsp. sucineus|stockingeri|tabularis|tabularis subsp. bommeljei|tenuicylindricus|uebelmannianus|uebelmannianus subsp. pleiocephalus|werdermannianus"],
+    "Nyctocereus": ["vol. 5 p.117, 399", 1, 0, "serpentinus"],
+    "Obregonia": ["vol. 5 p.117, 399", 1, 0, "denegrii"],
+    "Opuntia": ["vol. 5 p.118, 400", 223, 1, "abjecta|aciculata|aequatorialis|albicarpa|alta|altomagdalenensis|ammophila|anacantha|anacantha subsp. kiska-loro|anacantha subsp. retrorsa|anacantha subsp. utkilio|anahuacensis|andersonii|antillana|apurimacensis|arechavaletae|arenaria|arizonica|assumptionis|atrispina|auberi (ex Nopalea)|aurantiaca|aurea|aureispina|austrina|azurea|bakeri|basilaris|basilaris subsp. brachyclada|basilaris subsp. longiareolata|basilaris subsp. treleasei|bella|bensonii|bergeriana|bisetosa|boldinghii|bonaerensis|bravoana|brunneogemmia|cacanapa|camanchica|canterae|caracassana|cardiosperma|carstenii|cespitosa|chaffeyi|charlestonensis|chavena|chiangiana|chisosensis|chlorotica|clarkiorum|cochenillifera (ex Nopalea)|cochinera|colubrina|comonduensis|cretochaeta|cubensis|cuija|curassavica|curvispina|cymatochila|deamii|debreczyi|decumbens|dejecta (ex Nopalea)|delafuenteana|depauperata|depressa|dillenii|dillenii subsp. melanosperma|diploursina|discolor|drummondii|durangensis|echios|echios subsp. barringtonensis|echios subsp. gigantea|echios subsp. inermis|echios subsp. zacana|eichlamii|ekmannii|elata|elatior|elizondoana|engelmannii|engelmannii subsp. flavispina|engelmannii subsp. flexispina|engelmannii subsp. laevis|engelmannii subsp. lindheimeri|engelmannii subsp. linguiformis|erinacea|erinacea subsp. hystricina|eruca|escuintlensis (ex Nopalea)|excelsa|feroacantha|ficus-indica|fragilis|fuliginosa|galapageia|galapageia subsp. macrocarpa|galapageia subsp. profusa|gallegiana|gaumeri (ex Nopalea)|gosseliniana|guatemalensis|guilanchi|heliabravoana|helleri|hitchcockii|hondurensis (ex Nopalea)|howeyi|huajuapensis|humifusa|hyptiacantha|icterica|inaequilateralis|inaperta (ex Nopalea)|infesta|insularis|jamaicensis|joconostle|karwinskiana|keyensis|kingstoniana|lagunae|lasiacantha|leiascheinvariana|leucotricha|littoralis|lutea (ex Nopalea)|macbridei|mackensenii|macrocentra|macrorhiza|martiniana|matudae|megacantha|megapotamica|megarhiza|megasperma|megasperma subsp. mesophytica|mesacantha|mesacantha subsp. lata|microdasys|militaris|monacantha|nejapensis|nemoralis|nicholii|nuda|occidentalis|ochrocentra|oligacantha|orbiculata|oricola|pachyrrhiza|pailana|parviclada|pascoensis|penicilligera|pennellii|perotensis|pestifer|phaeacantha|pilifera|pinkavae|pittieri|polyacantha|pottsii|preciadoae|puberula|pubescens|pumila|pycnacantha|quimilo|quitensis|rastrera|repens|rileyi|rioplatense|ritteri|robinsonii|robusta|rubrogemmia|rufida|rzedowskii|sanguinea|santarita|scheeri|schumannii|setispina|setocarpa|soederstromiana|spinulifera|spraguei|stenarthra|stenopetala|streptacantha|stricta|strigil|sulphurea|tapona|taylorii|tehuacana|tehuantepecana|tezontepecana|tomentosa|tortispina|triacantha|trichophora|tuna?|undulata|vaseyi|velizii (ex Nopalea)|velutina|ventanensis|wilcoxii|woodsii|wootonii|zamudioi"],
+    "Oreocereus": ["vol. 5 p.209, 472", 13, 1, "australis|celsianus|doelzianus|doelzianus subsp. calvus|doelzianus subsp. sericatus|hempelianus|hendriksenianus|leucotrichus|pseudofossulatus|ritteri|tacnaensis|trollii|variicolor"],
+    "Oroya": ["vol. 5 p.216, 477", 3, 0, "borchersii|peruviana|peruviana subsp. depressa"],
+    "Ortegocactus": ["vol. 5 p.218, 478", 1, 0, "macdougallii"],
+    "Pachycereus": ["vol. 5 p.219, 479", 5, 1, "grandis|pecten-aboriginum|pringlei|tepamo|weberi"],
+    "Parodia": ["vol. 5 p.222, 484", 9, 1, "ayopayana|formosa|gibbulosa|horrida|microsperma|microsperma subsp. herzogii|nivosa|penicillata|saintpieana"],
+    "Pediocactus": ["vol. 5 p.227, 488", 12, 1, "bradyi|despainii|hajekii|indranus|knowltonii|nigrispinus|paradinei|peeblesianus|peeblesianus subsp. fickeiseniorum|sileri|simpsonii|winklerae"],
+    "Pelecyphora": ["vol. 5 p.233, 491", 2, 1, "aselliformis|strobiliformis"],
+    "Peniocereus": ["vol. 5 p.234, 492", 7, 1, "greggii|johnstonii|lazarocardenasii|marianus|striatus|viperinus|zopilotensis"],
+    "Pereskia": ["vol. 5 p.238, 496", 11, 1, "aculeata|bahiensis|diazromeroana|grandifolia|grandifolia subsp. violacea|horrida|horrida subsp. rauhii|nemorosa|sacharosa|stenantha|weberiana"],
+    "Pereskiopsis": ["vol. 5 p.244, 501", 6, 0, "aquosa|blakeana|diguetii|kellermanii|porteri|rotundifolia"],
+    "Perucactus": ["vol. 5 p.247, 502", 1, 0, "ostolazae"],
+    "Pfeiffera": ["vol. 5 p.248, 503", 6, 1, "asuntapatensis|boliviana|ianthothele|miyagawae|monacantha|paranganiensis"],
+    "Pierrebraunia": ["vol. 5 p.251, 507", 4, 0, "bahiensis|bahiensis subsp. flava|brauniorum|eddie-estevesii"],
+    "Pilosocereus": ["vol. 5 p.253, 509", 80, 1, "albisummus|alensis|armatus|arrabidae|aureispinus|aurisetus|aurisetus subsp. densilanatus|barbadensis|brasiliensis|brasiliensis subsp. ruschianus|brevispinus|brooksianus|catimbauensis|catingicola|catingicola subsp. salvadorensis|cearensis|chrysacanthus|chrysostele|collinsii|colombianus|colombianus subsp. tuberculosus|colombianus subsp. tweedyanus|cristalinensis|curtisii|densiareolatus|densivillosus|diersianus|estevesii|excelsus|flavipulvinatus|flexibilispinus|floccosus|floccosus subsp. quadricostatus|fulvilanatus|fulvilanatus subsp. vanheekianus|gaumeri|glaucochrous|goianus|hermii|jamaicensis|jauruensis|jauruensis subsp. cincinnopetalus|keyensis|lanuginosus|leucocephalus|lindanus|machrisii|magnificus|millspaughii|mollispinus|moritzianus|multicostatus|novaromanus|occultiflorus|oligolepis|oligolepis subsp. kanukuensis|pachycladus|panchesiorum|parvus|pentaedrophorus|pentaedrophorus subsp. robustus|pernambucoensis|pernambucoensis subsp. viridis|piauhyensis|polygonus|pseudosuperfloccosus|purpusii|pusillibaccatus|robinii|rosae|royenii|samanensis|schoebelii|splendidus|superfloccosus|tillianus|ulei|vilaboensis|vilaboensis subsp. pluricostatus|vilaboensis subsp. rizzoanus|zahrae"],
+    "Polaskia": ["vol. 5 p.291, 538", 2, 1, "chende|chichipe"],
+    "Praecereus": ["vol. 5 p.292, 539", 6, 1, "euchlorus|euchlorus subsp. amazonicus|euchlorus subsp. diffusus|euchlorus subsp. goianus|euchlorus subsp. jaenensis|euchlorus subsp. smithianus"],
+    "Pseudorhipsalis": ["vol. 5 p.295, 542", 7, 0, "acuminata|alata|amazonica|amazonica subsp. chocoensis|amazonica subsp. panamensis|himantoclada|lankesteri"],
+    "Pterocactus": ["vol. 5 p.298, 544", 11, 1, "araucanus|australis|fischeri|gonjianii|hickenii|megliolii|neuquensis|reticulatus|skottsbergii|tuberosus|valentini"],
+    "Pterocereus": ["vol. 5 p.303, 549", 2, 0, "gaumeri|gaumeri subsp. foetidus"],
+    "Punotia": ["vol. 5 p.304, 550", 1, 0, "lagopus"],
+    "Pyrrhocactus": ["vol. 5 p.305, 551", 7, 0, "andreaeanus|bulbocalyx|bulbocalyx subsp. marayesensis|lichyi|strausianus|strausianus subsp. pachacoensis|villicumensis"],
+    "Quiabentia": ["vol. 5 p.301, 553", 2, 1, "verticillata|zehntneri"],
+    "Rapicactus": ["vol. 5 p.309, 555", 7, 1, "beguinii|beguinii subsp. hintoniorum|booleanus|mandragora|mandragora subsp. pailanus|subterraneus|zaragosae"],
+    "Rauhocereus": ["vol. 5 p.312, 558", 2, 1, "riosaniensis|riosaniensis subsp. jaenensis"],
+    "Rebutia": ["vol. 5 p.313, 559", 5, 0, "borealis|fabrisii|marsoneri|minuscula|padcayensis"],
+    "Reicheocactus": ["vol. 5 p.316, 562", 2, 0, "bonnieae|famatinensis"],
+    "Rhipsalidopsis": ["vol. 5 p.318, 563", 2, 0, "gaertneri|rosea"],
+    "Rhipsalis": ["vol. 6 p.10, 223", 59, 1, "agudoensis|aurea|baccifera|baccifera subsp. cleistogama|baccifera subsp. erythrocarpa|baccifera subsp. horrida|baccifera subsp. mauritiana|barthlottii|burchellii|camposportoana|cereoides|cereuscula|clavata|crispata|cuneata|cuneata subsp. australis|dissimilis|elliptica|epiphyllanthoides|ewaldiana|flagelliformis|floccosa|floccosa subsp. hohenauensis|floccosa subsp. oreophila|floccosa subsp. pulvinigera|goebeliana|grandiflora|hileiabaiana|hoelleri|juengeri|lindbergiana|mesembryanthemoides|micrantha|micrantha subsp. monticola|micrantha subsp. rauhiorum|micrantha subsp. tonduzii|nevesarmondii|oblonga|occidentalis|olivifera|ormindoi|pachecoleonis|pachecoleonis subsp. catenulata|pachyptera|paradoxa|paradoxa subsp. septentrionalis|pentaptera|pilocarpa|pittieri|pulchra|puniceodiscus|rhombea|russellii|shaferi|sulcata|teres|triangularis|trigonoides|tucumanensis"],
+    "Rimacactus": ["vol. 6 p.31, 242", 1, 0, "laui"],
+    "Salmonopuntia": ["vol. 6 p.32, 243", 2, 0, "salmiana|schickendantzii"],
+    "Samaipaticereus": ["vol. 6 p.34, 246", 2, 0, "corroanus|herrerae"],
+    "Schlumbergera": ["vol. 6 p.36, 248", 8, 0, "kautskyi|lutea|lutea subsp. bradei|obtusangula|opuntioides|orssichiana|russelliana|truncata"],
+    "Sclerocactus": ["vol. 6 p.40, 251", 36, 1, "blainei|brevihamatus|brevispinus|cloverae|dawsoniae|erectocentrus|glaucus|hispidus|intertextus|intertextus subsp. dasyacanthus|johnsonii|johnsonii subsp. acunensis|johnsonii subsp. lutescens|mariposensis|megarrhizus|mesae-verdae|nyensis|papyracanthus|parviflorus|parviflorus subsp. havasupaiensis|parviflorus subsp. intermedius|parviflorus subsp. terrae-canyonae|pinkavanus|polyancistrus|pubispinus|scheeri|sileri|spinosior|tobuschii|unguispinus|unguispinus subsp. durangensis|unguispinus subsp. laui|warnockii|wetlandicus|whipplei|wrightiae"],
+    "Selenicereus": ["vol. 6 p.55, 261", 40, 1, "alliodorus|anthonyanus|atropilosus|calcaratus|costaricensis|dorschianus|escuintlensis|extensus|glaber|glaber subsp. mirandae|grandiflorus|grandiflorus subsp. donkelaari|grandiflorus subsp. hondurensis|grandiflorus subsp. lautneri|guatemalensis|hamatus|inermis|macdonaldiae|megalanthus|microcladus|minutiflorus|monacanthus|murrillii|nelsonii|ocamponis|plumieri|pteranthus|purpusii|setaceus|spinulosus|stenopterus|tonduzii|triangularis|tricae|undatus|undatus subsp. luteocarpus|urbanianus|vagans|validus|wercklei"],
+    "Serrulatocereus": ["vol. 6 p.73, 278", 1, 0, "haitiensis"],
+    "Setiechinopsis": ["vol. 6 p.74, 278", 1, 0, "mirabilis"],
+    "Sicobaccatus": ["vol. 6 p.75, 279", 3, 0, "dolichospermaticus|estevesii|insigniflorus"],
+    "Soehrensia": ["vol. 6 p.76, 281", 36, 1, "andalgalensis|angelesiae|arboricola|bruchii|camarguensis|candicans|caulescens|crassicaulis|fabrisii|formosa|formosa subsp. kieslingii|formosa subsp. korethroides|formosa subsp. randallii|formosa subsp. rosarioana|grandiflora|hahniana|huascha|huascha subsp. robusta|narvaecensis|purpureopilosa|quadratiumbonata|sandiensis|schickendantzii|schickendantzii subsp. shaferi|serpentina|smrziana|spachiana|strigosa|tarijensis|tarijensis subsp. bertramiana|thelegona|thelegonoides|vasquezii|vatteri|volliana|walteri"],
+    "Sphaeropuntia": ["vol. 6 p.92, 293", 10, 1, "crassicylindrica|dimorpha|leucophaea|mollispina|multiareolata|sphaerica|sphaerica subsp. kuehnrichiana|tumida|unguispina|zehnderi"],
+    "Stenocereus": ["vol. 6 p.97, 296", 24, 1, "alamosensis|beneckei|chacalapensis|chrysocarpus|eruca|fricii|griseus|gummosus|heptagonus|huastecorum|humilis|kerberi|laevigatus|littoralis|martinezii|montanus|pruinosus|queretaroensis|quevedonis|standleyi|stellatus|thurberi|treleasei|zopilotensis"],
+    "Stephanocereus": ["vol. 6 p.108, 313", 1, 0, "leucostele"],
+    "Stetsonia": ["vol. 6 p.108, 314", 1, 1, "coryne"],
+    "Strombocactus": ["vol. 6 p.109, 315", 3, 0, "corregidorae|disciformis|disciformis subsp. esperanzae"],
+    "Strophocactus": ["vol. 6 p.111, 316", 4, 0, "brasiliensis|krammii|sicariguensis|wittii"],
+    "Tacinga": ["vol. 6 p.113, 318", 13, 1, "armata|braunii|estevesii|funalis|gladispina|inamoena|lilae|mirim|paiaia|palmadora|saxatilis|subcylindrica|werneri"],
+    "Tephrocactus": ["vol. 6 p.116, 322", 15, 1, "abditus|alexanderi|aoracanthus|articulatus|bonnieae|geometricus|halophilus|molinensis|nigrispinus|nigrispinus subsp. atroglobosus|paediophilus|recurvatus|verschaffeltii|weberi|weberi subsp. deminutus"],
+    "Thelocactus": ["vol. 6 p.126, 329", 26, 1, "bicolor|bicolor subsp. bolaensis|bicolor subsp. flavidispinus|bicolor subsp. schwarzii|buekii|buekii subsp. matudae|conothelos|conothelos subsp. argenteus|conothelos subsp. aurantiacus|conothelos subsp. flavus|conothelos subsp. garciae|hastifer|heterochromus|hexaedrophorus|hexaedrophorus subsp. lloydii|lausseri|leucacanthus|leucacanthus subsp. schmollii|macdowellii|multicephalus|rinconensis|rinconensis subsp. freudenbergeri|rinconensis subsp. hintonii|rinconensis subsp. nidulans|tepelmemensis|tulensis"],
+    "Thrixanthocereus": ["vol. 6 p.137, 337", 3, 0, "blossfeldiorum|cullmannianus|senilis"],
+    "Trichocereus": ["vol. 6 p.139, 339", 13, 1, "bridgesii|chalaensis|clavatus|cuzcoensis|knuthianus|macrogonus|macrogonus subsp. pachanoi|macrogonus subsp. peruvianus|schoenii|tacaquirensis|tacaquirensis subsp. taquimbalensis|tulhuayacensis|uyupampensis"],
+    "Turbinicarpus": ["vol. 6 p.147, 344", 35, 1, "alonsoi|boedekerianus|bonatzii|dickisoniae|flaviflorus|gielsdorfianus|graminispinus|hoferi|jauernigii|klinkerianus|knuthianus|laui|lophophoroides|major|nieblae|nikolae|pseudopectinatus|rioverdensis|roseiflorus|saueri|saueri subsp. gonzalezii|saueri subsp. nelissae|saueri subsp. septentrionalis|saueri subsp. verduzcoi|schmiedickeanus|schmiedickeanus subsp. andersonii|schmiedickeanus subsp. gracilis|schmiedickeanus subsp. macrochele|schmiedickeanus subsp. rubriflorus|schmiedickeanus subsp. sanchezii-mejoradae|schwarzii|swobodae|valdezianus|viereckii|ysabelae"],
+    "Uebelmannia": ["vol. 6 p.164, 355", 8, 1, "buiningii|gummifera|meninensis|nuda|pectinifera|pectinifera subsp. eriocactoides|pectinifera subsp. flavispina|pectinifera subsp. horrida"],
+    "Vatricania": ["vol. 6 p.168, 359", 1, 0, "guentheri"],
+    "Weberbauerocereus": ["vol. 6 p.169, 360", 9, 1, "albus|cephalomacrostibas|churinensis|cuzcoensis|madidiensis|rauhii|torataensis|weberbaueri|winterianus"],
+    "Weberocereus": ["vol. 6 p.173, 366", 7, 0, "bradei|frohningiorum|imitans|rosei|trichophorus|tunilla|tunilla subsp. biolleyi"],
+    "Weingartia": ["vol. 6 p.177, 368", 66, 0, "arenacea|arenacea subsp. candiae|augustinii|azurduyensis|breviflora|canigueralii|cantargalloensis|caracarensis|cardenasiana|cintia|cintiensis|crispata|cuprea|cylindrica|cylindrica subsp. crucensis|dorana|fidana|fischeriana|frankiana|freyjuckeri|gemmae|gemmae subsp. elizabethae|gemmae subsp. naunacaensis|glomeriseta|heliosoides|inflexiseta|juckeri|kruegerae|lanata|lanata subsp. longigibba|lanata subsp. pilcomayensis|lanata subsp. riograndensis|langeri|mariana|mentosa|mentosa subsp. albissima|mentosa subsp. swobodae|neocumingii|neocumingii subsp. hediniana|neocumingii subsp. sucrensis|neumanniana|neumanniana subsp. kargliana|pampagrandensis|pasopayana|pucarensis|pulchra|pulquinensis|purpurea|purpurea subsp. santiaginiensis|rauschii|robertovasquezii|sanpedroensis|steinbachii|steinbachii subsp. krahnii|steinbachii subsp. markusii|steinbachii subsp. verticillacantha|tarabucoensis|tarabucoensis subsp. hertusii|tarijensis|tiraquensis|tiraquensis subsp. totorensis|torotorensis|vargasii|vasqueziana|vasqueziana subsp. losenickyana|westii"],
+    "Wigginsia": ["vol. 6 p.210, 387", 9, 0, "arechavaletae|erinacea|gladiata|horstii|langsdorﬃi|sellowii|turbinata|turbinata subsp. calvescens|vorwerkiana"],
+    "Xiquexique": ["vol. 6 p.216, 391", 5, 0, "braunii|frewenii|gounellei|tuberculatus|zehntneri"],
+    "Yavia": ["vol. 6 p.219, 393", 1, 0, "cryptocarpa"],
+    "Yungasocereus": ["vol. 6 p.219, 394", 1, 0, "inquisivensis"],
+}
 export const GENRES: Genre[] = D.map(([n, c, p, zone, pays, note]) => ({ n, c, zone, note, pays: pays.split("|"), pts: p.split(";").map((x) => x.split(",").map(Number) as [number, number]) }))
 
 const CONTINENTS: [string, string[]][] = [
-    ["Amérique du Nord et centrale", ["Canada", "États-Unis", "Mexique", "Cuba", "Guatemala", "Costa Rica"]],
+    ["Amérique du Nord, centrale et Caraïbes", ["Canada", "États-Unis", "Mexique", "Guatemala", "Honduras", "Nicaragua", "Costa Rica", "Panama", "Cuba", "Jamaïque", "Haïti", "Porto Rico"]],
     ["Amérique du Sud", ["Colombie", "Venezuela", "Équateur", "Pérou", "Bolivie", "Brésil", "Paraguay", "Uruguay", "Chili", "Argentine"]],
     ["Europe et Méditerranée", ["France", "Espagne", "Portugal", "Suisse", "Italie", "Géorgie", "Maroc"]],
     ["Afrique et Madagascar", ["Afrique du Sud", "Namibie", "Botswana", "Lesotho", "Angola", "Zambie", "Tanzanie", "Kenya", "Somalie", "Madagascar"]],
@@ -144,7 +481,7 @@ const CATS: ["Tous" | Cat, string][] = [["Tous", "Tous"], ["Cactées", "Cactées
 const NOM_CAT: Record<Cat, string> = { Cactées: "Cactées", Mésembs: "Mésembs (Aizoacées)", Caudex: "Caudiciformes", Succulentes: "Succulentes", Bulbes: "Bulbes et géophytes" }
 const sansAccent = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 
-type Infos = { id: number; photo?: string; credit?: string; obs: number; pts: [number, number][]; nomFr?: string } | "erreur" | undefined
+type Infos = { id: number; photo?: string; credit?: string; obs: number; pts: [number, number][]; nomFr?: string } | "erreur" | "absent" | undefined
 const cache = new Map<string, Infos>()
 
 function useInat(nom: string | null) {
@@ -157,7 +494,7 @@ function useInat(nom: string | null) {
             try {
                 const t = await (await fetch(`https://api.inaturalist.org/v1/taxa?q=${encodeURIComponent(nom)}&rank=genus&per_page=10&locale=fr`)).json()
                 const tx = (t.results || []).find((r) => r.name === nom && r.iconic_taxon_name === "Plantae") || (t.results || []).find((r) => r.name === nom)
-                if (!tx) throw new Error("introuvable")
+                if (!tx) { cache.set(nom, "absent"); if (!fini) maj((x) => x + 1); return }
                 const o = await (await fetch(`https://api.inaturalist.org/v1/observations?taxon_id=${tx.id}&quality_grade=research&captive=false&geo=true&per_page=200&order_by=votes`)).json()
                 const pts = (o.results || []).map((r) => r.geojson?.coordinates).filter(Boolean)
                 const nomFr = tx.preferred_common_name && sansAccent(tx.preferred_common_name) !== sansAccent(nom) ? tx.preferred_common_name : undefined
@@ -170,6 +507,31 @@ function useInat(nom: string | null) {
         return () => { fini = true; maj((x) => x + 1) }
     }, [nom])
     return nom ? cache.get(nom) : undefined
+}
+
+function Especes({ n, l, q }: { n: string; l: [string, number, number, string]; q: string }) {
+    const [ref, nb, obs, liste] = l
+    const sp = liste ? liste.split("|") : []
+    const [ouvert, setOuvert] = React.useState(false)
+    React.useEffect(() => setOuvert(false), [n])
+    const montrer = ouvert || (q.length >= 3 && sp.some((e) => sansAccent(e).includes(q)))
+    return (
+        <div style={{ marginTop: 16, borderTop: "1px solid rgba(29,22,18,0.16)", paddingTop: 12 }}>
+            <button onClick={() => setOuvert((o) => !o)} aria-expanded={montrer} style={{ all: "unset", cursor: "pointer", display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 15 }}><strong style={{ fontWeight: 600 }}>{nb}</strong> espèces et sous-espèces selon J. Lodé</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" style={{ flex: "none", transform: montrer ? "rotate(180deg)" : "none", transition: "transform .2s" }}><path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
+            </button>
+            <div style={{ fontSize: 12.5, opacity: 0.6, marginTop: 3 }}>Taxonomie des Cactaceae, {ref}{obs ? " · genre observé par l’auteur dans la nature" : ""}</div>
+            {montrer && (
+                <div style={{ columnWidth: 170, columnGap: 18, marginTop: 10, maxHeight: 300, overflowY: "auto", paddingRight: 4 }}>
+                    {sp.map((e) => {
+                        const vu = q.length >= 3 && sansAccent(e).includes(q)
+                        return <div key={e} style={{ fontFamily: serif, fontSize: 14.5, lineHeight: 1.55, breakInside: "avoid", fontStyle: "italic", fontWeight: vu ? 700 : 400 }}>{n.charAt(0)}. {e.split(" subsp. ").map((m, i) => i ? <React.Fragment key={i}><span style={{ fontStyle: "normal", fontFamily: sans, fontSize: 12.5 }}> subsp. </span>{m}</React.Fragment> : m)}</div>
+                    })}
+                </div>
+            )}
+        </div>
+    )
 }
 
 /**
@@ -198,11 +560,13 @@ export default function CarteMonde(props) {
     const infos = useInat(sel)
     const etroit = w < 760
     const qq = sansAccent(q.trim())
-    const correspond = (g: Genre) => !qq || sansAccent(g.n).includes(qq) || g.pays.some((p) => sansAccent(p).includes(qq)) || sansAccent(g.zone).includes(qq)
+    const especes = (n: string) => (LODE[n]?.[3] ? LODE[n][3].split("|") : [])
+    const espTrouvee = (g: Genre) => (qq.length >= 3 ? especes(g.n).find((e) => sansAccent(g.n + " " + e).includes(qq) || sansAccent(e).includes(qq)) : undefined)
+    const correspond = (g: Genre) => !qq || sansAccent(g.n).includes(qq) || g.pays.some((p) => sansAccent(p).includes(qq)) || sansAccent(g.zone).includes(qq) || !!espTrouvee(g)
     const visibles = GENRES.filter((g) => (cat === "Tous" || g.c === cat) && correspond(g))
     const g = GENRES.find((x) => x.n === sel) || null
     const choisir = (n: string) => { setSel((s) => (s === n ? null : n)); setSuggOuv(false) }
-    const r = etroit ? 5 : 4.4
+    const r = etroit ? (visibles.length > 120 ? 4.2 : 5) : visibles.length > 120 ? 3.5 : 4.4
     const LARG_MOBILE = 900
     const defil = React.useRef<HTMLDivElement>(null)
     React.useEffect(() => {
@@ -222,12 +586,16 @@ export default function CarteMonde(props) {
     const gEtiq = GENRES.find((x) => x.n === nomEtiquette)
     const nbPays = new Set(GENRES.flatMap((x) => x.pays)).size
 
-    // Encart agrandi de l'Afrique australe, où se concentrent mésembs, bulbes et caudex
-    const IX = 612, IY = 396, K = 4.6
-    const [ax0] = pt(15.2, -29), [ax1] = pt(33.4, -29), [, ay0] = pt(24, -21.6), [, ay1] = pt(24, -35.3)
-    const IW = (ax1 - ax0) * K, IH = (ay1 - ay0) * K
-    const dansEncart = (lo: number, la: number) => lo > 15.2 && lo < 33.4 && la < -21.6 && la > -35.3
-    const versEncart = (x: number, y: number): [number, number] => [IX + (x - ax0) * K, IY + (y - ay0) * K]
+    // Encarts agrandis des régions où les points se chevauchent
+    const ENCARTS = [
+        { nom: "AFRIQUE AUSTRALE, AGRANDIE", lo0: 15.2, lo1: 33.4, la0: -21.6, la1: -35.3, X: 612, Y: 396, K: 4.6 },
+        { nom: "MEXIQUE ET SUD DES ÉTATS-UNIS, AGRANDIS", lo0: -117.5, lo1: -92.0, la0: 33.0, la1: 15.4, X: 18, Y: 384, K: 3.05 },
+    ].map((e) => {
+        const [x0] = pt(e.lo0, (e.la0 + e.la1) / 2), [x1] = pt(e.lo1, (e.la0 + e.la1) / 2), [, y0] = pt((e.lo0 + e.lo1) / 2, e.la0), [, y1] = pt((e.lo0 + e.lo1) / 2, e.la1)
+        return { ...e, x0, x1, y0, y1, W: (x1 - x0) * e.K, H: (y1 - y0) * e.K }
+    })
+    const encartDe = (lo: number, la: number) => ENCARTS.find((e) => lo > e.lo0 && lo < e.lo1 && la < e.la0 && la > e.la1)
+    const versEncart = (e: any, x: number, y: number): [number, number] => [e.X + (x - e.x0) * e.K, e.Y + (y - e.y0) * e.K]
     const point = (gg: Genre, x: number, y: number, key: string) => {
         const actif = gg.n === sel, sur = gg.n === survol
         return (
@@ -246,24 +614,30 @@ export default function CarteMonde(props) {
         const out: [number, number][] = []
         for (const [lo, la] of gg.pts) {
             const [x, y] = pt(lo, la)
-            out.push(dansEncart(lo, la) ? versEncart(x, y) : [x, y])
+            const e = encartDe(lo, la)
+            out.push(e ? versEncart(e, x, y) : [x, y])
         }
         return out
     }
     const carte = (
         <svg viewBox="0 4 1000 612" style={{ width: "100%", height: "auto", display: "block", overflow: "visible", touchAction: "manipulation" }} role="img" aria-label="Carte du monde des régions d'origine de genres de cactus, succulentes et bulbes">
-            <defs><clipPath id="acs-encart"><rect x={IX} y={IY} width={IW} height={IH} /></clipPath></defs>
+            <defs>{ENCARTS.map((e, i) => <clipPath key={i} id={"acs-encart-" + i}><rect x={e.X} y={e.Y} width={e.W} height={e.H} /></clipPath>)}</defs>
             <path d={COTE_MONDE} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-            <rect x={ax0} y={ay0} width={ax1 - ax0} height={ay1 - ay0} fill="none" stroke={encre} strokeOpacity={0.45} strokeWidth={0.8} strokeDasharray="2 2" />
-            <path d={`M${ax0 + (ax1 - ax0) / 2} ${ay1} L${IX + IW / 2} ${IY}`} stroke={encre} strokeOpacity={0.3} strokeWidth={0.8} strokeDasharray="2 2" fill="none" />
-            <rect x={IX} y={IY} width={IW} height={IH} fill={fond} stroke={encre} strokeOpacity={0.5} strokeWidth={1} />
-            <g clipPath="url(#acs-encart)">
-                <path d={COTE_MONDE} transform={`translate(${IX - ax0 * K} ${IY - ay0 * K}) scale(${K})`} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-            </g>
-            <text x={IX + 6} y={IY + IH + 14} fontFamily={sans} fontSize={11} letterSpacing={0.8} fill={encre} fillOpacity={0.6}>AFRIQUE AUSTRALE, AGRANDIE</text>
-            {infos && infos !== "erreur" && infos.pts.map(([lo, la], i) => {
+            {ENCARTS.map((e, i) => (
+                <g key={"e" + i}>
+                    <rect x={e.x0} y={e.y0} width={e.x1 - e.x0} height={e.y1 - e.y0} fill="none" stroke={encre} strokeOpacity={0.45} strokeWidth={0.8} strokeDasharray="2 2" />
+                    <path d={`M${(e.x0 + e.x1) / 2} ${e.y1} L${e.X + e.W / 2} ${e.Y}`} stroke={encre} strokeOpacity={0.3} strokeWidth={0.8} strokeDasharray="2 2" fill="none" />
+                    <rect x={e.X} y={e.Y} width={e.W} height={e.H} fill={fond} stroke={encre} strokeOpacity={0.5} strokeWidth={1} />
+                    <g clipPath={`url(#acs-encart-${i})`}>
+                        <path d={COTE_MONDE} transform={`translate(${e.X - e.x0 * e.K} ${e.Y - e.y0 * e.K}) scale(${e.K})`} fill="none" stroke={encre} strokeOpacity={0.8} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                    </g>
+                    <text x={e.X + 6} y={e.Y + e.H + 14} fontFamily={sans} fontSize={11} letterSpacing={0.8} fill={encre} fillOpacity={0.6}>{e.nom}</text>
+                </g>
+            ))}
+            {infos && typeof infos === "object" && infos.pts.map(([lo, la], i) => {
                 const [x, y] = pt(lo, la)
-                const [ex, ey] = dansEncart(lo, la) ? versEncart(x, y) : [x, y]
+                const en = encartDe(lo, la)
+                const [ex, ey] = en ? versEncart(en, x, y) : [x, y]
                 return <circle key={"o" + i} cx={ex} cy={ey} r={2} fill={accent} fillOpacity={0.4} />
             })}
             {visibles.map((gg) => positions(gg).map(([x, y], i) => point(gg, x, y, gg.n + i)))}
@@ -283,7 +657,7 @@ export default function CarteMonde(props) {
             <svg width="16" height="16" viewBox="0 0 16 16" style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", opacity: 0.55 }}><circle cx="6.5" cy="6.5" r="5" fill="none" stroke={encre} strokeWidth="1.6" /><path d="M10.5 10.5 L15 15" stroke={encre} strokeWidth="1.6" /></svg>
             <input value={q} onChange={(e) => { setQ(e.target.value); setSuggOuv(true) }} onFocus={() => setSuggOuv(true)} onBlur={() => setTimeout(() => setSuggOuv(false), 150)}
                 onKeyDown={(e) => { if (e.key === "Enter" && visibles.length) { choisir(visibles[0].n); (e.target as HTMLInputElement).blur() } if (e.key === "Escape") setQ("") }}
-                placeholder="Rechercher un genre ou un pays" aria-label="Rechercher un genre ou un pays"
+                placeholder="Genre, espèce ou pays" aria-label="Rechercher un genre, une espèce ou un pays"
                 style={{ width: "100%", boxSizing: "border-box", fontFamily: sans, fontSize: 15, color: encre, background: carteFond, border: `1px solid rgba(29,22,18,0.3)`, borderRadius: 0, padding: "10px 34px 10px 36px", outline: "none" }} />
             {q && <button aria-label="Effacer" onClick={() => setQ("")} style={{ all: "unset", cursor: "pointer", position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontFamily: sans, fontSize: 18, lineHeight: 1, opacity: 0.6, padding: 4 }}>×</button>}
             {suggOuv && qq && (
@@ -292,7 +666,7 @@ export default function CarteMonde(props) {
                     {visibles.slice(0, 12).map((x) => (
                         <button key={x.n} onMouseDown={(e) => e.preventDefault()} onClick={() => { choisir(x.n); ficheRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" }) }}
                             style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", justifyContent: "space-between", gap: 12, width: "100%", padding: "9px 14px", borderBottom: `1px solid ${trait}` }}>
-                            <span style={{ fontFamily: serif, fontStyle: "italic", fontSize: 16, color: encre }}>{x.n}</span>
+                            <span style={{ fontFamily: serif, fontStyle: "italic", fontSize: 16, color: encre }}>{x.n}{(() => { const e = !sansAccent(x.n).includes(qq) && espTrouvee(x); return e ? " " + e : "" })()}</span>
                             <span style={{ fontFamily: sans, fontSize: 12, color: encre, opacity: 0.6, textAlign: "right" }}>{x.c === "Succulentes" ? "Succulente" : x.c} · {x.pays.slice(0, 2).join(", ")}{x.pays.length > 2 ? "…" : ""}</span>
                         </button>
                     ))}
@@ -312,14 +686,16 @@ export default function CarteMonde(props) {
                         <div style={{ fontFamily: serif, fontSize: etroit ? 30 : 36, lineHeight: 1.1, fontStyle: "italic", fontWeight: 600 }}>{g.n}</div>
                         <button onClick={() => setSel(null)} aria-label="Fermer la fiche" style={{ all: "unset", cursor: "pointer", fontSize: 22, opacity: 0.5, padding: "0 4px" }}>×</button>
                     </div>
-                    {infos && infos !== "erreur" && infos.nomFr && <div style={{ fontSize: 14, opacity: 0.7, marginTop: 2 }}>{infos.nomFr}</div>}
+                    {infos && typeof infos === "object" && infos.nomFr && <div style={{ fontSize: 14, opacity: 0.7, marginTop: 2 }}>{infos.nomFr}</div>}
                     <div style={{ fontSize: 15, marginTop: 12, lineHeight: 1.5 }}><span style={{ opacity: 0.6 }}>Origine · </span>{g.zone}</div>
                     <div style={{ fontSize: 14, marginTop: 4, lineHeight: 1.5, opacity: 0.75 }}>{g.pays.join(", ")}</div>
-                    <p style={{ fontSize: 16, lineHeight: 1.6, margin: "14px 0 0" }}>{g.note}</p>
+                    {g.note && <p style={{ fontSize: 16, lineHeight: 1.6, margin: "14px 0 0" }}>{g.note}</p>}
+                    {LODE[g.n] && <Especes n={g.n} l={LODE[g.n]} q={qq} />}
                     <div style={{ marginTop: 18 }}>
                         {infos === undefined && <div style={{ aspectRatio: "4 / 3", background: "rgba(29,22,18,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, opacity: 0.7 }}>Chargement depuis iNaturalist…</div>}
                         {infos === "erreur" && <div style={{ fontSize: 13, opacity: 0.65 }}>iNaturalist ne répond pas pour le moment.</div>}
-                        {infos && infos !== "erreur" && (
+                        {infos === "absent" && <div style={{ fontSize: 13, opacity: 0.65, lineHeight: 1.5 }}>Ce genre n’existe pas sous ce nom sur iNaturalist, qui suit une autre classification. Essayez avec le nom d’une de ses espèces sur inaturalist.org.</div>}
+                        {infos && typeof infos === "object" && (
                             <>
                                 {infos.photo && (
                                     <figure style={{ margin: 0 }}>
@@ -348,7 +724,7 @@ export default function CarteMonde(props) {
                     </p>
                     <div style={{ fontSize: 13, opacity: 0.65, marginTop: 18 }}>Pour commencer :</div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-                        {["Lithops", "Ariocarpus", "Massonia", "Pachypodium", "Copiapoa", "Sempervivum"].map((n) => (
+                        {["Lithops", "Ariocarpus", "Massonia", "Pachypodium", "Copiapoa", "Turbinicarpus"].map((n) => (
                             <button key={n} onClick={() => choisir(n)} style={{ ...puce(false), fontFamily: serif, fontStyle: "italic", fontSize: 15 }}>{n}</button>
                         ))}
                     </div>
@@ -392,7 +768,7 @@ export default function CarteMonde(props) {
                     </div>
                 )
             })}
-            <div style={{ borderTop: `1px solid rgba(29,22,18,0.22)`, paddingTop: 12, fontSize: 12, opacity: 0.6, lineHeight: 1.5 }}>Aires d'origine simplifiées. Photos et observations : iNaturalist (auteurs et licences indiqués sous chaque photo). Fond de carte : Natural Earth.</div>
+            <div style={{ borderTop: `1px solid rgba(29,22,18,0.22)`, paddingTop: 12, fontSize: 12, opacity: 0.6, lineHeight: 1.5 }}>Aires d'origine simplifiées. Liste des cactus : index de Joël Lodé, Taxonomie des Cactaceae (vol. 3 à 6). Photos et observations : iNaturalist (auteurs et licences indiqués sous chaque photo). Fond de carte : Natural Earth.</div>
         </div>
     )
 
