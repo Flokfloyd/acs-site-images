@@ -464,6 +464,34 @@ const LODE: Record<string, [string, number, number, string]> = {
     "Yavia": ["vol. 6 p.219, 393", 1, 0, "cryptocarpa"],
     "Yungasocereus": ["vol. 6 p.219, 394", 1, 0, "inquisivensis"],
 }
+// Espèces des mésembs (Aizoacées) et des caudiciformes : listes récupérées une fois pour toutes (pas d'appel en direct)
+const AUTRES: Record<string, [string, string]> = {
+    "Lithops": ["Cole & Cole (2006)", "amicorum|aucampiae|bromfieldii|coleorum|comptonii|dinteri|divergens|dorotheae|francisci|fulviceps|gesineae|geyeri|gracilidelineata|hallii|helmutii|hermetica|herrei|hookeri|julii|karasmontana|lesliei|lesliei subsp. burchellii|lesliei subsp. lesliei|localis|marmorata|meyeri|naureeniae|olivacea|optica|otzeniana|pseudotruncatella|ruschiorum|salicola|schwantesii|vallis-mariae|verruculosa|villetii|viridis|werneri"],
+    "Conophytum": ["POWO (Kew)", "achabense|acutum|albiflorum|angelicae|armianum|auriflorum|bachelorum|bicarinatum|bilobum|blandum|bolusiae|breve|brunneum|bruynsii|burgeri|buysianum|calculus|caroli|carpianum|chauviniae|chrisocruxum|chrisolum|comptonii|concavum|confusum|crateriforme|cubicum|× cupreiflorum|depressum|devium|ectypum|ernstii|fibuliforme|ficiforme|flavum|francoiseae|fraternum|friedrichiae|frutescens|fulleri|globosum|halenbergense|hammeri|hanae|herreanthus|hians|hyracis|irmae|jarmilae|joubertii|jucundum|khamiesbergense|klinghardtense|limpidum|lithopsoides|loeschianum|longibracteatum|longum|luckhoffii|lydiae|marginatum|× marnierianum|maughanii|meyeri|minimum|minusculum|minutum|mirabile|obcordellum|obscurum|pageae|pellucidum|phoeniceum|piluliforme|pium|praesectum|pubescens|pubicalyx|quaesitum|ratum|reconditum|regale|ricardianum|roodiae|rugosum|saxetanum|schlechteri|semivestitum|smaleorum|smorenskaduense|stephanii|stevens-jonesianum|subfenestratum|subterraneum|swanepoelianum|tantillum|taylorianum|truncatum|turrigerum|uviforme|vanheerdei|velutinum|verrucosum|violaciflorum|wettsteinii|youngii"],
+    "Argyroderma": ["Catalogue of Life", "congregatum|crateriforme|delaetii|fissum|framesii|patens|pearsonii|ringens|subalbum|testiculare|theartii|× octophyllum"],
+    "Fenestraria": ["Wikipédia", "rhopalophylla|rhopalophylla subsp. aurantiaca|rhopalophylla subsp. rhopalophylla"],
+    "Titanopsis": ["POWO (Kew)", "calcarea|hugo-schlechteri|primosii|schwantesii"],
+    "Dinteranthus": ["POWO (Kew)", "inexpectatus|microspermus|pole-evansii|puberulus|vallis-mariae|vanzylii|wilmotianus"],
+    "Pleiospilos": ["POWO (Kew)", "bolusii|compactus|nelii|× purpusii|simulans"],
+    "Glottiphyllum": ["POWO (Kew)", "carnosum|cruciatum|depressum|difforme|fergusoniae|grandiflorum|linguiforme|longum|neilii|nelii|oligocarpum|peersii|regium|salmii|suave|surrectum"],
+    "Trichodiadema": ["Wikipédia", "attonsum|aureum|barbatum|bulbosum|burgeri|calvatum|densum|emarginatum|fergusoniae|fourcadei|gracile|hallii|hirsutum|imitans|intonsum|introrsum|littlewoodii|marlothii|mirabile|obliquum|occidentale|olivaceum|orientale|peersii|pomeridianum|pygmaeum|rogersiae|rupicola|ryderae|setuliferum|stayneri|strumosum"],
+    "Faucaria": ["POWO (Kew)", "bosscheana|britteniae|felina|gratiae|nemorosa|subintegra|tigrina|tuberculosa"],
+    "Aloinopsis": ["POWO (Kew)", "acuta|loganii|luckhoffii|malherbei|rosulata|rubrolineata|schooneesii|spathulata"],
+    "Delosperma": ["Wikipédia (liste des espèces)", "abbottii|aberdeenense|abyssinicum|acocksii|acuminatum|adamantinum|adelaidense|aereum|affine|algoense|aliwalense|alpinum|alticola|angustifolium|angustipetalum|annulare|appressum|ashtonii|asperulum|badspoortense|basuticum|bosserianum|brevipetalum|brevisepalum|britteniae|brunnthaleri|burtoniae|caespitosum|calitzdorpense|calycinum|carolinense|carterae|clavipes|cloeteae|concavum|congestum|cooperi|crassuloides|crassum|cronemeyerianum|davyi|deilanthoides|deleeuwiae|dolomitica|dunense|dyeri|echinatum|ecklonis|erectum|esterhuyseniae|ficksbergense|floribundum|fredericii|frutescens|galpinii|gautengense|gerstneri|giffenii|gracile|gracillimum|gramineum|grantiae|gratiae|guthriei|harazianum|heidihartmanniae|herbeum|hirtum|hollandii|holzbecherorum|imbricatum|inaequale|incomptum|inconspicuum|intonsum|invalidum|jansei|karrooicum|katbergense|klinghardtianum|knox-daviesii|kofleri|lavisiae|laxipetalum|lebomboense|leendertziae|lehmannii|leightoniae|liebenbergii|lineare|litorale|lootsbergense|luckhoffii|luteum|lydenburgense|macellum|macrostigma|mahonii|mariae|maxwellii|melepoense|minimum|muirii|multiflorum|nakurense|napiforme|neethlingiae|nelii|nubigenum|obtusum|oehleri|ornatulum|pachyrhizum|pageanum|pallidum|parentum|parviflorum|patersoniae|peersii|peglerae|pilosulum|platysepalum|pondoense|pontii|pottsii|prasinum|purpureum|repens|reynoldsii|rileyi|robustum|rogersii|roseopurpureum|saturatum|sawdahense|saxicola|scabripes|schimperi|seanii-hoganii|smythae|sphalmanthoides|stenandrum|steytlerae|subclavatum|subincanum|subpetiolatum|sulcatum|sutherlandii|suttoniae|taylorii|testaceum|tradescantioides|truteri|uitenhagense|uncinatum|uniflorum|vandermerwei|velutinum|verecundum|vernicolor|versicolor|vinaceum|virens|waterbergense|wethamae|wilmaniae|wiumii|zeederbergii|zoeae|zoutpansbergense"],
+    "Frithia": ["POWO (Kew)", "humilis|pulchra"],
+    "Carpobrotus": ["POWO (Kew)", "acinaciformis|aequilaterus|chilensis|deliciosus|dimidiatus|edulis|glaucescens|mellei|modestus|muirii|parviflorus|quadrifidus|rossii|virescens"],
+    "Pachypodium": ["Wikipédia", "ambongense|baronii|bicolor|bispinosum|brevicaule|cactipes|decaryi|densiflorum|eburneum|enigmaticum|geayi|gracilius|horombense|inopinatum|lamerei|lealii|makayense|meridionale|menabeum|mikea|namaquanum|rosulatum|rutenbergianum|saundersii|sofiense|succulentum|windsorii"],
+    "Operculicarya": ["POWO (Kew)", "borealis|calcicola|capuronii|decaryi|gummifera|hirsutissima|hyphaenoides|multijuga|pachypus"],
+    "Uncarina": ["Wikipédia", "abbreviata|decaryi|grandidieri|ihlenfeldtiana|leandrii|leptocarpa|peltata|perrieri|roeoesliana|sakalava|stellulifera|turicana"],
+    "Adansonia": ["Wikipédia", "digitata|grandidieri|gregorii|madagascariensis|perrieri|rubrostipa|suarezensis|za"],
+    "Adenium": ["Wikipédia", "boehmianum|multiflorum|obesum|oleifolium|swazicum"],
+    "Cyphostemma": ["POWO (Kew) ; beaucoup d'espèces ne sont pas succulentes", "abercornense|adamii|adenanthum|adenocarpum|adenocaule|adenopodum|allophylloides|alnifolium|amplexicaule|anatomicum|andavadoakense|ankaranense|ankirihitrense|auriculatum|bainesii|bambuseti|barbosae|betiforme|bidgoodiae|biternatum|boranense|bororense|braunii|brieyi|buchananii|bullatum|burgeri|cabui|caerulans|calcarium|camerounense|chloroleucum|chrysadenium|cirrhosum|comorense|congestum|congoense|cornigera|cornus-africani|crassiusculum|crinitum|cristigera|crithmifolium|crotalarioides|cryptoglandulosum|cuneatum|currorii|curvipodum|cymosum|cyphopetalum|darainense|dasycarpum|dasypleurum|degraeri|dehongense|delphinense|dembianense|descoingsii|desenfansii|dhufarense|digitatum|duparquettii|echinocarpum|elephantopus|elisabethvilleanum|eminii|erythrocephalum|feddeanum|flavicans|flaviflorum|fragariifolium|fugosioides|gigantophyllum|gilletii|glandulosissimum|glandulosopilosum|gracillimum|grahamii|grandistipulatum|graniticum|greenwayi|greveanum|griseorubrum|hardyi|haumanii|hereroense|heterotrichum|hildebrandtii|hispidiflorum|homblei|horombense|huillense|humile|hypoleucum|jiguu|johannis|junceum|juttae|kaniamae|kapiriense|keilii|kibweziense|kilimandscharicum|kirkianum|kiwakishiense|knittelii|kundelunguense|labatii|lageniflorum|lanigerum|laza|leandrii|ledermannii|lelyi|lentianum|letouzeyanum|leucorufescens|leucotrichum|libenii|lovemorei|luteum|lynesii|macrocarpum|manambovensis|mandrakense|manikense|mannii|mappia|maranguense|marlothii|marojejyense|marunguense|masukuense|megabotrys|mendesii|meyeri-johannis|michelii|micradenium|microdipterum|mildbraedii|milleri|molle|montagnacii|montanum|muhuluense|nanellum|natalitium|nigroglandulosum|niveum|njegerre|obovato-oblongum|odontadenium|oleraceum|omburense|ornatum|ouakense|overlaetii|oxyphyllum|pachyanthum|pachypus|pannosum|passargei|paucidentatum|pendulum|perforatum|pobeguinianum|princeae|pruriens|pseudoburgeri|pseudonjegerre|pseudorhodesiae|pseudosesquipedale|pseudoupembaense|puberulum|pumilum|quinatum|rhodesiae|richardsiae|rivae|robsonii|robynsii|roseiglandulosum|rotundistipulatum|ruacanense|rubroglandulosum|rubromarginatum|rubrosetosum|rupicola|rutilans|sakalavense|sambiranense|sanctuarium-selousii|sarcospathulum|saxicola|schimperi|schlechteri|schliebenii|segmentatum|seitzianum|serpens|sessilifolium|setosum|shinyangense|simplicifolium|simulans|sokodense|spinosopilosum|stefanianum|stegosaurus|stenolobum|stipulaceum|strigosum|subciliatum|sulcatum|taborense|tenuissimum|ternatum|thomasii|tisserantii|trachyphyllum|trilobatum|tsaratananensis|ukerewense|urophyllum|uter|uwanda|vandenbergheae|vandenbrandeanum|vanderbenii|vanmeelii|vezensis|villosicaule|villosum|violaceoglandulosum|viscosum|vogelii|vollesenii|waterlotii|wilmsii|wittei|woodii|zanzibaricum|zechianum|zimmermannii|zombense"],
+    "Fockea": ["Wikipédia", "angustifolia|capensis|comaru|edulis|multiflora|sinuata"],
+    "Tylecodon": ["Wikipédia", "albiflorus|aridimontanus|atropurpureus|aurusbergensis|bayeri|buchholzianus|cacaliodes|decipiens|ellaphieae|faucium|fragilis|grandiflorus|hallii|hirtifolius|kritzingeri|leucothrix|occultans|paniculatus|pearsonii|pusillus|pygmaeus|racemosus|reticulatus|rubrovenosus|schaeferianus|similis|singularis|stenocaulis|striatus|suffultus|sulphureus|tenuis|tomosus|tuberosus|ventricosus|viridiflorus|wallichii"],
+    "Beaucarnea": ["Wikipédia", "compacta|glassiana|goldmanii|gracilis|guatemalensis|hiriartiae|hookeri|olsonii|pliabilis|purpusii|recurvata|sanctomariana|stricta"],
+    "Fouquieria": ["Wikipédia", "burragei|columnaris|diguetii|fasciculata|formosa|leonilae|macdougallii|ochoterenae|purpusii|shrevei|splendens"],
+    "Bursera": ["Wikipédia (liste partielle, sur une centaine d'espèces)", "aloexylon|arida|aptera|aromatica|attenuata|aspleniifolia|bicolor|biflora|bipinnata|bolivarii|bonetii|cerasifolia|chemapodicta|cinerea|citronella|compacta|copallifera|coyucensis|crenata|cuneata|denticulata|discolor|diversifolia|epinnata|excelsa|fagaroides|filicifolia|fragrantissima|fragilis|galeottiana|glabrifolia|grandifolia|graveolens|heliae|heteresthes|hindsiana|hintonii|hollickii|infernidialis|instabilis|isthmica|kerberi|krusei|lancifolia|laurihuertae|laxiflora|leptophloeos|linanoe|longipes|lunanii|macvaughiana|malacophylla|medranoana|microphylla|mirandae|morelensis|multifolia|multijuga|nesopola|occulta|palaciosii|palmeri|penicillata|ribana|ruticola|rzedowskii|sarcopoda|sarukhanii|schlechtendalii|simaruba|staphyleoides|stenophylla|submoniliformis|suntui|tecomaca|tomentosa|tonkinensis|trifoliolata|trimera|vazquezyanesii|vejar-vazquezii|velutina|xochipalensis"],
+}
 export const GENRES: Genre[] = D.map(([n, c, p, zone, pays, note]) => ({ n, c, zone, note, pays: pays.split("|"), pts: p.split(";").map((x) => x.split(",").map(Number) as [number, number]) }))
 
 const CONTINENTS: [string, string[]][] = [
@@ -509,7 +537,7 @@ function useInat(nom: string | null) {
     return nom ? cache.get(nom) : undefined
 }
 
-function Especes({ n, l, q }: { n: string; l: [string, number, number, string]; q: string }) {
+function Especes({ n, l, q, source }: { n: string; l: [string, number, number, string]; q: string; source?: string }) {
     const [ref, nb, obs, liste] = l
     const sp = liste ? liste.split("|") : []
     const [ouvert, setOuvert] = React.useState(false)
@@ -518,10 +546,10 @@ function Especes({ n, l, q }: { n: string; l: [string, number, number, string]; 
     return (
         <div style={{ marginTop: 16, borderTop: "1px solid rgba(29,22,18,0.16)", paddingTop: 12 }}>
             <button onClick={() => setOuvert((o) => !o)} aria-expanded={montrer} style={{ all: "unset", cursor: "pointer", display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 15 }}><strong style={{ fontWeight: 600 }}>{nb}</strong> espèces et sous-espèces selon J. Lodé</span>
+                <span style={{ fontSize: 15 }}><strong style={{ fontWeight: 600 }}>{nb}</strong> {source ? (liste.includes(" subsp. ") ? "espèces et sous-espèces" : "espèces") : "espèces et sous-espèces selon J. Lodé"}</span>
                 <svg width="12" height="12" viewBox="0 0 12 12" style={{ flex: "none", transform: montrer ? "rotate(180deg)" : "none", transition: "transform .2s" }}><path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
             </button>
-            <div style={{ fontSize: 12.5, opacity: 0.6, marginTop: 3 }}>Taxonomie des Cactaceae, {ref}{obs ? " · genre observé par l’auteur dans la nature" : ""}</div>
+            <div style={{ fontSize: 12.5, opacity: 0.6, marginTop: 3 }}>{source ? "Liste : " + source : `Taxonomie des Cactaceae, ${ref}${obs ? " · genre observé par l’auteur dans la nature" : ""}`}</div>
             {montrer && (
                 <div style={{ columnWidth: 170, columnGap: 18, marginTop: 10, maxHeight: 300, overflowY: "auto", paddingRight: 4 }}>
                     {sp.map((e) => {
@@ -560,7 +588,7 @@ export default function CarteMonde(props) {
     const infos = useInat(sel)
     const etroit = w < 760
     const qq = sansAccent(q.trim())
-    const especes = (n: string) => (LODE[n]?.[3] ? LODE[n][3].split("|") : [])
+    const especes = (n: string) => (LODE[n]?.[3] ? LODE[n][3].split("|") : AUTRES[n] ? AUTRES[n][1].split("|") : [])
     const espTrouvee = (g: Genre) => (qq.length >= 3 ? especes(g.n).find((e) => sansAccent(g.n + " " + e).includes(qq) || sansAccent(e).includes(qq)) : undefined)
     const correspond = (g: Genre) => !qq || sansAccent(g.n).includes(qq) || g.pays.some((p) => sansAccent(p).includes(qq)) || sansAccent(g.zone).includes(qq) || !!espTrouvee(g)
     const visibles = GENRES.filter((g) => (cat === "Tous" || g.c === cat) && correspond(g))
@@ -691,6 +719,7 @@ export default function CarteMonde(props) {
                     <div style={{ fontSize: 14, marginTop: 4, lineHeight: 1.5, opacity: 0.75 }}>{g.pays.join(", ")}</div>
                     {g.note && <p style={{ fontSize: 16, lineHeight: 1.6, margin: "14px 0 0" }}>{g.note}</p>}
                     {LODE[g.n] && <Especes n={g.n} l={LODE[g.n]} q={qq} />}
+                    {!LODE[g.n] && AUTRES[g.n] && <Especes n={g.n} l={["", AUTRES[g.n][1].split("|").length, 0, AUTRES[g.n][1]]} source={AUTRES[g.n][0]} q={qq} />}
                     <div style={{ marginTop: 18 }}>
                         {infos === undefined && <div style={{ aspectRatio: "4 / 3", background: "rgba(29,22,18,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, opacity: 0.7 }}>Chargement depuis iNaturalist…</div>}
                         {infos === "erreur" && <div style={{ fontSize: 13, opacity: 0.65 }}>iNaturalist ne répond pas pour le moment.</div>}
@@ -768,7 +797,7 @@ export default function CarteMonde(props) {
                     </div>
                 )
             })}
-            <div style={{ borderTop: `1px solid rgba(29,22,18,0.22)`, paddingTop: 12, fontSize: 12, opacity: 0.6, lineHeight: 1.5 }}>Aires d'origine simplifiées. Liste des cactus : index de Joël Lodé, Taxonomie des Cactaceae (vol. 3 à 6). Photos et observations : iNaturalist (auteurs et licences indiqués sous chaque photo). Fond de carte : Natural Earth.</div>
+            <div style={{ borderTop: `1px solid rgba(29,22,18,0.22)`, paddingTop: 12, fontSize: 12, opacity: 0.6, lineHeight: 1.5 }}>Aires d'origine simplifiées. Liste des cactus : index de Joël Lodé, Taxonomie des Cactaceae (vol. 3 à 6). Mésembs et caudex : Plants of the World Online (Kew) et Wikipédia. Photos et observations : iNaturalist (auteurs et licences indiqués sous chaque photo). Fond de carte : Natural Earth.</div>
         </div>
     )
 
