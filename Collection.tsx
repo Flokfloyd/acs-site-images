@@ -71,10 +71,10 @@ const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
     collection: [
         { k: "espece", w: 270, t: "Espèce", v: (p) => <NomEspece p={p} />, tri: (p) => p.espece },
         { k: "code", w: 72, t: "N°", v: (p) => p.code },
-        { k: "origine", w: 210, t: "Origine", v: (p) => p.origine },
+        { k: "origine", w: 190, t: "Origine", v: (p) => p.origine },
         { k: "n_collecte", w: 110, t: "N° collecte", v: (p) => p.n_collecte },
         { k: "exposition", w: 112, t: "Exposition", v: (p) => expoAff(p.exposition) },
-        { k: "substrat", w: 150, t: "Substrat", v: (p) => subAff(p.substrat) },
+        { k: "substrat", w: 178, t: "Substrat", v: (p) => subAff(p.substrat) },
         { k: "t_min", w: 72, t: "T min", v: (p) => (p.t_min != null ? `${p.t_min} °C` : ""), tri: (p) => p.t_min ?? 99 },
         { k: "arrosage", w: 92, t: "Eau", v: (p) => eauAff(p.arrosage) },
         { k: "semis", w: 100, t: "Semis", v: (p) => p.semis, tri: (p) => cleDate(p.semis) },
@@ -92,7 +92,7 @@ const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
         { k: "methode", w: 96, t: "Méthode", v: (p) => p.methode },
         { k: "reference", w: 130, t: "Réf.", v: (p) => p.reference },
         { k: "n_collecte", w: 110, t: "N° collecte", v: (p) => p.n_collecte },
-        { k: "origine", w: 210, t: "Localisation", v: (p) => p.origine },
+        { k: "origine", w: 190, t: "Localisation", v: (p) => p.origine },
         { k: "fournisseur", w: 140, t: "Producteur", v: (p) => p.fournisseur },
         { k: "code", w: 72, t: "N°", v: (p) => p.code },
     ],
@@ -101,8 +101,8 @@ const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
         { k: "t_min", w: 72, t: "T min", v: (p) => (p.t_min != null ? `${p.t_min} °C` : "—"), tri: (p) => p.t_min ?? 99 },
         { k: "exposition", w: 112, t: "Exposition", v: (p) => expoAff(p.exposition) },
         { k: "arrosage", w: 92, t: "Eau", v: (p) => eauAff(p.arrosage) },
-        { k: "substrat", w: 150, t: "Substrat", v: (p) => subAff(p.substrat) },
-        { k: "origine", w: 210, t: "Origine", v: (p) => p.origine },
+        { k: "substrat", w: 178, t: "Substrat", v: (p) => subAff(p.substrat) },
+        { k: "origine", w: 190, t: "Origine", v: (p) => p.origine },
     ],
 }
 
