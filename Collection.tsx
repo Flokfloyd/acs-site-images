@@ -140,6 +140,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const [limite, setLimite] = React.useState(200)
     const [aide, setAide] = React.useState(false)
     const [etq, setEtq] = React.useState(false)
+    const [cmd, setCmd] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(900)
     const etroit = w < 720
@@ -285,13 +286,15 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     {vue !== "echanges" && <button style={bouton()} onClick={() => setEdit(nouvelle())}>{vue === "semis" ? "Nouveau semis" : "Ajouter une plante"}</button>}
                     <label style={{ ...bouton(false), display: "inline-flex", alignItems: "center" }}>Importer Excel<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = "" }} /></label>
                     <button style={bouton(false)} onClick={exporter} disabled={!plantes.length}>Exporter Excel</button>
-                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setAide(false) }} aria-expanded={etq}>Étiquettes</button>}
+                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setAide(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
+                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setCmd((x) => !x); setEtq(false); setAide(false) }} aria-expanded={cmd}>Importer une commande</button>}
                     <button style={{ ...bouton(false), border: "none", textDecoration: "underline", textUnderlineOffset: 3, paddingLeft: 6, paddingRight: 6 }} onClick={() => setAide((a) => !a)} aria-expanded={aide}>Comment importer sa collection ?</button>
                 </div>
                 {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
                 {msg && <p style={{ margin: "12px 0 0", fontSize: 14, color: /impossible|Erreur|Aucune/.test(msg) ? C.danger : C.accent }}>{msg}</p>}
             </div>
 
+            {cmd && <PanneauCommande plantes={plantes} genres={genres} client={client} email={email} auteur={auteur} onFermer={(ok) => { setCmd(false); if (ok) { charger(); setVue("semis"); setMsg(ok) } }} />}
             {etq && vue !== "echanges" && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} onFermer={() => setEtq(false)} />}
             {imp && <ApercuImport imp={imp} onAnnuler={() => setImp(null)} onValider={validerImport} />}
             {edit && <Fiche p={edit} genres={genres} client={client} email={email} auteur={auteur} onFermer={(maj) => { setEdit(null); if (maj) charger() }} />}
@@ -533,6 +536,79 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
                 <button style={bouton(false)} onClick={() => onFermer(false)}>Annuler</button>
                 {f.id && <button style={bouton(false)} onClick={dupliquer} title="Créer une nouvelle fiche à partir de celle-ci">Dupliquer</button>}
                 {f.id && <button style={{ ...bouton(false), color: C.danger, borderColor: C.danger, marginLeft: "auto" }} onClick={supprimer}>Supprimer</button>}
+            </div>
+        </div>
+    )
+}
+
+// ---------- import d’une commande de graines ----------
+function PanneauCommande({ plantes, genres, client, email, auteur, onFermer }: { plantes: Plante[]; genres: Genres; client: any; email: string; auteur: string; onFermer: (ok?: string) => void }) {
+    const auj = new Date().toLocaleDateString("fr-FR")
+    const [texte, setTexte] = React.useState("")
+    const [force, setForce] = React.useState<"" | (typeof FOURNISSEURS)[number]>("")
+    const [date, setDate] = React.useState(auj)
+    const [methode, setMethode] = React.useState("Sachet")
+    const [exclus, setExclus] = React.useState<Set<number>>(new Set())
+    const [err, setErr] = React.useState("")
+    const [occupe, setOccupe] = React.useState(false)
+    const res = React.useMemo(() => (texte.trim() ? lireCommande(texte, force) : null), [texte, force])
+    const prochain = Math.max(0, ...plantes.filter((p) => p.statut === "semis").map((p) => Number(p.code)).filter((n) => Number.isFinite(n))) + 1
+    const retenus = res ? res.articles.filter((_, i) => !exclus.has(i)) : []
+    const creer = async () => {
+        if (!res || !retenus.length) return
+        if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(date.trim())) return setErr("Date du semis au format JJ/MM/AAAA.")
+        setOccupe(true); setErr("")
+        const lignes = retenus.map((a, i) => {
+            const g = genreDe(a.nom), info = genres[g]
+            return {
+                email: email.toLowerCase(), auteur, espece: a.nom, genre: g || null, type: info?.[0] || (res.fournisseur === "Cono’s Paradise" ? "Aizoacées" : "Cactus"),
+                statut: "semis", code: String(prochain + i), origine: a.loc || null, n_collecte: a.collect || null, reference: a.ref || null,
+                fournisseur: res.fournisseur, semis: date.trim(), methode: methode || null, nb_graines: a.qte || null, substrat: 6,
+                t_min: info?.[2]?.[0] ?? null, exposition: normExpo(info?.[2]?.[2]) || null, arrosage: info?.[2]?.[3] || null, exemplaires: 1,
+            }
+        })
+        const { error } = await client.from("plantes").insert(lignes)
+        setOccupe(false)
+        if (error) setErr(error.message)
+        else onFermer(`Semis du ${date.trim()} créé : ${lignes.length} lot${lignes.length > 1 ? "s" : ""} (n° ${prochain} à ${prochain + lignes.length - 1}).`)
+    }
+    return (
+        <div style={{ ...box, border: `1px solid ${C.accent}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Importer une commande de graines</h3>
+                <button onClick={() => onFermer()} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Copiez le texte de la facture ou du courriel de commande (ADBLPS, SuccSeed, Köhres, Cono’s Paradise, Uhlig) et collez-le ici : un lot de semis est créé par graine commandée, numéroté à la suite de vos semis.</p>
+            <textarea value={texte} onChange={(e) => { setTexte(e.target.value); setExclus(new Set()) }} rows={8} placeholder="Collez ici le texte de la commande…" style={{ ...champ, marginTop: 12, resize: "vertical", fontFamily: "ui-monospace, Menlo, monospace", fontSize: 13 }} />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 190px), 1fr))", gap: 12, marginTop: 12 }}>
+                <div><label style={etiquette}>Fournisseur</label><select value={force} onChange={(e) => setForce(e.target.value as any)} style={champ}><option value="">{res ? `Détecté : ${res.fournisseur}` : "Détection automatique"}</option>{FOURNISSEURS.map((f) => <option key={f} value={f}>{f}</option>)}</select></div>
+                <div><label style={etiquette}>Date du semis</label><input value={date} onChange={(e) => setDate(e.target.value)} placeholder="JJ/MM/AAAA" style={champ} /></div>
+                <div><label style={etiquette}>Méthode</label><input value={methode} onChange={(e) => setMethode(e.target.value)} style={champ} /></div>
+            </div>
+            {res && (
+                <div style={{ marginTop: 14, border: `1px solid ${C.line}`, maxHeight: 300, overflow: "auto" }}>
+                    {res.articles.length === 0 ? <p style={{ margin: 0, padding: 12, color: C.danger, fontSize: 14 }}>Aucune graine reconnue. Vérifiez le fournisseur ou collez le texte complet de la commande.</p> : (
+                        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 640 }}>
+                            <thead><tr>{["", "N°", "Espèce", "Graines", "Réf.", "N° collecte", "Localité"].map((t) => <th key={t} style={{ ...th, cursor: "default" }}>{t}</th>)}</tr></thead>
+                            <tbody>{res.articles.map((a, i) => {
+                                const pris = !exclus.has(i), n = pris ? prochain + res.articles.slice(0, i).filter((_, j) => !exclus.has(j)).length : null
+                                return (
+                                    <tr key={i} style={{ opacity: pris ? 1 : 0.45 }}>
+                                        <td style={td}><input type="checkbox" style={coche} checked={pris} onChange={() => setExclus((x) => { const s = new Set(x); s.has(i) ? s.delete(i) : s.add(i); return s })} /></td>
+                                        <td style={td}>{n ?? ""}</td>
+                                        <td style={{ ...td, whiteSpace: "normal" }}><NomEspece p={{ espece: a.nom }} /></td>
+                                        <td style={td}>{a.qte}</td><td style={td}>{a.ref}</td><td style={td}>{a.collect}</td><td style={{ ...td, whiteSpace: "normal" }}>{a.loc}</td>
+                                    </tr>
+                                )
+                            })}</tbody>
+                        </table>
+                    )}
+                </div>
+            )}
+            {err && <p style={{ margin: "12px 0 0", color: C.danger, fontSize: 14 }}>{err}</p>}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
+                <button style={bouton()} onClick={creer} disabled={occupe || !retenus.length}>{occupe ? "Création…" : `Créer le semis (${retenus.length} lot${retenus.length > 1 ? "s" : ""})`}</button>
+                <button style={bouton(false)} onClick={() => onFermer()}>Annuler</button>
             </div>
         </div>
     )
@@ -1030,4 +1106,237 @@ ${svg}
         setTimeout(() => { try { w.focus(); w.print() } catch {} }, 300)
     })
     return true
+}
+
+// =====================================================================================
+// IMPORT DE COMMANDE DE GRAINES — d’après la macro IMPORT_COMMANDE (Florentin Guitton, LINAD 2026)
+// Fournisseurs : ADBLPS, SuccSeed, Köhres Kakteen, Cono’s Paradise, Uhlig Kakteen
+// =====================================================================================
+export type Article = { nom: string; ref: string; collect: string; qte: number; loc: string }
+export const FOURNISSEURS = ["ADBLPS", "SuccSeed", "Köhres Kakteen", "Cono’s Paradise", "Uhlig Kakteen"] as const
+type Four = (typeof FOURNISSEURS)[number]
+
+const ABRV: Record<string, string> = { "var.": "var.", "v.": "var.", "subsp.": "subsp.", "ssp.": "subsp.", "fma.": "fma.", "fa.": "fma.", "f.": "fma." }
+const maj1 = (m: string) => m.charAt(0).toUpperCase() + m.slice(1).toLowerCase()
+const espaces = (s: string) => s.replace(/\s+/g, " ").trim()
+const nettoyerCollect = (m: string) => espaces(m.replace(/[\[\]]/g, "").replace(/_/g, " "))
+const normaliserAbrev = (t: string) => espaces(` ${t} `.replace(/ v\. /g, " var. ").replace(/ ssp\. /g, " subsp. ").replace(/ fa?\. /g, " fma. "))
+
+export function detecterFournisseur(lignes: string[]): Four {
+    const sc: Record<Four, number> = { ADBLPS: 0, SuccSeed: 0, "Köhres Kakteen": 0, "Cono’s Paradise": 0, "Uhlig Kakteen": 0 }
+    for (const l of lignes.slice(0, 80)) {
+        if (/ADBLPS/.test(l)) sc.ADBLPS += 5
+        if (/\[[^\]]*\/[^\]]*\]/.test(l) && !/CITES/.test(l)) sc.ADBLPS += 1
+        if (/^[A-Z]{5,}\s/.test(l)) sc.ADBLPS += 1
+        if (/SuccSeed|succseed\.com/i.test(l)) sc.SuccSeed += 5
+        if (/CITES/.test(l)) sc.SuccSeed += 2
+        if (/Vat (ex|in)cl/i.test(l)) sc.SuccSeed += 3
+        if (/K(ö|oe?)hres/i.test(l)) sc["Köhres Kakteen"] += 5
+        if (/Tri:Portion|Menge:Morceau/i.test(l)) sc["Köhres Kakteen"] += 3
+        if (/Cono/i.test(l)) sc["Cono’s Paradise"] += 5
+        if (/\s[×x]\s*C\w*,\s*\d+\s*S\s*:/.test(l)) sc["Cono’s Paradise"] += 3
+        if (/uhlig/i.test(l)) sc["Uhlig Kakteen"] += 5
+        if (/\d+\s*Graines\d{5,6}/.test(l)) sc["Uhlig Kakteen"] += 3
+        if (/\(Graines\)/.test(l)) sc["Uhlig Kakteen"] += 2
+    }
+    return (Object.entries(sc).sort((a, b) => b[1] - a[1])[0][0] as Four)
+}
+
+// ---------- ADBLPS : « GYMNOCALYCIUM affine RH_3609 > San Francisco [RH/16] » puis « 20 graines »
+function parserADBLPS(lignes: string[]): Article[] {
+    const out: Article[] = []
+    let cur: Article | null = null, epuise = false
+    const pousser = () => { if (cur && cur.qte > 0 && !epuise) out.push(cur) }
+    for (const brut of lignes) {
+        const l = brut.trim()
+        if (!l) continue
+        const m1 = l.split(" ")[0]
+        if (m1.length >= 5 && /^[A-Z]+$/.test(m1)) {
+            pousser(); epuise = /[ée]puis[ée]/i.test(l)
+            let t = l.replace(/\s*-\s*[ÉEé]puis[ée]?/gi, "")
+            let ref = ""
+            t = t.replace(/\[([^\]]+)\]/g, (x, c) => (c.includes("/") && c.length > 3 ? ((ref = `[${c}]`), "") : x))
+            let loc = ""
+            const gt = t.indexOf(" > ")
+            if (gt > 0) { loc = t.slice(gt + 3).trim(); t = t.slice(0, gt) }
+            const mots = espaces(t).split(" ")
+            let collect = ""
+            for (let j = mots.length - 1; j > 0; j--) {
+                const s = mots[j].replace(/[\[\]]/g, "")
+                if (/[A-Za-z]/.test(s) && /\d/.test(s)) { collect = nettoyerCollect(mots[j]); mots.splice(j, 1); break }
+            }
+            mots[0] = maj1(mots[0])
+            const nom = mots.map((m, i) => (i && ["SSP.", "VAR.", "FMA.", "FA."].includes(m) ? (m === "SSP." ? "subsp." : m === "VAR." ? "var." : "fma.") : m)).join(" ")
+            cur = { nom: normaliserAbrev(nom), ref, collect, qte: 0, loc }
+            continue
+        }
+        if (!cur) continue
+        if (/graines/i.test(l)) { const q = parseFloat(l); if (q > 0) cur.qte = q; continue }
+        if (/puis/i.test(l) || (l === "0" && cur.qte > 0)) { epuise = true; continue }
+    }
+    pousser()
+    return out
+}
+
+// ---------- SuccSeed : « Ariocarpus retusus SB 310 (Cuesta la Muralla, COA) », 20 graines par sachet
+function codeCollect(m: string, suivant?: string, minMaj = 2) {
+    const n = (m.match(/^[A-Z]+/) || [""])[0].length
+    if (n < minMaj || n > 4) return false
+    const suite = m.slice(n)
+    return suite === "" ? !!suivant && /^\d/.test(suivant) && !suivant.includes(",") : /^[\d.]/.test(suite)
+}
+function ligneSuccSeed(l: string): Article {
+    let t = l.trim(), loc = ""
+    const o = t.indexOf("("), c = t.indexOf(")")
+    if (o > 0 && c > o) { loc = t.slice(o + 1, c).trim(); t = t.slice(0, o).trim() }
+    const ci = t.indexOf("CITES"); if (ci > 0) t = t.slice(0, ci).trim()
+    const mots = t.split(" ").filter(Boolean)
+    let fin = mots.length, collect = "", avant = 0
+    for (let i = 0; i < mots.length; i++) {
+        const m = mots[i]
+        if (ABRV[m] || m.startsWith("'")) { avant++; continue }
+        if (avant >= 1 && codeCollect(m, mots[i + 1])) { collect = nettoyerCollect(mots.slice(i).join(" ")); fin = i; break }
+        avant++
+    }
+    return { nom: normaliserAbrev(mots.slice(0, fin).join(" ")), ref: "", collect, qte: 20, loc }
+}
+function parserSuccSeed(lignes: string[]): Article[] {
+    const out: Article[] = []
+    let dans = false
+    for (const brut of lignes) {
+        const l = brut.trim(); if (!l) continue
+        if (/Quantity/.test(l) && /Article/.test(l)) { dans = true; continue }
+        if (/Postage|ORDERED BY|Total/.test(l)) { dans = false; continue }
+        const r = l.match(/^\d+\s+(\d{4,6})\s+(.*)$/)
+        if (dans && r && /^[A-Z][a-z]+ [a-z]/.test(r[2])) { const a = ligneSuccSeed(r[2]); a.ref = r[1]; out.push(a) }
+        else if (dans && /^[A-Z][a-z]+ [a-z]/.test(l)) out.push(ligneSuccSeed(l))
+    }
+    if (out.length) return out
+    let ref = ""
+    for (const brut of lignes) {
+        const l = brut.trim(); if (!l) continue
+        if (/^\d{4,6}$/.test(l)) { ref = l; continue }
+        if (/Vat|Postage|CITES|SuccSeed|NORDEA|IBAN/i.test(l)) continue
+        if (/^[A-Z][a-z]+ [a-z]/.test(l)) { const a = ligneSuccSeed(l); a.ref = ref; out.push(a); ref = "" }
+    }
+    return out
+}
+
+// ---------- Köhres : « 1 x » / « TITANOPSIS calcarea 10K JAA 2102 » / « 6358 1,50 EUR … »
+function nomKohres(ligne: string): [string, string, string] {
+    let t = ligne.trim()
+    for (const n of [" rote Bluete", " rote Blüte", " weisse Bluete", " weisse Blüte", " gelbe Bluete", " gelbe Blüte", " rosa Bluete", " rosa Blüte", " orange Bluete", " grosse Form", " kleine Form", " Mischung", " Riesen"]) t = t.split(n).join("")
+    t = espaces(t.replace(/\b\d+K\b/g, ""))
+    let syn = ""
+    const tiret = t.indexOf("-")
+    if (tiret > 0) {
+        const avant = t.slice(0, tiret), apres = t.slice(tiret + 1).trim(), p = apres.split(" ")[0]
+        if (/^[A-Z][A-Z]+$/.test(p)) {
+            if (avant.includes(" ")) { t = avant; syn = `(=${maj1(p)})` }
+            else {
+                const ms = apres.split(" "), k = ms.findIndex((m) => /^[a-z]/.test(m))
+                if (k >= 0) t = [avant, ...ms.slice(k)].join(" ")
+                else { t = avant; syn = `(=${maj1(p)})` }
+            }
+        }
+    }
+    const eg = t.indexOf("=")
+    if (eg > 0 && !syn) { syn = `(${t.slice(eg + 1).trim().split(" ")[0]})`; t = t.slice(0, eg).trim() }
+    const mots = t.split(" ").filter(Boolean), nom: string[] = []
+    let fini = false, collect = "", loc: string[] = []
+    for (let i = 0; i < mots.length; i++) {
+        const m = mots[i]
+        if (ABRV[m.toLowerCase()]) { if (!fini) nom.push(ABRV[m.toLowerCase()]); continue }
+        if (/^[a-z]/.test(m) && !fini) { nom.push(m); continue }
+        if (m.startsWith("'") && !fini) { nom.push(m); continue }
+        if (/^[A-Z]/.test(m) && nom.length >= 1) {
+            fini = true
+            if (!collect && codeCollect(m, mots[i + 1])) { collect = nettoyerCollect(m); if (mots[i + 1] && /^\d/.test(mots[i + 1]) && !/\d/.test(m)) { collect += " " + mots[i + 1]; i++ } continue }
+            loc.push(maj1(m)); continue
+        }
+        if (!nom.length) nom.push(maj1(m.split("-")[0]))
+    }
+    return [espaces(nom.join(" ") + (syn ? " " + syn : "")), collect, loc.join(" ")]
+}
+function parserKohres(lignes: string[]): Article[] {
+    const out: Article[] = []
+    let cur: Article | null = null, attend = false, fois = 1
+    for (const brut of lignes) {
+        const l = brut.trim(); if (!l) continue
+        const q = l.match(/^(\d{1,2})\s*[xX×]$/)
+        if (q) { if (cur) out.push(cur); cur = null; fois = Number(q[1]); attend = true; continue }
+        if (/^(tri:portion|menge:morceau)$/i.test(l)) continue
+        if (/EUR/.test(l)) { if (cur && !cur.ref) cur.ref = (l.split(" ").find((m) => /^\d{4,6}$/.test(m)) || ""); attend = false; continue }
+        if (/k(ö|oe?)hres|bestellung|rechnung|versand|gesamtsumme|mwst|datum/i.test(l)) continue
+        const g = l.split(" ")[0].split("-")[0]
+        if (attend && g.length >= 4 && /^[A-Z]+$/.test(g)) {
+            const [nom, collect, loc] = nomKohres(l)
+            const k = l.match(/\b(\d{1,3})K\b/)
+            cur = { nom, ref: "", collect, loc, qte: fois * (k ? Number(k[1]) : 20) }
+            attend = false
+        }
+    }
+    if (cur) out.push(cur)
+    return out
+}
+
+// ---------- Cono’s Paradise : « 1 × C36A, 20S: Lithops lesliei ssp. lesliei v. lesliei 'Albinica', € 2 »
+function parserCono(lignes: string[]): Article[] {
+    const out: Article[] = []
+    for (const brut of lignes) {
+        let t = brut.trim()
+        if (!/×|\sx\s/i.test(t) || !t.includes(": ")) continue
+        if (!/^[A-Z]/.test(t.slice(t.indexOf(": ") + 2).trim())) continue
+        const p = t.indexOf("×"); t = p >= 0 ? t.slice(p + 1).trim() : t.slice(t.toLowerCase().indexOf(" x ") + 3).trim()
+        const v = t.indexOf(","); if (v < 0) continue
+        const ref = t.slice(0, v).trim(); t = t.slice(v + 1).trim()
+        const c = t.indexOf(":"); if (c < 0) continue
+        const qte = Number(t.slice(0, c).replace(/s/gi, "").replace(/\s/g, "")) || 20
+        t = t.slice(c + 1).trim()
+        const e = t.indexOf("€")
+        if (e >= 0) { const av = t.slice(0, e); const dv = av.lastIndexOf(","); t = (dv > 0 ? t.slice(0, dv) : av).trim() }
+        out.push({ nom: normaliserAbrev(t), ref, collect: "", qte, loc: "" })
+    }
+    return out
+}
+
+// ---------- Uhlig : « Ferocactus chrysacanthus L010 Punta Norte,Isla Cedros,BajaCalifornia,Mexico(Graines) » puis « 20 Graines208717 »
+function nomUhlig(ligne: string): [string, string, string] {
+    let t = ligne.replace("(Graines)", "").replace(/CITES\s*not\s*outside\s*EU|CITES/g, "")
+    t = espaces(t).replace(/,?\s*\d+(-\d+)?\s*m\s*$/i, "").trim()
+    const mots = t.split(" "), nom: string[] = []
+    let fini = false, collect = "", loc: string[] = []
+    for (let i = 0; i < mots.length; i++) {
+        const m = mots[i]; if (!m) continue
+        if (ABRV[m.toLowerCase()]) { if (!fini) nom.push(ABRV[m.toLowerCase()]); continue }
+        if (m.startsWith("'") && !fini) { nom.push(m); continue }
+        if (/^[a-z]/.test(m) && !fini) { nom.push(m); continue }
+        if (!nom.length && /^[A-Z]/.test(m)) { nom.push(maj1(m)); continue }
+        if (nom.length >= 2) {
+            fini = true
+            if (!collect && codeCollect(m, mots[i + 1], 1)) { collect = nettoyerCollect(m); if (mots[i + 1] && /^\d/.test(mots[i + 1]) && !mots[i + 1].includes(",") && !/\d/.test(m)) { collect += " " + mots[i + 1]; i++ } continue }
+            loc.push(m.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/,/g, ", "))
+        }
+    }
+    return [nom.join(" "), collect, espaces(loc.join(" ")).replace(/[,\s]+$/, "").replace(/\s,/g, ",")]
+}
+function parserUhlig(lignes: string[]): Article[] {
+    const out: Article[] = []
+    let cur: [string, string, string] | null = null
+    for (const brut of lignes) {
+        const l = brut.trim(); if (!l) continue
+        if (/co[uû]ts de paiement|sous-total/i.test(l)) break
+        const q = l.match(/^(\d+)\s*Graines(\d*)/)
+        if (cur && q && !l.includes("(Graines)")) { out.push({ nom: cur[0], collect: cur[1], loc: cur[2], qte: Number(q[1]), ref: q[2] || "" }); cur = null; continue }
+        if (cur && !q) cur = null
+        if (l.includes("(Graines)")) cur = nomUhlig(l)
+    }
+    return out
+}
+
+export function lireCommande(texte: string, force?: Four | ""): { fournisseur: Four; articles: Article[] } {
+    const lignes = texte.replace(/\r/g, "").split("\n")
+    const fournisseur = force || detecterFournisseur(lignes)
+    const articles = fournisseur === "ADBLPS" ? parserADBLPS(lignes) : fournisseur === "Köhres Kakteen" ? parserKohres(lignes) : fournisseur === "Cono’s Paradise" ? parserCono(lignes) : fournisseur === "Uhlig Kakteen" ? parserUhlig(lignes) : parserSuccSeed(lignes)
+    return { fournisseur, articles: articles.filter((a) => a.nom && /^[A-Z][a-z]/.test(a.nom)) }
 }
