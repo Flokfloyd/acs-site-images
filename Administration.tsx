@@ -74,6 +74,7 @@ export default function Administration(props: { pageMembre: string }) {
 
     return wrap(
         <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <RappelsEnCours />
             {etroit ? (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
                     {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ ...small(), padding: "10px 8px", textAlign: "center", fontSize: 14, fontWeight: 600, background: onglet === k ? C.accent : "transparent", color: onglet === k ? C.accentDark : C.txt, borderColor: onglet === k ? C.accent : C.line }}>{t}</button>)}
@@ -99,7 +100,7 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "campagnes" && <Campagnes moi={email} ouverte={campagneOuverte} setOuverte={setCampagneOuverte} />}
             {onglet === "sondages" && <SondagesAdmin moi={email} ouvrirCampagne={ouvrirCampagne} />}
             {onglet === "galerie" && <GalerieAdmin />}
-            {onglet === "guide" && <GuideAdmin />}
+            {onglet === "guide" && <><GuideAdmin /><Editeur table="rappels_admin" ordre="a_partir_du" titre="Rappels de l’administration" champs={CHAMPS_RAPPEL} nouveau={() => ({ chaque_annee: false, fait: false })} resume={(r) => `${r.titre} · affiché dès le ${dateFr(r.a_partir_du)}${r.fait ? " · fait" : ""}`} /></>}
             {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
             <Sauvegarde />
@@ -139,6 +140,46 @@ const CHAMPS_ECR: Champ[] = [
     { k: "note", t: "Note", type: "textarea" },
 ]
 const CIBLES: [string, string][] = [["tous", "Tous les adhérents"], ["a_jour", "Adhérents à jour de cotisation"], ["retard", "Cotisation à renouveler"], ["bureau", "Membres du bureau"], ["evenement", "Inscrits à un événement"]]
+
+// ---------- Rappels : bandeau en haut de l’administration, visible tant que ce n’est pas fait ----------
+const CHAMPS_RAPPEL: Champ[] = [
+    { k: "titre", t: "Rappel", type: "text", requis: true },
+    { k: "details", t: "Ce qu’il faut faire", type: "textarea" },
+    { k: "echeance", t: "Échéance", type: "date" },
+    { k: "a_partir_du", t: "Afficher en haut de l’administration à partir du", type: "date", requis: true },
+    { k: "chaque_annee", t: "Revient chaque année (recréé automatiquement un an plus tard)", type: "bool" },
+    { k: "fait", t: "Fait", type: "bool" },
+]
+const plusUnAn = (d?: string | null) => { if (!d) return d; const [a, m, j] = d.split("-").map(Number); return `${a + 1}-${String(m).padStart(2, "0")}-${String(j).padStart(2, "0")}` }
+function RappelsEnCours() {
+    const client = sb()!
+    const [l, setL] = React.useState<any[]>([])
+    const charger = React.useCallback(() => {
+        const auj = new Date().toISOString().slice(0, 10)
+        client.from("rappels_admin").select("*").eq("fait", false).lte("a_partir_du", auj).order("echeance").then(({ data }: any) => setL(data ?? []))
+    }, [])
+    React.useEffect(() => { charger() }, [charger])
+    const fait = async (r: any) => {
+        if (!window.confirm(`Marquer comme fait : « ${r.titre} » ?`)) return
+        await client.from("rappels_admin").update({ fait: true, fait_le: new Date().toISOString() }).eq("id", r.id)
+        if (r.chaque_annee) await client.from("rappels_admin").insert({ titre: r.titre, details: r.details, echeance: plusUnAn(r.echeance), a_partir_du: plusUnAn(r.a_partir_du), chaque_annee: true })
+        charger()
+    }
+    if (!l.length) return null
+    return (
+        <div style={{ display: "grid", gap: 10 }}>
+            {l.map((r) => (
+                <div key={r.id} style={{ border: `2px solid #d9a441`, background: "rgba(217,164,65,0.12)", padding: "14px 18px", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, color: "#f3c86b" }}>À faire{r.echeance ? ` avant le ${dateFr(r.echeance)}` : ""} : {r.titre}</div>
+                        {r.details && <div style={{ fontSize: 14, color: C.txt, marginTop: 4, lineHeight: 1.55 }}>{r.details}</div>}
+                    </div>
+                    <button style={btn()} onClick={() => fait(r)}>C’est fait</button>
+                </div>
+            ))}
+        </div>
+    )
+}
 
 // ---------- Galerie ----------
 function GalerieAdmin() {

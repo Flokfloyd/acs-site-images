@@ -807,3 +807,25 @@ alter table public.produits add column if not exists variantes text;
 
 -- 20. Galerie : petite version (800 px) de chaque photo pour les vignettes
 alter table public.photos add column if not exists vignette_url text;
+
+-- 21. Rappels de l'administration : bandeau en haut de l'admin, visible tant que ce n'est pas fait
+create table if not exists public.rappels_admin (
+  id           uuid primary key default gen_random_uuid(),
+  titre        text not null check (length(titre) <= 200),
+  details      text check (details is null or length(details) <= 2000),
+  echeance     date,
+  a_partir_du  date not null,
+  chaque_annee boolean not null default false,
+  fait         boolean not null default false,
+  fait_le      timestamptz,
+  cree_le      timestamptz not null default now()
+);
+alter table public.rappels_admin enable row level security;
+drop policy if exists rappels_admin_gestion on public.rappels_admin;
+create policy rappels_admin_gestion on public.rappels_admin for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.rappels_admin to authenticated;
+insert into public.rappels_admin (titre, details, echeance, a_partir_du, chaque_annee)
+select 'Renouveler la remise association de Framer (formule Basic)',
+       'L''année gratuite de la formule Basic se termine le 22 novembre 2027. Répondre au fil d''e-mail avec Sam (support@framer.com) pour redemander une année gratuite, avec le justificatif de l''association (loi 1901). En attendant leur réponse, couper le renouvellement automatique dans Framer › Settings › Plans pour ne pas être prélevé.',
+       '2027-11-22', '2027-10-22', true
+where not exists (select 1 from public.rappels_admin where titre like 'Renouveler la remise association de Framer%');
