@@ -2,7 +2,7 @@
 // Seules les photos cochées « Page d'accueil » sont publiques ; les autres sont réservées aux adhérents.
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
-import { sb } from "./AcsBase.tsx"
+import { sb, imgLeger } from "./AcsBase.tsx"
 
 export type Photo = { id: string; image_url: string; legende?: string | null; album?: string | null; accueil?: boolean; ordre?: number }
 
@@ -62,7 +62,7 @@ function Vignette({ p, onClick, hauteur }: { p: Photo; onClick: () => void; haut
     return (
         <button onClick={onClick} onMouseEnter={() => setSur(true)} onMouseLeave={() => setSur(false)} aria-label={p.legende ? `Agrandir : ${p.legende}` : "Agrandir la photo"}
             style={{ all: "unset", cursor: "zoom-in", position: "relative", display: "block", height: hauteur, overflow: "hidden", background: "#2e241e" }}>
-            <img src={p.image_url} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: sur ? "scale(1.04)" : "none", transition: "transform .5s ease" }} />
+            <img {...imgLeger(p.image_url)} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: sur ? "scale(1.04)" : "none", transition: "transform .5s ease" }} />
             {p.legende && (
                 <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "56px 16px 16px", background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%)", color: "#f6f0e6", fontFamily: sans, fontWeight: 600, fontSize: 15, textAlign: "center" }}>{p.legende}</div>
             )}

@@ -1,7 +1,7 @@
 // BoutiqueLive.tsx — catalogue de la boutique, alimenté par les administrateurs (onglet Boutique de l’administration)
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
-import { sb } from "./AcsBase.tsx"
+import { sb, imgLeger } from "./AcsBase.tsx"
 
 type Produit = { id: string; nom: string; categorie?: string; prix: number; description?: string; image_url?: string; stock?: number | null }
 
@@ -31,7 +31,7 @@ export default function BoutiqueLive(props: { email: string; accent: string; nom
                 const epuise = (p.stock != null && p.stock <= 0) || !(Number(p.prix) > 0)
                 return (
                     <div key={p.id} style={{ background: sombre ? "transparent" : "#fbf7f0", border: sombre ? "none" : "1px solid rgba(29,22,18,0.12)", padding: sombre ? 0 : 24, display: "flex", flexDirection: "column", gap: 12 }}>
-                        {p.image_url ? <img src={p.image_url} alt="" loading="lazy" style={{ width: "100%", height: sombre ? 240 : 170, objectFit: "cover", display: "block" }} /> : <div style={{ width: "100%", height: sombre ? 240 : 170, background: sombre ? "rgba(246,240,230,0.06)" : "rgba(29,22,18,0.06)" }} />}
+                        {p.image_url ? <img {...imgLeger(p.image_url, "(max-width: 640px) 100vw, 300px")} alt="" loading="lazy" style={{ width: "100%", height: sombre ? 240 : 170, objectFit: "cover", display: "block" }} /> : <div style={{ width: "100%", height: sombre ? 240 : 170, background: sombre ? "rgba(246,240,230,0.06)" : "rgba(29,22,18,0.06)" }} />}
                         {p.categorie && <span style={{ font: "600 11px Poppins, sans-serif", letterSpacing: "0.1em", textTransform: "uppercase", color: sombre ? "#b9d4a8" : "#5b7a4a" }}>{p.categorie}</span>}
                         <h3 style={{ font: "600 22px/1.2 Fraunces, serif", color: encre, margin: 0 }}>{p.nom}</h3>
                         {p.description && <p style={{ font: "400 15px/1.6 Poppins, sans-serif", color: texte, margin: 0, flex: 1 }}>{p.description}</p>}
