@@ -88,12 +88,7 @@ function ProchainPublic({ lienSalon, boutonsSeuls }: { lienSalon: string; bouton
     }, [])
     const agenda = e.date_debut ? { titre: e.titre, jour: e.date_debut, jourFin: e.date_fin || undefined, lieu: e.lieu || "Bédée (35)", details: [e.heure, e.description, "https://acs-armorique-cactus-succulentes.framer.website" + lienSalon].filter(Boolean).join("\n") } : null
     const bouton: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 18px", border: `1px solid ${C.line}`, color: C.txt, textDecoration: "none", background: "transparent", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 0 }
-    if (boutonsSeuls) return agenda ? (
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", ...font }}>
-            <a href={lienGoogle(agenda)} target="_blank" rel="noopener" style={{ ...bouton, padding: "10px 16px", fontSize: 14 }}>+ Ajouter à Google Agenda</a>
-            <button style={{ ...bouton, padding: "10px 16px", fontSize: 14 }} onClick={() => telechargerIcs([agenda], "salon-acs.ics")}>Apple, Outlook…</button>
-        </div>
-    ) : null
+    if (boutonsSeuls) return agenda ? <ChoixAgenda agenda={agenda} /> : null
     return (
         <div style={{ width: "100%", minWidth: 0, color: C.txt, ...font }}>
             <div style={{ fontFamily: serif, fontSize: "clamp(30px, 5vw, 44px)", lineHeight: 1.1, fontWeight: 600, color: C.accent }}>{dateAffichee(e)}</div>
@@ -104,6 +99,36 @@ function ProchainPublic({ lienSalon, boutonsSeuls }: { lienSalon: string; bouton
                 {agenda && <button style={bouton} onClick={() => telechargerIcs([agenda], "salon-acs.ics")}>Apple, Outlook…</button>}
                 {lienSalon && <a href={lienSalon} style={{ ...bouton, border: "none", color: C.accent, paddingLeft: 4 }}>Tout savoir sur le salon →</a>}
             </div>
+        </div>
+    )
+}
+
+// lien d'ajout à Outlook (outlook.com / Microsoft 365, version web)
+function lienOutlook(e: { titre: string; jour: string; jourFin?: string; lieu?: string; details?: string }) {
+    const fin = (() => { const x = new Date(e.jourFin || e.jour); x.setDate(x.getDate() + 1); return x.toISOString().slice(0, 10) })()
+    const p = new URLSearchParams({ path: "/calendar/action/compose", rru: "addevent", subject: e.titre, startdt: e.jour, enddt: fin, allday: "true" })
+    if (e.lieu) p.set("location", e.lieu)
+    if (e.details) p.set("body", e.details)
+    return "https://outlook.live.com/calendar/0/deeplink/compose?" + p.toString()
+}
+
+const IconeAgenda = () => (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ flex: "none" }}><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18M12 14v4M10 16h4" /></svg>
+)
+
+// bouton « Ajouter à l'agenda », puis choix Google / Outlook / Apple
+function ChoixAgenda({ agenda }: { agenda: any }) {
+    const [ouvert, setOuvert] = React.useState(false)
+    const base: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, boxSizing: "border-box", height: 48, padding: "0 20px", border: `1px solid rgba(246,240,230,0.45)`, color: C.txt, background: "transparent", textDecoration: "none", font: "inherit", fontFamily: "Poppins, sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 0, whiteSpace: "nowrap" }
+    const choix: React.CSSProperties = { ...base, height: 40, padding: "0 14px", fontSize: 14, fontWeight: 500, background: "rgba(246,240,230,0.06)" }
+    if (!ouvert) return <button style={base} onClick={() => setOuvert(true)}><IconeAgenda />Ajouter à l’agenda</button>
+    return (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontFamily: "Poppins, sans-serif" }}>
+            <span style={{ fontSize: 13, color: C.mute, marginRight: 2 }}>Ajouter à :</span>
+            <a href={lienGoogle(agenda)} target="_blank" rel="noopener" style={choix} onClick={() => setOuvert(false)}>Google Agenda</a>
+            <a href={lienOutlook(agenda)} target="_blank" rel="noopener" style={choix} onClick={() => setOuvert(false)}>Outlook</a>
+            <button style={choix} onClick={() => { telechargerIcs([agenda], "salon-acs.ics"); setOuvert(false) }}>Apple (iPhone, Mac)</button>
+            <button aria-label="Fermer" style={{ ...choix, padding: "0 12px", background: "transparent", border: "none", color: C.mute }} onClick={() => setOuvert(false)}>×</button>
         </div>
     )
 }
