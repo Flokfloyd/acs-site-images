@@ -190,6 +190,46 @@ function RappelsEnCours() {
 }
 
 // ---------- Galerie ----------
+// Choix de la photo de couverture de chaque catégorie : un clic sur une miniature
+function Couvertures({ rev, changer }: { rev: number; changer: () => void }) {
+    const client = sb()!
+    const [photos, setPhotos] = React.useState<any[]>([])
+    const [cat, setCat] = React.useState<string>("")
+    const [msg, setMsg] = React.useState<{ t: string; err: boolean } | null>(null)
+    React.useEffect(() => { client.from("photos").select("id,image_url,vignette_url,legende,album,accueil,ordre").order("ordre").order("cree_le", { ascending: false }).then(({ data }: any) => setPhotos(data ?? [])) }, [rev])
+    const choisir = async (p: any) => {
+        const c = GALERIE.categorie(p.album)
+        const autres = photos.filter((x) => GALERIE.categorie(x.album) === c && x.id !== p.id && x.accueil).map((x) => x.id)
+        if (autres.length) { const r = await client.from("photos").update({ accueil: false }).in("id", autres); if (r.error) return setMsg({ t: r.error.message, err: true }) }
+        const { error } = await client.from("photos").update({ accueil: true, ordre: 1 }).eq("id", p.id)
+        if (error) return setMsg({ t: error.message, err: true })
+        setMsg({ t: `C’est la nouvelle couverture de « ${c} » sur l’accueil.`, err: false }); changer()
+    }
+    const ouverte = cat || GALERIE.CATEGORIES.find((c) => photos.some((p) => GALERIE.categorie(p.album) === c)) || GALERIE.CATEGORIES[0]
+    const liste = photos.filter((p) => GALERIE.categorie(p.album) === ouverte)
+    const couv = (c: string) => photos.find((p) => GALERIE.categorie(p.album) === c && p.accueil)
+    return (
+        <div style={box}>
+            <h2 style={h2}>Couvertures de l’accueil</h2>
+            <p style={{ ...muted, fontSize: 14, marginBottom: 12 }}>Choisissez une catégorie, puis <b style={{ color: C.txt }}>cliquez sur la photo</b> qui doit apparaître sur l’accueil. C’est la seule que le public verra : pas de visage reconnaissable.</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                {GALERIE.CATEGORIES.map((c) => { const a = c === ouverte; const n = photos.filter((p) => GALERIE.categorie(p.album) === c).length; return <button key={c} onClick={() => { setCat(c); setMsg(null) }} style={{ ...small(), padding: "8px 12px", background: a ? C.accent : "transparent", color: a ? C.accentDark : C.txt, borderColor: a ? C.accent : C.line, fontWeight: 600 }}>{c} <span style={{ fontWeight: 400, opacity: 0.75 }}>({n}){couv(c) ? "" : " · sans couverture"}</span></button> })}
+            </div>
+            {liste.length === 0 ? <p style={muted}>Aucune photo dans « {ouverte} » pour l’instant.</p> : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                    {liste.map((p) => (
+                        <button key={p.id} onClick={() => !p.accueil && choisir(p)} title={p.accueil ? "Couverture actuelle" : "Choisir comme couverture"} style={{ position: "relative", padding: 0, border: `3px solid ${p.accueil ? C.accent : "transparent"}`, background: "#2e241e", cursor: p.accueil ? "default" : "pointer", height: 110, overflow: "hidden" }}>
+                            <img src={p.vignette_url || p.image_url} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: p.accueil ? 1 : 0.85 }} />
+                            {p.accueil && <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: C.accent, color: C.accentDark, fontSize: 12, fontWeight: 700, padding: "3px 0", textAlign: "center" }}>★ Couverture</span>}
+                        </button>
+                    ))}
+                </div>
+            )}
+            {msg && <Msg text={msg.t} err={msg.err} />}
+        </div>
+    )
+}
+
 function GalerieAdmin() {
     const client = sb()!
     const [rev, setRev] = React.useState(0)
@@ -223,7 +263,7 @@ function GalerieAdmin() {
     }
     return (
         <>
-            <Aide>Les photos cochées « page d’accueil » sont visibles de tous : uniquement des plantes, paysages ou stands, sans personne reconnaissable. Les autres ne sont visibles que des adhérents connectés (onglet Galerie de l’espace membre). Les photos sont réduites automatiquement avant l’envoi. Six catégories : Salon des Plantes, Sortie, Voyage, Plantes, Semestrielles (les plus belles photos) et Divers ; sur l’accueil, chaque catégorie n’affiche qu’une photo, sa couverture (la photo cochée « page d’accueil »). Le public ne voit rien d’autre : le reste de la galerie est réservé aux adhérents.</Aide>
+            <Aide>1. Choisissez la catégorie et envoyez les photos : elles sont réservées aux adhérents (onglet Galerie de leur espace) et réduites automatiquement. 2. Dans « Couvertures de l’accueil », cliquez sur la photo qui représentera la catégorie sur l’accueil : c’est la seule que le public voit.</Aide>
             <div style={box}>
                 <h2 style={h2}>Ajouter des photos</h2>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 8 }}>
@@ -231,10 +271,7 @@ function GalerieAdmin() {
                         <span style={label}>Catégorie</span>
                         <select style={input} value={album} onChange={(e) => setAlbum(e.target.value)}>{GALERIE.CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 22, cursor: "pointer", fontSize: 14 }}>
-                        <input type="checkbox" checked={accueil} onChange={(e) => setAccueil(e.target.checked)} />
-                        Photo de couverture sur l’accueil (visible de tous)
-                    </label>
+                    <p style={{ ...muted, fontSize: 13, paddingTop: 22 }}>Envoyez toutes les photos de la catégorie : elles vont dans la galerie des adhérents. La couverture de l’accueil se choisit ensuite, juste en dessous, d’un clic.</p>
                 </div>
                 <label style={{ ...btn(), display: "inline-block", marginTop: 16, cursor: "pointer" }}>
                     Choisir des photos…
@@ -242,6 +279,7 @@ function GalerieAdmin() {
                 </label>
                 {etat && <div><Msg text={etat.t} err={etat.err} /></div>}
             </div>
+            <Couvertures rev={rev} changer={() => setRev((x) => x + 1)} />
             <Editeur key={rev} table="photos" ordre="ordre" titre="Photos" champs={CHAMPS_PHOTO} nouveau={() => ({ ordre: 100, accueil: false })}
                 resume={(r) => `${r.accueil ? "★ Accueil · " : ""}${GALERIE.categorie(r.album)} · ${r.legende || "(sans légende)"}`} />
         </>
