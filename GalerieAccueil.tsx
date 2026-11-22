@@ -15,8 +15,8 @@ export const categorie = (album?: string | null) => (album && CATEGORIES.include
 
 // photos de secours (avant que l'administration n'en ait ajouté), une par catégorie
 const SECOURS: Photo[] = [
-    ["EiFCYebHOmQ4xh2kTo7DoCMPVY", "Salon des Plantes"], ["nNFsqvAFZ62Gc4uVcCCjZdkaQ", "Sortie"], ["Hhr8UCPbAO7x1jNY8RVDG6gGq5s", "Voyage"],
-    ["iIVUFH0jRRuu4b6rtMNVIpdowu8", "Plantes"], ["3IFb9YLmwND3KZxWa42klDHQxF4", "Semestrielles"], ["u24jE1XFwpIS1ZTudAPbwhz8", "Divers"],
+    ["EiFCYebHOmQ4xh2kTo7DoCMPVY", "Salon des Plantes"], ["nNFsqvAFZ62Gc4uVcCCjZdkaQ", "Sortie"], ["u24jE1XFwpIS1ZTudAPbwhz8", "Voyage"],
+    ["iIVUFH0jRRuu4b6rtMNVIpdowu8", "Plantes"], ["3IFb9YLmwND3KZxWa42klDHQxF4", "Semestrielles"], ["Hhr8UCPbAO7x1jNY8RVDG6gGq5s", "Divers"],
 ].map(([h, a], i) => ({ id: h, image_url: `https://framerusercontent.com/images/${h}.jpg`, album: a, legende: null, ordre: i }))
 
 // Réduit une photo avant envoi (côté le plus long 2000 px, JPEG) pour rester dans l'espace gratuit
