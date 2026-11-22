@@ -215,7 +215,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const nEch = plantes.filter((p) => p.a_echanger || p.graines_a_donner).length
     const nVivants = plantes.filter(semisVivant).length
     // une petite collection ne voit que ce qui la concerne : pas d’onglet Semis sans semis, pas de synthèse pour quelques plantes
-    const onglets = ([["collection", `Collection (${plantes.length - nSemis + (avecSemis ? nVivants : 0)})`], nSemis > 0 && ["semis", `Semis (${nSemis})`], plantes.some((p) => p.t_min != null) && ["rusticite", "Rusticité"], plantes.length >= SEUIL_SYNTHESE && ["synthese", "Synthèse"], ["echanges", "Troc"]] as ([Vue, string] | false)[]).filter(Boolean) as [Vue, string][]
+    const onglets = ([["collection", "Collection"], nSemis > 0 && ["semis", "Semis"], plantes.some((p) => p.t_min != null) && ["rusticite", "Rusticité"], plantes.length >= SEUIL_SYNTHESE && ["synthese", "Synthèse"], ["echanges", "Troc"]] as ([Vue, string] | false)[]).filter(Boolean) as [Vue, string][]
     const outils = vue !== "echanges" && vue !== "synthese"
 
     const cherche = (p: Plante) => !q || sansAccent([p.espece, p.origine, p.n_collecte, p.code, p.fournisseur, p.reference, p.notes].join(" ")).includes(sansAccent(q))
@@ -422,7 +422,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
             )}
 
             {outils && plantes.some((p) => (p.type || genres[genreDe(p.espece)]?.[0]) === "Cactus") && (verif
-                ? <PanneauVerif plantes={plantes} genres={genres} client={client} email={email} onFermer={(ok) => { setVerif(false); setVerifMsg(ok || ""); if (ok) charger() }} />
+                ? <PanneauVerif plantes={plantes} genres={genres} auteur={auteur} onOuvrir={setEdit} onFermer={() => setVerif(false)} />
                 : <div style={{ ...box, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ flex: "1 1 280px", minWidth: 0 }}>
                         <h3 style={{ fontFamily: serif, fontSize: 20, margin: 0, fontWeight: 600 }}>Vérifier les noms de cactus</h3>
@@ -887,12 +887,10 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
 
 // ---------- vérification des noms de cactus (index Lodé) ----------
 const ORDRE_VERIF = ["SYNONYME", "GENRE", "RANG", "PROCHE", "DOUTE", "NONRETENU", "INCONNUE", "INCONNU", "INFRA"]
-function PanneauVerif({ plantes, genres, client, email, onFermer }: { plantes: Plante[]; genres: Genres; client: any; email: string; onFermer: (ok?: string) => void }) {
+function PanneauVerif({ plantes, genres, onOuvrir, auteur, onFermer }: { plantes: Plante[]; genres: Genres; onOuvrir: (p: Plante) => void; auteur: string; onFermer: () => void }) {
+    // contrôle seulement : rien n’est modifié dans la collection, l’adhérent corrige lui-même ses fiches
     const [infra, setInfra] = React.useState(false)
-    const [props, setProps] = React.useState<Record<string, string>>({})
-    const [coches, setCoches] = React.useState<Set<string> | null>(null)
-    const [occupe, setOccupe] = React.useState(false)
-    const [err, setErr] = React.useState("")
+    const [copie, setCopie] = React.useState("")
     const [lode, setLode] = React.useState<Lode | null | undefined>(undefined)
     React.useEffect(() => { chargerLode().then((l) => setLode(l)) }, [])
     const res = React.useMemo(() => {
@@ -907,53 +905,43 @@ function PanneauVerif({ plantes, genres, client, email, onFermer }: { plantes: P
     }, [plantes, genres, lode])
     if (!res) return <div style={box}><p style={{ margin: 0, color: C.mute }}>Chargement de l’index de Joël Lodé…</p></div>
     const vis = res.l.filter((v) => infra || v.statut !== "INFRA")
-    const parDefaut = new Set(res.l.filter((v) => v.proposition && ["GENRE", "SYNONYME", "RANG", "PROCHE"].includes(v.statut)).map((v) => v.nom))
-    const sel = coches ?? parDefaut
-    const proposition = (v: Verif) => props[v.nom] ?? v.proposition
-    const aAppliquer = vis.filter((v) => sel.has(v.nom) && proposition(v).trim() && proposition(v).trim() !== v.nom)
-    const appliquer = async () => {
-        setOccupe(true); setErr("")
-        let n = 0
-        for (const v of aAppliquer) {
-            const nouveau = proposition(v).trim()
-            const { error } = await client.from("plantes").update({ espece: nouveau, genre: genreDe(nouveau) || null }).eq("email", email.toLowerCase()).eq("espece", v.nom)
-            if (error) { setErr(error.message); setOccupe(false); return }
-            n += v.n
-        }
-        setOccupe(false)
-        onFermer(`${aAppliquer.length} nom${aAppliquer.length > 1 ? "s" : ""} corrigé${aAppliquer.length > 1 ? "s" : ""} (${n} plante${n > 1 ? "s" : ""}).`)
-    }
     const COUL: Record<string, string> = { GENRE: "#d7b56d", SYNONYME: "#d7b56d", DOUTE: "#d7b56d", RANG: "#9bbd8a", PROCHE: "#b9a3d6", NONRETENU: "#e08a73", INCONNUE: "#e08a73", INCONNU: "#e08a73", INFRA: "rgba(246,240,230,0.5)" }
     const nInfra = res.l.filter((v) => v.statut === "INFRA").length
+    const copier = (t: string) => { try { navigator.clipboard.writeText(t); setCopie(t); setTimeout(() => setCopie(""), 1500) } catch {} }
+    const ouvrir = (nom: string) => { const p = plantes.find((x) => x.espece === nom); if (p) onOuvrir(p) }
+    const pdf = () => {
+        const w = window.open("", "_blank"); if (!w) return
+        const lignes = vis.map((v, i) => `<tr${i % 2 ? ' class="z"' : ""}><td>${nomHtml(v.nom)}${v.n > 1 ? ` <small>×${v.n}</small>` : ""}</td><td>${echXml(v.libelle)}</td><td>${v.proposition ? nomHtml(v.proposition) : ""}</td><td><small>${echXml(v.note)}</small></td></tr>`).join("")
+        w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>Vérification des noms · ${echXml(auteur)}</title><style>@page{size:A4 landscape;margin:12mm}body{font:9pt/1.35 Arial,sans-serif;color:#1a1a1a}h1{font:600 15pt Georgia,serif;margin:0 0 2pt}p{margin:0 0 8pt;color:#555}table{width:100%;border-collapse:collapse}th{text-align:left;font-size:7pt;text-transform:uppercase;letter-spacing:.05em;border-bottom:.8pt solid #111;padding:3pt}td{padding:3pt;border-bottom:.4pt solid #d6d0c8;vertical-align:top}tr.z td{background:#f3efe9}small{color:#666}tr{break-inside:avoid}</style></head><body><h1>Vérification des noms de cactus</h1><p>${echXml(auteur)} · index des taxons et synonymes de Joël Lodé (version en ligne 2026.2) · ${new Date().toLocaleDateString("fr-FR")} · nom d’achat conservé, nom accepté entre parenthèses</p><table><thead><tr><th style="width:30%">Nom actuel</th><th style="width:15%">Constat</th><th style="width:30%">Nom proposé</th><th>Explication</th></tr></thead><tbody>${lignes}</tbody></table></body></html>`)
+        w.document.close(); setTimeout(() => { try { w.focus(); w.print() } catch {} }, 300)
+    }
     return (
         <div style={{ ...box, border: `1px solid ${C.accent}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
                 <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Vérifier les noms de cactus</h3>
-                <button onClick={() => onFermer()} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
+                <button onClick={onFermer} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Comparaison avec l’index des taxons et synonymes de Joël Lodé (Taxonomy of the Cactaceae, version en ligne 2026.2) : {res.total} noms de cactus vérifiés, {res.l.length - nInfra} à revoir. Les propositions sont modifiables ; seules les lignes cochées sont appliquées, à toutes vos plantes portant ce nom.</p>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Comparaison avec l’index des taxons et synonymes de Joël Lodé (version en ligne 2026.2) : {res.total} noms vérifiés, {res.l.length - nInfra} à revoir. Le nom d’achat est conservé et le nom accepté s’ajoute entre parenthèses. Rien n’est modifié dans votre collection : cliquez sur un nom pour ouvrir sa fiche et la corriger vous-même.</p>
             <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14, marginTop: 10, cursor: "pointer" }}><input type="checkbox" style={coche} checked={infra} onChange={(e) => setInfra(e.target.checked)} />Afficher aussi les variétés et formes non distinguées par Lodé ({nInfra})</label>
             {lode === null && <p style={{ margin: "8px 0 0", fontSize: 13, color: C.danger }}>L’index complet n’a pas pu être chargé : vérification limitée aux noms acceptés, sans les synonymes.</p>}
             {vis.length === 0 ? <p style={{ margin: "14px 0 0", color: C.accent }}>Tous les noms sont conformes à l’index.</p> : (
-                <div style={{ marginTop: 12, border: `1px solid ${C.line}`, maxHeight: 460, overflow: "auto" }}>
-                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 860 }}>
-                        <thead><tr>{["", "Nom actuel", "Constat", "Proposition", "Explication"].map((t) => <th key={t} style={{ ...th, cursor: "default" }}>{t}</th>)}</tr></thead>
+                <div style={{ marginTop: 12, border: `1px solid ${C.line}`, maxHeight: "min(70vh, 620px)", overflow: "auto" }}>
+                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 820 }}>
+                        <thead><tr>{["Nom actuel", "Constat", "Nom proposé", "Explication"].map((t) => <th key={t} style={{ ...th, cursor: "default" }}>{t}</th>)}</tr></thead>
                         <tbody>{vis.map((v, i) => (
                             <tr key={v.nom} style={{ background: i % 2 ? ZEBRE : undefined }}>
-                                <td style={td}><input type="checkbox" style={coche} disabled={!proposition(v).trim()} checked={sel.has(v.nom)} onChange={() => setCoches(() => { const x = new Set(sel); x.has(v.nom) ? x.delete(v.nom) : x.add(v.nom); return x })} /></td>
-                                <td style={{ ...td, whiteSpace: "normal", minWidth: 200 }}><NomEspece p={{ espece: v.nom }} />{v.n > 1 && <span style={{ color: C.mute, fontSize: 12 }}> ×{v.n}</span>}</td>
-                                <td style={{ ...td, color: COUL[v.statut], fontWeight: 600, fontSize: 13 }}>{v.libelle}</td>
-                                <td style={{ ...td, minWidth: 240 }}><input value={proposition(v)} placeholder="—" onChange={(e) => setProps((x) => ({ ...x, [v.nom]: e.target.value }))} style={{ ...champ, padding: "6px 8px", fontSize: 14, fontStyle: "italic" }} /></td>
+                                <td style={{ ...td, whiteSpace: "normal", minWidth: 220 }}><button onClick={() => ouvrir(v.nom)} title="Ouvrir la fiche" style={{ background: "none", border: "none", padding: 0, color: C.txt, font: "inherit", fontSize: 14, textAlign: "left", cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(246,240,230,0.3)", textUnderlineOffset: 3 }}><NomEspece p={{ espece: v.nom }} /></button>{v.n > 1 && <span style={{ color: C.mute, fontSize: 12 }}> ×{v.n}</span>}</td>
+                                <td style={{ ...td, color: COUL[v.statut], fontWeight: 600, fontSize: 13, whiteSpace: "normal" }}>{v.libelle}</td>
+                                <td style={{ ...td, whiteSpace: "normal", minWidth: 240, fontSize: 14 }}>{v.proposition ? <span style={{ display: "flex", gap: 8, alignItems: "baseline" }}><span style={{ flex: 1 }}><NomEspece p={{ espece: v.proposition }} /></span><button onClick={() => copier(v.proposition)} style={{ ...petit(), padding: "2px 8px", fontSize: 12 }} title="Copier le nom proposé">{copie === v.proposition ? "Copié" : "Copier"}</button></span> : <span style={{ color: C.mute }}>—</span>}</td>
                                 <td style={{ ...td, whiteSpace: "normal", fontSize: 13, color: C.mute, minWidth: 220 }}>{v.note}</td>
                             </tr>
                         ))}</tbody>
                     </table>
                 </div>
             )}
-            {err && <p style={{ margin: "12px 0 0", color: C.danger, fontSize: 14 }}>{err}</p>}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 14 }}>
-                <button style={bouton()} onClick={appliquer} disabled={occupe || !aAppliquer.length}>{occupe ? "Correction…" : `Appliquer les corrections cochées (${aAppliquer.length})`}</button>
-                <button style={bouton(false)} onClick={() => onFermer()}>Fermer</button>
+                {vis.length > 0 && <button style={bouton(false)} onClick={pdf}>Liste en PDF</button>}
+                <button style={bouton(false)} onClick={onFermer}>Fermer</button>
             </div>
         </div>
     )
@@ -1036,7 +1024,7 @@ function PanneauCommande({ plantes, genres, client, email, auteur, onFermer }: {
 function PanneauEtiquettes({ liste, vue, auteur, genres, client, onMaj, onFermer }: { liste: Plante[]; vue: Vue; auteur: string; genres: Genres; client: any; onMaj: () => void; onFermer: () => void }) {
     const [paysForce, setPaysForce] = React.useState<Record<string, string>>({})
     const [verifPays, setVerifPays] = React.useState(false)
-    const [garderPays, setGarderPays] = React.useState(true)
+    const [garderPays, setGarderPays] = React.useState(false)
     const lots = React.useMemo(() => {
         const m = new Map<string, number>()
         for (const p of liste) if (p.statut === "semis" && p.semis) m.set(p.semis, (m.get(p.semis) || 0) + 1)
@@ -1937,7 +1925,39 @@ function decomposer(nom: string) {
     return { genre, espece, infra, annexes: annexes.filter((a) => !/^\(\s*(\?|subsp\.?|var\.?|ssp\.?)\s*\)$/i.test(a)) }
 }
 
+// le nom d’achat est toujours gardé : le nom accepté s’ajoute entre parenthèses, comme dans les tableaux du club
+// (thionanthum) = même genre, autre épithète · (=Neoporteria) = même épithète, autre genre · (=Lepidocoryphantha macromeris) = les deux
 export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
+    const v = verifierNomBrut(nom, ix)
+    if (!["SYNONYME", "GENRE", "RANG", "PROCHE", "DOUTE"].includes(v.statut) || !v.proposition) return v
+    const sansPar = (x: string) => x.replace(/\([^)]*\)?/g, " ").replace(/\s+/g, " ").trim()
+    const A = sansPar(v.proposition), P = sansPar(nom)
+    const [ag, ...ar] = A.split(" "), [pg, ...pr] = P.split(" ")
+    const nA = cleTaxo(A), nAesp = cleTaxo([ag, ar[0]].join(" "))
+    if (!A || nA === cleTaxo(P)) return v
+    // Lodé ne distingue pas la variété : même espèce, rien à corriger
+    if (normTaxo(ag) === normTaxo(pg) && ar.length === 1 && normTaxo(ar[0]) === normTaxo(pr[0] || "")) return { ...v, statut: "INFRA", libelle: "Variété ou forme non distinguée", proposition: "", note: `${A} chez Lodé` }
+    // la correction est-elle déjà notée entre parenthèses ?
+    for (const brut of nom.match(/\(([^)]*)\)/g) || []) {
+        const x = brut.slice(1, -1).replace(/^\s*=\s*/, "").replace(/\b(ex|cf|aff)\.\s*/gi, "").trim()
+        if (!x || /\?/.test(x)) continue
+        const t = x.split(/\s+/)
+        let gen = pg, reste = t
+        if (/^[A-Z]/.test(t[0])) { gen = /\.$/.test(t[0]) && normTaxo(ag).startsWith(normTaxo(t[0]).replace(/\.$/, "")) ? ag : t[0]; reste = t.slice(1).length ? t.slice(1) : pr }
+        const cand = cleTaxo([gen, ...reste].join(" ")), candEsp = cleTaxo([gen, reste[0] || ""].join(" "))
+        if (cand === nA || cand === nAesp || (ar.length === 1 && candEsp === nA) || (reste.length === 1 && cleTaxo([ag, ar[ar.length - 1]].join(" ")) === cand))
+            return { ...v, statut: "OK", libelle: "Nom correct déjà noté", proposition: "", note: `${brut} correspond à ${A} chez Lodé` }
+    }
+    const memeGenre = normTaxo(ag) === normTaxo(pg), memeReste = normTaxo(ar.join(" ")) === normTaxo(pr.join(" "))
+    // simple changement de rang (var. → subsp., même épithète) : on note juste le rang
+    const rangSeul = memeGenre && ar.length === 3 && pr.length >= 3 && normTaxo(ar[0]) === normTaxo(pr[0]) && normTaxo(ar[2]) === normTaxo(pr[pr.length - 1]) && RANGS[ar[1]] && RANGS[ar[1]] !== RANGS[pr[pr.length - 2]]
+    const annexe = rangSeul ? `(${ar[1]})` : memeGenre ? `(${ar.join(" ")})` : memeReste ? `(=${ag})` : `(=${A})`
+    // une ancienne correction entre parenthèses est remplacée ; les autres notes (ex., ?, hybrides) restent
+    const correction = (a: string) => /^\(\s*=/.test(a) || /^\(\s*[a-z-]{3,}(\s+(subsp|ssp|var|fma|f)\.?\s+[a-z-]{3,})?\s*\)$/.test(a)
+    const base = nom.replace(/\([^)]*\)?/g, (a) => (correction(a) ? "" : a)).replace(/\s+/g, " ").trim()
+    return { ...v, proposition: `${base} ${annexe}`, note: `${v.note}${v.note ? " · " : ""}nom d’achat conservé` }
+}
+function verifierNomBrut(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
     const { genre, espece, infra, annexes } = decomposer(nom)
     const g = normTaxo(genre), e = normTaxo(espece)
     const base = { nom }
