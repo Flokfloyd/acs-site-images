@@ -195,7 +195,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const nEch = plantes.filter((p) => p.a_echanger || p.graines_a_donner).length
     const nVivants = plantes.filter(semisVivant).length
     // une petite collection ne voit que ce qui la concerne : pas d’onglet Semis sans semis, pas de synthèse pour quelques plantes
-    const onglets = ([["collection", `Collection (${plantes.length - nSemis + (avecSemis ? nVivants : 0)})`], nSemis > 0 && ["semis", `Semis (${nSemis})`], plantes.some((p) => p.t_min != null) && ["rusticite", "Rusticité"], plantes.length >= SEUIL_SYNTHESE && ["synthese", "Synthèse"], ["echanges", "Bourse d’échange"]] as ([Vue, string] | false)[]).filter(Boolean) as [Vue, string][]
+    const onglets = ([["collection", `Collection (${plantes.length - nSemis + (avecSemis ? nVivants : 0)})`], nSemis > 0 && ["semis", `Semis (${nSemis})`], plantes.some((p) => p.t_min != null) && ["rusticite", "Rusticité"], plantes.length >= SEUIL_SYNTHESE && ["synthese", "Synthèse"], ["echanges", "Troc"]] as ([Vue, string] | false)[]).filter(Boolean) as [Vue, string][]
     const outils = vue !== "echanges" && vue !== "synthese"
 
     const cherche = (p: Plante) => !q || sansAccent([p.espece, p.origine, p.n_collecte, p.code, p.fournisseur, p.reference, p.notes].join(" ")).includes(sansAccent(q))
@@ -273,7 +273,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
             ["Graines, Levées, Vivants", "Pour les semis : nombre de graines semées, de levées, de plants encore vivants."],
             ["Réf., N° collecte, Achat", "Référence du lot, numéro de terrain (SB 127…), vendeur ou donateur."],
             ["Exemplaires", "Nombre de plantes identiques (1 par défaut)."],
-            ["À échanger, Graines à donner", "Écrivez oui ou x pour proposer la plante dans la bourse d’échange."],
+            ["À échanger, Graines à donner", "Écrivez oui ou x pour proposer la plante au troc."],
             [""],
             ["Ensuite : espace membre › Collection › Importer Excel. Un aperçu s’affiche avant l’enregistrement ; les lignes déjà présentes sont ignorées."],
         ]
@@ -304,16 +304,25 @@ export default function Collection({ client, email, auteur }: { client: any; ema
         setImp(null); charger()
     }
 
+    const menuExport = <Menu id="exporter" titre="Exporter" droite plein={etroit} ouvert={menu} setOuvert={setMenu} items={[
+                    { t: "Étiquettes à piquer…", d: vue === "semis" ? "Planche A4 LINAD, par lot de semis" : "Planche A4 LINAD, de la liste affichée", f: () => { if (!outils) setVue("collection"); setEtq(true); setPdf(false); setCmd(false) } },
+                    { t: "Listes en PDF…", d: "Collection, semis, rusticité : à imprimer ou partager", f: () => { setPdf(true); setEtq(false); setCmd(false) } },
+                    { t: "Tableau Excel", d: "Toutes vos plantes, une feuille par liste", f: exporter },
+                ]} />
     return (
         <div ref={ref} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, color: C.txt, ...font }}>
             <div style={box}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                     <h2 style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.2, margin: 0, fontWeight: 600 }}>Collection</h2>
-                    {plantes.length > 0 && <span style={{ fontSize: 13, color: C.mute }}>{[`${plantes.length - nSemis} plante${plantes.length - nSemis > 1 ? "s" : ""}`, nSemis ? `${nSemis} semis` : "", nEch ? `${nEch} dans la bourse` : ""].filter(Boolean).join(" · ")}</span>}
+                    {plantes.length > 0 && <span style={{ fontSize: 13, color: C.mute }}>{[`${plantes.length - nSemis} plante${plantes.length - nSemis > 1 ? "s" : ""}`, nSemis ? `${nSemis} semis` : "", nEch ? `${nEch} au troc` : ""].filter(Boolean).join(" · ")}</span>}
                 </div>
-                <p style={{ margin: "6px 0 0", color: C.mute, fontSize: 14 }}>Visible de vous seul. {etroit ? "Touchez" : "Cliquez sur"} une plante pour ouvrir sa fiche. « À échanger » et « Graines à donner » la proposent aux autres adhérents dans la bourse d’échange.</p>
-                <div role="tablist" style={{ display: etroit ? "grid" : "flex", gridTemplateColumns: "1fr 1fr", gap: 0, borderBottom: etroit ? "none" : `1px solid ${C.line}`, marginTop: 16 }}>
-                    {onglets.map(([k, t], i) => <button key={k} role="tab" aria-selected={vue === k} onClick={() => { setVue(k); setEdit(null); setImp(null); setPdf(false); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: etroit && vue === k ? C.panel2 : "transparent", color: vue === k ? C.txt : C.mute, border: etroit ? `1px solid ${C.line}` : "none", borderBottom: `2px solid ${vue === k ? C.accent : etroit ? C.line : "transparent"}`, borderRadius: 0, padding: "10px 12px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginRight: etroit ? -1 : 0, marginBottom: etroit ? -1 : 0, gridColumn: etroit && i === onglets.length - 1 && onglets.length % 2 ? "1 / -1" : undefined }}>{t}</button>)}
+                <p style={{ margin: "6px 0 0", color: C.mute, fontSize: 14 }}>Visible de vous seul. {etroit ? "Touchez" : "Cliquez sur"} une plante pour ouvrir sa fiche. « À échanger » et « Graines à donner » la proposent aux autres adhérents dans l’onglet Troc.</p>
+                <div style={{ display: "flex", flexWrap: etroit ? "wrap" : "nowrap", alignItems: "flex-end", gap: etroit ? 8 : 12, borderBottom: etroit ? "none" : `1px solid ${C.line}`, marginTop: 16 }}>
+                <div role="tablist" style={{ display: etroit ? "grid" : "flex", gridTemplateColumns: "1fr 1fr", gap: 0, flex: etroit ? "1 1 100%" : "1 1 auto", minWidth: 0, overflowX: etroit ? undefined : "auto" }}>
+                    {onglets.map(([k, t], i) => <button key={k} role="tab" aria-selected={vue === k} onClick={() => { setVue(k); setEdit(null); setImp(null); setPdf(false); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: etroit && vue === k ? C.panel2 : "transparent", color: vue === k ? C.txt : C.mute, border: etroit ? `1px solid ${C.line}` : "none", borderBottom: `2px solid ${vue === k ? C.accent : etroit ? C.line : "transparent"}`, borderRadius: 0, padding: "10px 12px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginRight: etroit ? -1 : 0, marginBottom: etroit ? -1 : 0, gridColumn: etroit && i === onglets.length - 1 && (onglets.length + (plantes.length > 0 ? 1 : 0)) % 2 ? "1 / -1" : undefined }}>{t}</button>)}
+                    {etroit && plantes.length > 0 && <div style={{ marginBottom: -1 }}>{menuExport}</div>}
+                </div>
+                {plantes.length > 0 && !etroit && <div style={{ flex: "0 0 auto", paddingBottom: 6 }}>{menuExport}</div>}
                 </div>
                 {outils && plantes.length > 0 && <>
                     {(plantes.length >= 8 || q || type) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, alignItems: "center" }}>
@@ -338,11 +347,6 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                         { t: "Commande de graines…", d: "Facture ADBLPS, SuccSeed, Köhres, Cono, Uhlig", f: () => { setCmd(true); setEtq(false); setPdf(false) } },
                         { t: "Mode d’emploi et modèle", d: "Fichier Excel à remplir", f: () => setAide(true) },
                     ]} />
-                    {plantes.length > 0 && <Menu id="exporter" titre="Exporter" ouvert={menu} setOuvert={setMenu} items={[
-                        { t: "Listes en PDF…", d: "Collection, semis, rusticité : à imprimer ou partager", f: () => { setPdf(true); setEtq(false); setCmd(false) } },
-                        { t: "Tableau Excel", d: "Toutes vos plantes, une feuille par liste", f: exporter },
-                    ]} />}
-                    {outils && plantes.length > 0 && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setPdf(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
                     {outils && !etroit && liste.length >= 15 && <Menu id="colonnes" titre="Colonnes" discret ouvert={menu} setOuvert={setMenu} cases={COLS[vue as "collection"].filter((c) => c.k !== "espece").map((c) => ({ t: c.t, actif: !(cachees[vue] || []).includes(c.k), f: () => cacher(vue, c.k) }))} />}
                 </div>}
                 {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
@@ -380,7 +384,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                                 </div>
                             )
                         })}
-                    {nEch > 0 && vue !== "rusticite" && <p style={{ margin: "14px 0 0", fontSize: 13, color: C.mute, padding: etroit ? "0 2px" : 0 }}>{nEch} plante{nEch > 1 ? "s" : ""} proposée{nEch > 1 ? "s" : ""} dans la bourse d’échange.</p>}
+                    {nEch > 0 && vue !== "rusticite" && <p style={{ margin: "14px 0 0", fontSize: 13, color: C.mute, padding: etroit ? "0 2px" : 0 }}>{nEch} plante{nEch > 1 ? "s" : ""} proposée{nEch > 1 ? "s" : ""} au troc.</p>}
                 </div>
             )}
 
@@ -476,7 +480,7 @@ function Synthese({ plantes, genres, etroit }: { plantes: Plante[]; genres: Genr
                 {tuile(d.genresL.length, "genres")}
                 {tuile(d.pays.length, "pays d’origine")}
                 {tuile(d.semis.length, "lots de semis", d.tot.g ? `${d.tot.t} % de levée sur ${d.tot.g} graines` : undefined)}
-                {tuile(d.bourse, "dans la bourse d’échange")}
+                {tuile(d.bourse, "proposées au troc")}
             </div>
             <div style={{ ...box, padding: "clamp(14px, 3vw, 20px)" }}>
                 <h4 style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, margin: 0 }}>D’où viennent vos plantes</h4>
@@ -511,15 +515,15 @@ const COLS_CACHEES: Record<string, string[]> = { collection: ["rempotage", "four
 
 // ---------- menu déroulant (Importer, Exporter, Colonnes) ----------
 type ItemMenu = { t: string; d?: string; f?: () => void; fichier?: (f: File) => void }
-function Menu({ id, titre, items, cases, ouvert, setOuvert, discret }: { id: "importer" | "exporter" | "colonnes"; titre: string; items?: ItemMenu[]; cases?: { t: string; actif: boolean; f: () => void }[]; ouvert: string; setOuvert: (v: any) => void; discret?: boolean }) {
+function Menu({ id, titre, items, cases, ouvert, setOuvert, discret, droite, plein }: { id: "importer" | "exporter" | "colonnes"; titre: string; items?: ItemMenu[]; cases?: { t: string; actif: boolean; f: () => void }[]; ouvert: string; setOuvert: (v: any) => void; discret?: boolean; droite?: boolean; plein?: boolean }) {
     const ouv = ouvert === id
     const ligne: React.CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", textAlign: "left", background: "none", border: "none", borderBottom: `1px solid ${C.line}`, color: C.txt, padding: "10px 14px", font: "inherit", fontSize: 14, cursor: "pointer" }
     const sous = (d?: string) => (d ? <span style={{ display: "block", fontSize: 12, color: C.mute, marginTop: 2 }}>{d}</span> : null)
     return (
-        <div data-menu style={{ position: "relative", marginLeft: discret ? "auto" : 0 }}>
-            <button style={{ ...bouton(false), ...(discret ? { borderColor: "transparent", color: C.mute } : {}) }} aria-haspopup="menu" aria-expanded={ouv} onClick={() => setOuvert(ouv ? "" : id)}>{titre}<span aria-hidden style={{ fontSize: 9, marginLeft: 8, display: "inline-block", transform: ouv ? "rotate(180deg)" : "none" }}>▼</span></button>
+        <div data-menu style={{ position: "relative", marginLeft: discret ? "auto" : 0, height: plein ? "100%" : undefined }}>
+            <button style={{ ...bouton(false), ...(discret ? { borderColor: "transparent", color: C.mute } : {}), ...(plein ? { width: "100%", height: "100%", padding: "10px 12px" } : {}) }} aria-haspopup="menu" aria-expanded={ouv} onClick={() => setOuvert(ouv ? "" : id)}>{titre}<span aria-hidden style={{ fontSize: 9, marginLeft: 8, display: "inline-block", transform: ouv ? "rotate(180deg)" : "none" }}>▼</span></button>
             {ouv && (
-                <div role="menu" style={{ position: "absolute", top: "calc(100% + 4px)", ...(discret ? { right: 0 } : { left: 0 }), zIndex: 20, width: discret ? 220 : 300, maxWidth: "86vw", background: C.panel2, border: `1px solid ${C.line}`, boxShadow: "0 10px 30px rgba(0,0,0,.45)" }}>
+                <div role="menu" style={{ position: "absolute", top: "calc(100% + 4px)", ...(discret || droite ? { right: 0 } : { left: 0 }), zIndex: 20, width: discret ? 220 : 300, maxWidth: "86vw", background: C.panel2, border: `1px solid ${C.line}`, boxShadow: "0 10px 30px rgba(0,0,0,.45)" }}>
                     <style>{`.acs-item:hover{background:${C.panel}}`}</style>
                     {items?.map((it) => it.fichier
                         ? <label key={it.t} role="menuitem" style={ligne} className="acs-item">{it.t}{sous(it.d)}<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) it.fichier!(f); e.target.value = ""; setOuvert("") }} /></label>
@@ -1022,7 +1026,7 @@ function PanneauEtiquettes({ liste, vue, auteur, genres, onFermer }: { liste: Pl
                 </details>
             )}
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
-                <button style={bouton()} onClick={imprimer} disabled={!items.length}>Aperçu et impression ({items.length} étiquette{items.length > 1 ? "s" : ""}, {Math.max(1, Math.ceil((items.length + debut - 1) / 44))} planche{Math.ceil((items.length + debut - 1) / 44) > 1 ? "s" : ""})</button>
+                <button style={{ ...bouton(), whiteSpace: "normal", textAlign: "left", maxWidth: "100%" }} onClick={imprimer} disabled={!items.length}>Aperçu et impression ({items.length} étiquette{items.length > 1 ? "s" : ""}, {Math.max(1, Math.ceil((items.length + debut - 1) / 44))} planche{Math.ceil((items.length + debut - 1) / 44) > 1 ? "s" : ""})</button>
                 {msg && <span style={{ fontSize: 14, color: C.danger }}>{msg}</span>}
             </div>
         </div>
@@ -1237,8 +1241,8 @@ function Bourse({ client, email }: { client: any; email: string }) {
     const [q, setQ] = React.useState("")
     const [quoi, setQuoi] = React.useState<"" | "plantes" | "graines">("")
     React.useEffect(() => { client.rpc("echanges").then(({ data, error }: any) => { if (error) setErr(error.message); else setL(data ?? []) }) }, [client])
-    if (err) return <div style={box}><p style={{ margin: 0, color: C.mute }}>{/echanges/.test(err) ? "La bourse d’échange sera disponible dès que la base aura été mise à jour par le bureau." : err}</p></div>
-    if (!l) return <div style={box}><p style={{ margin: 0, color: C.mute }}>Chargement de la bourse d’échange…</p></div>
+    if (err) return <div style={box}><p style={{ margin: 0, color: C.mute }}>{/echanges/.test(err) ? "Le troc sera disponible dès que la base aura été mise à jour par le bureau." : err}</p></div>
+    if (!l) return <div style={box}><p style={{ margin: 0, color: C.mute }}>Chargement du troc…</p></div>
     const vis = l.filter((x) => (!quoi || (quoi === "plantes" ? x.a_echanger : x.graines_a_donner)) && (!q || sansAccent([x.espece, x.auteur, x.origine, x.n_collecte].join(" ")).includes(sansAccent(q))))
     return (
         <div style={box}>
@@ -1247,7 +1251,7 @@ function Bourse({ client, email }: { client: any; email: string }) {
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une espèce, un adhérent…" style={{ ...champ, flex: "1 1 220px", width: "auto" }} />
                 {([["", "Tout"], ["plantes", "Plantes à échanger"], ["graines", "Graines à donner"]] as const).map(([k, t]) => <button key={k} style={petit(quoi === k)} onClick={() => setQuoi(k)}>{t}</button>)}
             </div>
-            {vis.length === 0 ? <p style={{ margin: 0, color: C.mute }}>Rien de proposé pour l’instant. Cochez « À échanger » ou « Graines à donner » dans votre collection pour lancer la bourse.</p> : (
+            {vis.length === 0 ? <p style={{ margin: 0, color: C.mute }}>Rien de proposé pour l’instant. Cochez « À échanger » ou « Graines à donner » dans votre collection pour lancer le troc.</p> : (
                 <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)" }}>
                     {vis.map((x) => (
                         <div key={x.id} style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "4px 16px", padding: "11px 0", borderTop: `1px solid ${C.line}` }}>
@@ -1257,7 +1261,7 @@ function Bourse({ client, email }: { client: any; email: string }) {
                             </div>
                             <div style={{ fontSize: 13 }}>
                                 <div style={{ color: C.accent, fontWeight: 600 }}>{[x.a_echanger && "À échanger", x.graines_a_donner && "Graines à donner"].filter(Boolean).join(" · ")}</div>
-                                <div>{x.auteur}{x.contact && x.contact !== email.toLowerCase() ? <> · <a href={`mailto:${x.contact}?subject=${encodeURIComponent("Bourse d’échange ACS : " + x.espece)}`} style={{ color: C.txt }}>Écrire</a></> : x.contact === email.toLowerCase() ? <span style={{ color: C.mute }}> (vous)</span> : null}</div>
+                                <div>{x.auteur}{x.contact && x.contact !== email.toLowerCase() ? <> · <a href={`mailto:${x.contact}?subject=${encodeURIComponent("Troc ACS : " + x.espece)}`} style={{ color: C.txt }}>Écrire</a></> : x.contact === email.toLowerCase() ? <span style={{ color: C.mute }}> (vous)</span> : null}</div>
                             </div>
                         </div>
                     ))}
@@ -1323,8 +1327,8 @@ export const paysPlante = (p: Plante, genres?: Genres) => {
     const d = paysDe(p.origine)
     if (d) return d
     const g = genres?.[p.espece.split(" ")[0]]
-    const l = g?.[3] ? g[3].split("|") : []
-    return l.length === 1 ? l[0] : null
+    const l = g?.[3] ? g[3].split("|").map((x) => x.trim()).filter(Boolean) : []
+    return l[0] || null   // pays du genre (le premier cité) quand la localité n’en donne pas
 }
 
 // exposition par défaut d’après le genre (listes du générateur LINAD) si la fiche n’en a pas
@@ -1372,7 +1376,7 @@ function etiquetteSVG(p: Plante, x0: number, y0: number, droite: boolean, contou
     return `<g transform="${tr}">
 ${contours ? `<path d="${forme}" fill="none" stroke="#9a9a9a" stroke-width="0.35"/>` : ""}
 <circle cx="9.5" cy="${h / 2}" r="3.7" fill="none" stroke="#222" stroke-width="0.6"/>
-${sub ? `<text x="9.5" y="${(h / 2 + 1.95).toFixed(2)}" font-size="5.6" font-weight="700" font-style="normal" text-anchor="middle">${sub}</text>` : ""}
+${sub ? `<text x="9.5" y="${(h / 2 + 1.95).toFixed(2)}" font-size="5.6" font-weight="700" font-style="normal" text-anchor="middle" transform="rotate(-90 9.5 ${h / 2})">${sub}</text>` : ""}
 <text class="l1" x="18" y="13.4" font-size="9.4">${segmentsNom(l1)}</text>
 <text class="l2" x="18" y="25.6" font-size="8.6">${l2 ? segmentsNom(l2) + "<tspan> </tspan>" : ""}${p.n_collecte ? `<tspan font-style="normal">${echXml(p.n_collecte)} </tspan>` : ""}<tspan font-style="normal" font-size="5.4" dy="-0.2">${echXml(t)} </tspan><tspan font-style="normal" font-weight="600" dy="0.2">${echXml(pays)}</tspan>${date ? `<tspan font-style="normal" font-size="5.4"> ${echXml(date)}</tspan>` : ""}</text>
 <use class="ico" href="#ico-${expo === "Ombre" ? "ombre" : expo === "Mi-ombre" ? "miombre" : "soleil"}" x="0" y="${h - 10.6}"/>
