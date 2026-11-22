@@ -972,3 +972,6 @@ select 2027, v.titre, v.sem, v.cle from (values
   ('Imprimer le planning des bénévoles, préparer la caisse', 1, true),
   ('Bilan, remerciements et comptes du salon', -2, false)) as v(titre, sem, cle)
 where not exists (select 1 from public.salon_taches where edition = 2027);
+
+-- 23. Galerie : album (sous-dossier) dans chaque catégorie
+alter table public.photos add column if not exists serie text check (serie is null or length(serie) <= 120);

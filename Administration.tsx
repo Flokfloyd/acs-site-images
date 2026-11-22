@@ -190,42 +190,123 @@ function RappelsEnCours() {
 }
 
 // ---------- Galerie ----------
-// Choix de la photo de couverture de chaque catégorie : un clic sur une miniature
-function Couvertures({ rev, changer }: { rev: number; changer: () => void }) {
+// Gestion des photos : on coche des miniatures, puis on les range (catégorie, album), on les légende ou on les supprime.
+// L'étoile choisit la couverture de la catégorie sur l'accueil (la seule photo publique).
+function GestionPhotos({ rev, changer }: { rev: number; changer: () => void }) {
     const client = sb()!
-    const [photos, setPhotos] = React.useState<any[]>([])
+    const [photos, setPhotos] = React.useState<any[] | null>(null)
     const [cat, setCat] = React.useState<string>("")
+    const [serie, setSerie] = React.useState<string>("")
+    const [sel, setSel] = React.useState<Set<string>>(new Set())
+    const [versCat, setVersCat] = React.useState("")
+    const [versAlbum, setVersAlbum] = React.useState("")
+    const [legende, setLegende] = React.useState("")
     const [msg, setMsg] = React.useState<{ t: string; err: boolean } | null>(null)
-    React.useEffect(() => { client.from("photos").select("id,image_url,vignette_url,legende,album,accueil,ordre").order("ordre").order("cree_le", { ascending: false }).then(({ data }: any) => setPhotos(data ?? [])) }, [rev])
-    const choisir = async (p: any) => {
+    const [voir, setVoir] = React.useState<number | null>(null)
+    React.useEffect(() => { client.from("photos").select("*").order("ordre").order("cree_le", { ascending: false }).then(({ data, error }: any) => { if (error) setMsg({ t: error.message, err: true }); setPhotos(data ?? []) }) }, [rev])
+    if (!photos) return <div style={box}><p style={muted}>Chargement…</p></div>
+    const albumsDe = (c?: string) => Array.from(new Set(photos.filter((p) => !c || GALERIE.categorie(p.album) === c).map((p) => p.serie).filter(Boolean))).sort((a: any, b: any) => a.localeCompare(b, "fr")) as string[]
+    const liste = photos.filter((p) => (!cat || GALERIE.categorie(p.album) === cat) && (!serie || (serie === "—" ? !p.serie : p.serie === serie)))
+    const choisis = photos.filter((p) => sel.has(p.id))
+    const basculer = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+    const fin = (t: string) => { setMsg({ t, err: false }); setSel(new Set()); changer() }
+    const maj = async (champs: any, t: string) => {
+        const { error } = await client.from("photos").update(champs).in("id", [...sel])
+        if (error) return setMsg({ t: error.message, err: true })
+        fin(t)
+    }
+    const ranger = async () => {
+        const champs: any = {}
+        if (versCat) champs.album = versCat
+        if (versAlbum.trim()) champs.serie = versAlbum.trim()
+        if (!Object.keys(champs).length) return setMsg({ t: "Choisissez une catégorie et/ou un album.", err: true })
+        // une photo qui change de catégorie perd son statut de couverture
+        if (versCat) champs.accueil = false
+        await maj(champs, `${sel.size} photo${sel.size > 1 ? "s" : ""} rangée${sel.size > 1 ? "s" : ""}${versCat ? ` dans « ${versCat} »` : ""}${versAlbum.trim() ? `, album « ${versAlbum.trim()} »` : ""}.`)
+        setVersAlbum("")
+    }
+    const sansAlbum = () => maj({ serie: null }, "Retirées de leur album.")
+    const legender = () => maj({ legende: legende.trim() || null }, legende.trim() ? "Légende ajoutée." : "Légende effacée.")
+    const supprimer = async () => {
+        if (!window.confirm(`Supprimer définitivement ${sel.size} photo${sel.size > 1 ? "s" : ""} ?`)) return
+        const { error } = await client.from("photos").delete().in("id", [...sel])
+        if (error) return setMsg({ t: error.message, err: true })
+        const chemins = choisis.flatMap((r) => [r.image_url, r.vignette_url]).filter((u: any) => typeof u === "string" && u.includes("/object/public/semestriels/")).map((u: string) => decodeURIComponent(u.split("/object/public/semestriels/")[1].split("?")[0]))
+        if (chemins.length) await client.storage.from("semestriels").remove(chemins)
+        fin("Photos supprimées.")
+    }
+    const couverture = async (p: any) => {
         const c = GALERIE.categorie(p.album)
         const autres = photos.filter((x) => GALERIE.categorie(x.album) === c && x.id !== p.id && x.accueil).map((x) => x.id)
-        if (autres.length) { const r = await client.from("photos").update({ accueil: false }).in("id", autres); if (r.error) return setMsg({ t: r.error.message, err: true }) }
+        if (autres.length) await client.from("photos").update({ accueil: false }).in("id", autres)
         const { error } = await client.from("photos").update({ accueil: true, ordre: 1 }).eq("id", p.id)
         if (error) return setMsg({ t: error.message, err: true })
-        setMsg({ t: `C’est la nouvelle couverture de « ${c} » sur l’accueil.`, err: false }); changer()
+        fin(`Nouvelle couverture de « ${c} » sur l’accueil.`)
     }
-    const ouverte = cat || GALERIE.CATEGORIES.find((c) => photos.some((p) => GALERIE.categorie(p.album) === c)) || GALERIE.CATEGORIES[0]
-    const liste = photos.filter((p) => GALERIE.categorie(p.album) === ouverte)
-    const couv = (c: string) => photos.find((p) => GALERIE.categorie(p.album) === c && p.accueil)
+    const puce = (a: boolean): React.CSSProperties => ({ ...small(), padding: "7px 12px", background: a ? C.accent : "transparent", color: a ? C.accentDark : C.txt, borderColor: a ? C.accent : C.line, fontWeight: 600 })
+    const albumsVisibles = albumsDe(cat || undefined)
+    const tousCoches = liste.length > 0 && liste.every((p) => sel.has(p.id))
     return (
         <div style={box}>
-            <h2 style={h2}>Couvertures de l’accueil</h2>
-            <p style={{ ...muted, fontSize: 14, marginBottom: 12 }}>Choisissez une catégorie, puis <b style={{ color: C.txt }}>cliquez sur la photo</b> qui doit apparaître sur l’accueil. C’est la seule que le public verra : pas de visage reconnaissable.</p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-                {GALERIE.CATEGORIES.map((c) => { const a = c === ouverte; const n = photos.filter((p) => GALERIE.categorie(p.album) === c).length; return <button key={c} onClick={() => { setCat(c); setMsg(null) }} style={{ ...small(), padding: "8px 12px", background: a ? C.accent : "transparent", color: a ? C.accentDark : C.txt, borderColor: a ? C.accent : C.line, fontWeight: 600 }}>{c} <span style={{ fontWeight: 400, opacity: 0.75 }}>({n}){couv(c) ? "" : " · sans couverture"}</span></button> })}
+            <h2 style={h2}>Ranger les photos</h2>
+            <p style={{ ...muted, fontSize: 14, marginBottom: 14 }}><b style={{ color: C.txt }}>Cochez</b> des photos (un clic sur la miniature), puis rangez-les en une fois dans une catégorie et un album. L’<b style={{ color: C.txt }}>étoile ☆</b> choisit la couverture de la catégorie sur l’accueil : c’est la seule photo que voit le public.</p>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <button style={puce(!cat)} onClick={() => { setCat(""); setSerie("") }}>Toutes ({photos.length})</button>
+                {GALERIE.CATEGORIES.map((c) => { const n = photos.filter((p) => GALERIE.categorie(p.album) === c).length; return <button key={c} style={puce(cat === c)} onClick={() => { setCat(c); setSerie("") }}>{c} <span style={{ fontWeight: 400, opacity: 0.75 }}>({n}){n && !photos.some((p) => GALERIE.categorie(p.album) === c && p.accueil) ? " · sans couverture" : ""}</span></button> })}
             </div>
-            {liste.length === 0 ? <p style={muted}>Aucune photo dans « {ouverte} » pour l’instant.</p> : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
-                    {liste.map((p) => (
-                        <button key={p.id} onClick={() => !p.accueil && choisir(p)} title={p.accueil ? "Couverture actuelle" : "Choisir comme couverture"} style={{ position: "relative", padding: 0, border: `3px solid ${p.accueil ? C.accent : "transparent"}`, background: "#2e241e", cursor: p.accueil ? "default" : "pointer", height: 110, overflow: "hidden" }}>
-                            <img src={p.vignette_url || p.image_url} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: p.accueil ? 1 : 0.85 }} />
-                            {p.accueil && <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, background: C.accent, color: C.accentDark, fontSize: 12, fontWeight: 700, padding: "3px 0", textAlign: "center" }}>★ Couverture</span>}
-                        </button>
-                    ))}
+            {albumsVisibles.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
+                    <span style={{ fontSize: 12, color: C.mute, letterSpacing: "0.06em", textTransform: "uppercase", marginRight: 4 }}>Albums</span>
+                    <button style={{ ...puce(!serie), fontWeight: 400 }} onClick={() => setSerie("")}>Tous</button>
+                    {albumsVisibles.map((a) => <button key={a} style={{ ...puce(serie === a), fontWeight: 400 }} onClick={() => setSerie(a)}>{a} ({photos.filter((p) => p.serie === a).length})</button>)}
+                    <button style={{ ...puce(serie === "—"), fontWeight: 400 }} onClick={() => setSerie("—")}>Sans album</button>
                 </div>
             )}
-            {msg && <Msg text={msg.t} err={msg.err} />}
+
+            {/* barre d'actions, visible dès qu'une photo est cochée */}
+            <div style={{ position: "sticky", top: 8, zIndex: 3, marginTop: 14, padding: "12px 14px", background: sel.size ? "#33402c" : C.bg, border: `1px solid ${sel.size ? C.accent : C.line}` }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                    <b style={{ fontWeight: 600 }}>{sel.size ? `${sel.size} photo${sel.size > 1 ? "s" : ""} cochée${sel.size > 1 ? "s" : ""}` : "Aucune photo cochée"}</b>
+                    <button style={small()} onClick={() => setSel(tousCoches ? new Set() : new Set(liste.map((p) => p.id)))}>{tousCoches ? "Tout décocher" : `Tout cocher (${liste.length})`}</button>
+                    {sel.size > 0 && <button style={small()} onClick={() => setSel(new Set())}>Annuler</button>}
+                </div>
+                {sel.size > 0 && <>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginTop: 12, alignItems: "end" }}>
+                        <div><span style={label}>Catégorie</span><select style={{ ...input, padding: "9px 11px" }} value={versCat} onChange={(e) => setVersCat(e.target.value)}><option value="">(ne pas changer)</option>{GALERIE.CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+                        <div><span style={label}>Album</span><input style={{ ...input, padding: "9px 11px" }} list="acs-series" value={versAlbum} onChange={(e) => setVersAlbum(e.target.value)} placeholder="Ex. Salon des Plantes · juin 2026" /><datalist id="acs-series">{albumsDe(versCat || undefined).map((a) => <option key={a} value={a} />)}</datalist></div>
+                        <button style={{ ...btn(), padding: "10px 16px" }} onClick={ranger}>Ranger</button>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10, marginTop: 10, alignItems: "end" }}>
+                        <div><span style={label}>Légende</span><input style={{ ...input, padding: "9px 11px" }} value={legende} onChange={(e) => setLegende(e.target.value)} placeholder="Ex. Aloe polyphylla" /></div>
+                        <button style={small()} onClick={legender}>Mettre cette légende</button>
+                        <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <button style={small()} onClick={sansAlbum}>Sortir de l’album</button>
+                            <button style={small(true)} onClick={supprimer}>Supprimer</button>
+                        </span>
+                    </div>
+                </>}
+                {msg && <Msg text={msg.t} err={msg.err} />}
+            </div>
+
+            {liste.length === 0 ? <p style={{ ...muted, marginTop: 14 }}>Aucune photo ici.</p> : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10, marginTop: 14 }}>
+                    {liste.map((p, i) => {
+                        const coche = sel.has(p.id)
+                        return (
+                            <div key={p.id} style={{ position: "relative", outline: coche ? `3px solid ${C.accent}` : p.accueil ? `2px solid #f3c86b` : "none", outlineOffset: -3, background: "#2e241e" }}>
+                                <button onClick={() => basculer(p.id)} title={coche ? "Décocher" : "Cocher"} style={{ display: "block", width: "100%", height: 120, padding: 0, border: "none", background: "transparent", cursor: "pointer" }}>
+                                    <img src={p.vignette_url || p.image_url} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", opacity: coche ? 0.75 : 1 }} />
+                                </button>
+                                <span style={{ position: "absolute", top: 6, left: 6, width: 22, height: 22, border: `2px solid ${coche ? C.accent : "#fff"}`, background: coche ? C.accent : "rgba(0,0,0,0.35)", color: C.accentDark, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, pointerEvents: "none" }}>{coche ? "✓" : ""}</span>
+                                <button onClick={() => !p.accueil && couverture(p)} title={p.accueil ? "Couverture de la catégorie sur l’accueil" : "Choisir comme couverture sur l’accueil"} style={{ position: "absolute", top: 4, right: 4, border: "none", background: p.accueil ? "#f3c86b" : "rgba(0,0,0,0.45)", color: p.accueil ? "#1d1612" : "#fff", width: 28, height: 28, fontSize: 16, cursor: p.accueil ? "default" : "pointer", lineHeight: 1 }}>{p.accueil ? "★" : "☆"}</button>
+                                <button onClick={() => setVoir(i)} title="Agrandir" style={{ position: "absolute", bottom: 30, right: 4, border: "none", background: "rgba(0,0,0,0.45)", color: "#fff", width: 26, height: 26, cursor: "zoom-in", fontSize: 13 }}>⤢</button>
+                                <div style={{ padding: "5px 7px", fontSize: 11.5, lineHeight: 1.3, color: C.mute, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={[GALERIE.categorie(p.album), p.serie, p.legende].filter(Boolean).join(" · ")}>{p.serie || <i>sans album</i>}{!cat ? ` · ${GALERIE.categorie(p.album)}` : ""}</div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+            {voir != null && <GALERIE.Diaporama photos={liste.map((p) => ({ ...p, album: [GALERIE.categorie(p.album), p.serie].filter(Boolean).join(" · ") }))} index={voir} fermer={() => setVoir(null)} />}
         </div>
     )
 }
@@ -234,7 +315,9 @@ function GalerieAdmin() {
     const client = sb()!
     const [rev, setRev] = React.useState(0)
     const [album, setAlbum] = React.useState(GALERIE.CATEGORIES[0])
-    const [accueil, setAccueil] = React.useState(false)
+    const [serieEnvoi, setSerieEnvoi] = React.useState("")
+    const [series, setSeries] = React.useState<string[]>([])
+    React.useEffect(() => { client.from("photos").select("serie").then(({ data }: any) => setSeries(Array.from(new Set((data ?? []).map((r: any) => r.serie).filter(Boolean))) as string[])) }, [rev])
     const [etat, setEtat] = React.useState<{ t: string; err: boolean } | null>(null)
     const envoyer = async (fichiers: FileList | null) => {
         if (!fichiers || !fichiers.length) return
@@ -253,7 +336,7 @@ function GalerieAdmin() {
                 const upV = await client.storage.from("semestriels").upload(nomV, await GALERIE.reduireImage(f, 800, 0.8), { contentType: "image/jpeg", upsert: false })
                 const vignette = upV.error ? null : client.storage.from("semestriels").getPublicUrl(nomV).data.publicUrl
                 const legende = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/^(img|dsc|pxl|photo)\s*\d.*$/i, "").trim() || null
-                const ins = await client.from("photos").insert({ image_url: url, vignette_url: vignette, legende, album, accueil, ordre: 100 })
+                const ins = await client.from("photos").insert({ image_url: url, vignette_url: vignette, legende, album, serie: serieEnvoi.trim() || null, accueil: false, ordre: 100 })
                 if (ins.error) throw ins.error
                 ok++
             } catch (e) { setEtat({ t: `Échec pour ${f.name} : ${String((e as any).message || e)}`, err: true }); return }
@@ -263,7 +346,7 @@ function GalerieAdmin() {
     }
     return (
         <>
-            <Aide>1. Choisissez la catégorie et envoyez les photos : elles sont réservées aux adhérents (onglet Galerie de leur espace) et réduites automatiquement. 2. Dans « Couvertures de l’accueil », cliquez sur la photo qui représentera la catégorie sur l’accueil : c’est la seule que le public voit.</Aide>
+            <Aide>Envoyez les photos avec leur catégorie (et un album si vous voulez), elles sont réduites automatiquement et réservées aux adhérents. Ensuite, dans « Ranger les photos », cochez-en plusieurs pour les déplacer d’un coup, et cliquez sur l’étoile ☆ de la photo qui sera la couverture publique de sa catégorie sur l’accueil.</Aide>
             <div style={box}>
                 <h2 style={h2}>Ajouter des photos</h2>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 8 }}>
@@ -271,7 +354,11 @@ function GalerieAdmin() {
                         <span style={label}>Catégorie</span>
                         <select style={input} value={album} onChange={(e) => setAlbum(e.target.value)}>{GALERIE.CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
                     </label>
-                    <p style={{ ...muted, fontSize: 13, paddingTop: 22 }}>Envoyez toutes les photos de la catégorie : elles vont dans la galerie des adhérents. La couverture de l’accueil se choisit ensuite, juste en dessous, d’un clic.</p>
+                    <label style={{ display: "block" }}>
+                        <span style={label}>Album (facultatif)</span>
+                        <input style={input} list="acs-series-envoi" value={serieEnvoi} onChange={(e) => setSerieEnvoi(e.target.value)} placeholder="Ex. Salon des Plantes · juin 2026" />
+                        <datalist id="acs-series-envoi">{series.map((a) => <option key={a} value={a} />)}</datalist>
+                    </label>
                 </div>
                 <label style={{ ...btn(), display: "inline-block", marginTop: 16, cursor: "pointer" }}>
                     Choisir des photos…
@@ -279,9 +366,7 @@ function GalerieAdmin() {
                 </label>
                 {etat && <div><Msg text={etat.t} err={etat.err} /></div>}
             </div>
-            <Couvertures rev={rev} changer={() => setRev((x) => x + 1)} />
-            <Editeur key={rev} table="photos" ordre="ordre" titre="Photos" champs={CHAMPS_PHOTO} nouveau={() => ({ ordre: 100, accueil: false })}
-                resume={(r) => `${r.accueil ? "★ Accueil · " : ""}${GALERIE.categorie(r.album)} · ${r.legende || "(sans légende)"}`} />
+            <GestionPhotos rev={rev} changer={() => setRev((x) => x + 1)} />
         </>
     )
 }

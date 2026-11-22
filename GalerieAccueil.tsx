@@ -4,7 +4,7 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb, imgLeger } from "./AcsBase.tsx"
 
-export type Photo = { id: string; image_url: string; vignette_url?: string | null; legende?: string | null; album?: string | null; accueil?: boolean; ordre?: number }
+export type Photo = { id: string; image_url: string; vignette_url?: string | null; legende?: string | null; album?: string | null; serie?: string | null; accueil?: boolean; ordre?: number }
 
 const sans = "'Poppins', system-ui, sans-serif"
 const serif = "'Fraunces', Georgia, serif"

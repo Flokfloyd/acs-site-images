@@ -1027,14 +1027,17 @@ function GalerieMembres() {
     const client = sb()!
     const [photos, setPhotos] = React.useState<Photo[] | null>(null)
     const [album, setAlbum] = React.useState<string>("")
+    const [serie, setSerie] = React.useState<string>("")
     const [ouverte, setOuverte] = React.useState<number | null>(null)
     React.useEffect(() => {
-        client.from("photos").select("id,image_url,vignette_url,legende,album,accueil,ordre").order("ordre").order("cree_le", { ascending: false })
+        client.from("photos").select("*").order("ordre").order("cree_le", { ascending: false })
             .then(({ data, error }: any) => setPhotos(error ? GALERIE.SECOURS : data ?? []))
     }, [])
     if (!photos) return <div style={{ ...box, ...muted }}>Chargement de la galerie…</div>
     const albums = GALERIE.CATEGORIES.filter((c) => photos.some((p) => GALERIE.categorie(p.album) === c))
-    const liste = album ? photos.filter((p) => GALERIE.categorie(p.album) === album) : photos
+    const dansCat = album ? photos.filter((p) => GALERIE.categorie(p.album) === album) : photos
+    const series = Array.from(new Set(dansCat.map((p) => p.serie).filter(Boolean))) as string[]
+    const liste = serie ? dansCat.filter((p) => p.serie === serie) : dansCat
     const puce = (actif: boolean): React.CSSProperties => ({ ...small(), background: actif ? C.accent : "transparent", color: actif ? C.accentDark : C.txt, borderColor: actif ? C.accent : C.line })
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -1044,8 +1047,14 @@ function GalerieMembres() {
             </div>
             {albums.length > 1 && (
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button style={puce(!album)} onClick={() => setAlbum("")}>Toutes</button>
-                    {albums.map((a) => <button key={a} style={puce(album === a)} onClick={() => setAlbum(a)}>{a}</button>)}
+                    <button style={puce(!album)} onClick={() => { setAlbum(""); setSerie("") }}>Toutes</button>
+                    {albums.map((a) => <button key={a} style={puce(album === a)} onClick={() => { setAlbum(a); setSerie("") }}>{a}</button>)}
+                </div>
+            )}
+            {series.length > 0 && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: -6 }}>
+                    <button style={{ ...puce(!serie), fontSize: 12 }} onClick={() => setSerie("")}>Tous les albums</button>
+                    {series.map((a) => <button key={a} style={{ ...puce(serie === a), fontSize: 12 }} onClick={() => setSerie(a)}>{a}</button>)}
                 </div>
             )}
             {liste.length === 0 ? <div style={{ ...box, ...muted }}>Aucune photo pour l’instant.</div> : (
@@ -1053,7 +1062,7 @@ function GalerieMembres() {
                     {liste.map((p, i) => <GALERIE.Vignette key={p.id} p={p} hauteur="clamp(150px, 20vw, 200px)" onClick={() => setOuverte(i)} />)}
                 </div>
             )}
-            {ouverte != null && <GALERIE.Diaporama photos={liste} index={ouverte} fermer={() => setOuverte(null)} />}
+            {ouverte != null && <GALERIE.Diaporama photos={liste.map((p) => ({ ...p, album: [GALERIE.categorie(p.album), p.serie].filter(Boolean).join(" · ") }))} index={ouverte} fermer={() => setOuverte(null)} />}
         </div>
     )
 }
