@@ -5,6 +5,8 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb } from "./AcsBase.tsx"
 
+const APERCU = 5 // pages lisibles sans être adhérent
+
 type Issue = { n: number; date: string; resume: string; ch: [string, number][]; couv: string; pdf?: string | null; total: number }
 const GH = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@main/"
 const STATIQUES: Issue[] = [
@@ -65,6 +67,22 @@ export default function Semestriels(props: { hauteurMax: number }) {
     const [plein, setPlein] = React.useState(false)
     const [ratioPdf, setRatioPdf] = React.useState<Record<string, number>>({})
     const [bord, setBord] = React.useState({ g: 0, l: 0 }) // décalage gauche et largeur de la fenêtre, pour un fond pleine largeur
+    // visiteur non connecté : aperçu des 5 premières pages (page « Semestriels » réglable dans l'admin)
+    const [limite, setLimite] = React.useState<number | null>(APERCU)
+    const [bloque, setBloque] = React.useState(false)
+    React.useEffect(() => {
+        const c = sb(); if (!c) return
+        const verifier = async (se: any) => {
+            const { data: a } = await c.from("pages_acces").select("reserve").eq("page", "semestriels").maybeSingle()
+            if (a && a.reserve === false) return setLimite(null)
+            if (!se) return setLimite(APERCU)
+            const { data } = await c.rpc("est_membre")
+            setLimite(data === true ? null : APERCU)
+        }
+        c.auth.getSession().then(({ data }: any) => verifier(data.session))
+        const { data } = c.auth.onAuthStateChange((_e: any, se: any) => verifier(se))
+        return () => data.subscription.unsubscribe()
+    }, [])
     const issuesRef = React.useRef(issues); issuesRef.current = issues
 
     React.useEffect(() => {
@@ -97,7 +115,7 @@ export default function Semestriels(props: { hauteurMax: number }) {
 
     // choix du numéro par le lien (#n3) ou la couverture
     const choisir = React.useCallback((i: number, defiler = true) => {
-        setSel(i); setS(0); setFlip(null); setToc(false)
+        setSel(i); setS(0); setFlip(null); setToc(false); setBloque(false)
         if (defiler && lecteur.current) setTimeout(() => lecteur.current!.scrollIntoView({ behavior: "smooth", block: "start" }), 60)
     }, [])
     React.useEffect(() => {
@@ -134,6 +152,7 @@ export default function Semestriels(props: { hauteurMax: number }) {
     const tourner = (dir: 1 | -1) => {
         if (flip) return
         if (dir === 1 && s >= maxS) return
+        if (dir === 1 && limite) { const premiere = simple ? s + 2 : (L(s + 1) || R(s + 1) || 0); if (premiere > limite) { setBloque(true); return } }
         if (dir === -1 && s <= 0) return
         setFlip({ dir, a: simple && dir === -1 ? -180 : 0 })
     }
@@ -180,7 +199,7 @@ export default function Semestriels(props: { hauteurMax: number }) {
     const ombreAnim = flip ? Math.sin((Math.abs(flip.a) / 180) * Math.PI) : 0
 
     const libelle = simple ? `Page ${s + 1} / ${total}` : (() => { const a = L(s), b = R(s); return a && b ? `Pages ${a}–${b} / ${total}` : `Page ${a || b} / ${total}` })()
-    const aller = (p: number) => { setFlip(null); setS(simple ? p - 1 : Math.floor(p / 2)); setToc(false) }
+    const aller = (p: number) => { if (limite && p > limite) { setToc(false); setBloque(true); return } setFlip(null); setS(simple ? p - 1 : Math.floor(p / 2)); setToc(false) }
 
     const btn = (plein_: boolean): React.CSSProperties => ({ font: `600 14px ${FONT}`, color: plein_ ? "#1d1612" : "#f6f0e6", background: plein_ ? "#9bbd8a" : "transparent", border: `1px solid ${plein_ ? "#9bbd8a" : "rgba(246,240,230,0.3)"}`, borderRadius: 0, padding: "0 14px", height: 44, minWidth: 44, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center", justifyContent: "center" })
     const largeurLivre = simple ? pw : 2 * pw
@@ -214,7 +233,7 @@ export default function Semestriels(props: { hauteurMax: number }) {
                     <div style={{ font: `600 22px/1.2 ${SERIF}` }}>Semestriel N°{it.n} <span style={{ font: `500 14px ${FONT}`, color: "#b9ab98" }}>· {it.date}</span></div>
                     <div style={{ display: "flex", gap: 8 }}>
                         {it.ch.length > 0 && <button style={btn(toc)} onClick={() => setToc((t) => !t)}>Sommaire</button>}
-                        {it.pdf && <a style={btn(false)} href={it.pdf} target="_blank" rel="noreferrer">PDF</a>}
+                        {it.pdf && !limite && <a style={btn(false)} href={it.pdf} target="_blank" rel="noreferrer">PDF</a>}
                         <button style={btn(false)} onClick={pleinEcran} aria-label="Plein écran">{plein ? "⤡" : "⛶"}</button>
                     </div>
                 </div>
@@ -240,13 +259,28 @@ export default function Semestriels(props: { hauteurMax: number }) {
                             </div>
                         )
                     })()}
+                    {/* fin de l'aperçu pour les visiteurs */}
+                    {bloque && (
+                        <div onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()} style={{ position: "absolute", inset: 0, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(21,16,13,0.9)", padding: 16, cursor: "default" }}>
+                            <div style={{ background: "#241c17", border: "1px solid rgba(246,240,230,0.16)", padding: "24px 22px", maxWidth: 420, textAlign: "center", font: `400 15px/1.55 ${FONT}`, color: "#f6f0e6" }}>
+                                <div style={{ font: `600 12px ${FONT}`, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9bbd8a" }}>Fin de l’aperçu</div>
+                                <div style={{ font: `600 23px/1.2 ${SERIF}`, margin: "8px 0 10px" }}>La suite est réservée aux adhérents</div>
+                                <p style={{ margin: "0 0 18px", color: "#b9ab98" }}>Vous avez lu les {limite} premières pages. Connectez-vous pour lire le numéro en entier, ou adhérez à l’association (20 € par an).</p>
+                                <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                                    <button style={btn(true)} onClick={() => { try { sessionStorage.setItem("acs-retour", location.pathname + "#n" + it.n) } catch (e) {} ; location.href = "/espace-membre" }}>Se connecter</button>
+                                    <a href="/adhesion" style={btn(false)}>Adhérer</a>
+                                </div>
+                                <button onClick={() => setBloque(false)} style={{ marginTop: 14, background: "transparent", border: "none", color: "#b9ab98", font: `500 13px ${FONT}`, cursor: "pointer", textDecoration: "underline" }}>Revenir à l’aperçu</button>
+                            </div>
+                        </div>
+                    )}
                     {/* pli central */}
                     {!simple && baseL && baseR && <div style={{ position: "absolute", left: pw - 1, top: 0, width: 2, height: ph, background: "rgba(0,0,0,0.25)", zIndex: 2, pointerEvents: "none" }} />}
                 </div>
                 {/* commandes */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
                     <button style={{ ...btn(false), opacity: s <= 0 ? 0.35 : 1 }} onClick={() => tourner(-1)} aria-label="Page précédente">‹</button>
-                    <span style={{ font: `500 14px ${FONT}`, color: "#d8cdbb", minWidth: 130, textAlign: "center" }}>{libelle}</span>
+                    <span style={{ font: `500 14px ${FONT}`, color: "#d8cdbb", minWidth: 130, textAlign: "center" }}>{libelle}{limite ? ` · aperçu de ${limite} pages` : ""}</span>
                     <button style={{ ...btn(true), opacity: s >= maxS ? 0.35 : 1 }} onClick={() => tourner(1)} aria-label="Page suivante">›</button>
                 </div>
             </div>
