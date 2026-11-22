@@ -66,8 +66,10 @@ export default function InscriptionSalon(props: { titre?: string }) {
     const [w, setW] = React.useState(900)
     React.useEffect(() => { const el = ref.current; if (!el) return; const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth); return () => ro.disconnect() }, [])
     React.useEffect(() => {
-        const c = sb(); if (!c) { setReg(null); return }
+        const t = setTimeout(() => setReg((r) => (r === undefined ? null : r)), 3500)   // sans réponse de la base, le formulaire s’affiche quand même
+        const c = sb(); if (!c) { setReg(null); return () => clearTimeout(t) }
         c.from("salon_reglages").select("edition, ouvert, date_limite, message").order("edition", { ascending: false }).limit(1).then(({ data, error }: any) => setReg(error ? null : data?.[0] ?? null))
+        return () => clearTimeout(t)
     }, [])
     const set = (k: keyof Demande, v: any) => setD((x) => ({ ...x, [k]: v }))
     const edition = reg?.edition ?? new Date().getFullYear() + 1
