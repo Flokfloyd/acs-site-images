@@ -16,7 +16,7 @@ const sans = "Poppins, sans-serif", serif = "Fraunces, Georgia, serif"
 // sans prix ou stock à 0 : l’article est affiché « Rupture » (renseigner le prix dans l’administration pour le remettre en vente)
 const enRupture = (p: Produit) => (p.stock != null && p.stock <= 0) || !(Number(p.prix) > 0)
 const euros = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
-const prix = (p: Produit) => { const f = formats(p).filter((x) => x.prix > 0); return f.length > 1 ? "dès " + euros(Math.min(...f.map((x) => x.prix))) : euros(Number(p.prix)) }
+const prix = (p: Produit) => { const f = formats(p).filter((x) => x.prix > 0); return new Set(f.map((x) => x.prix)).size > 1 ? "dès " + euros(Math.min(...f.map((x) => x.prix))) : euros(Number(p.prix)) }
 const lienMail = (email: string, p: Produit, format?: string) => `mailto:${email}?subject=${encodeURIComponent("Boutique : " + p.nom + (format ? " – " + format : "") + (enRupture(p) ? " (me prévenir au retour)" : ""))}`
 const ancre = (p: Produit) => "article-" + p.id.slice(0, 8)
 
