@@ -1032,6 +1032,7 @@ export function GalerieMembres() {
     const client = sb()!
     const [photos, setPhotos] = React.useState<Photo[] | null>(null)
     const [vue, setVue] = React.useState<"tout" | "section" | "album">("tout")
+    const [albumOuvert, setAlbumOuvert] = React.useState<string | null>(null)
     const [ouverte, setOuverte] = React.useState<{ liste: Photo[]; i: number } | null>(null)
     React.useEffect(() => {
         client.from("photos").select("*").order("ordre").order("cree_le", { ascending: false })
@@ -1059,14 +1060,29 @@ export function GalerieMembres() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.mute, marginRight: 4 }}>Affichage</span>
-                    <button style={puce(vue === "tout")} onClick={() => setVue("tout")}>Tout</button>
-                    <button style={puce(vue === "section")} onClick={() => setVue("section")}>Par section</button>
-                    <button style={puce(vue === "album")} onClick={() => setVue("album")}>Par album</button>
+                    <button style={puce(vue === "tout")} onClick={() => { setVue("tout"); setAlbumOuvert(null) }}>Tout</button>
+                    <button style={puce(vue === "section")} onClick={() => { setVue("section"); setAlbumOuvert(null) }}>Par section</button>
+                    <button style={puce(vue === "album")} onClick={() => { setVue("album"); setAlbumOuvert(null) }}>Par album</button>
                 </div>
                 <span style={{ ...muted, fontSize: 13 }}>{photos.length} photo{photos.length > 1 ? "s" : ""} · réservées aux adhérents, merci de ne pas les diffuser.</span>
             </div>
-            {photos.length === 0 ? <div style={{ ...box, ...muted }}>Aucune photo pour l’instant.</div> : groupes.map((g) => (
+            {photos.length > 0 && vue === "album" && !albumOuvert && (
+                // vue album : une vignette par album (sa première photo) ; un clic ouvre l'album
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
+                    {groupes.map((g) => (
+                        <button key={g.titre} onClick={() => setAlbumOuvert(g.titre)} style={{ all: "unset", cursor: "pointer", display: "block", background: C.panel, border: `1px solid ${C.line}` }}>
+                            <div style={{ height: 170, overflow: "hidden", background: "#2e241e" }}><img src={g.liste[0].vignette_url || g.liste[0].image_url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
+                            <div style={{ padding: "10px 12px" }}>
+                                <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>{g.titre}</div>
+                                <div style={{ fontSize: 12.5, color: C.mute, marginTop: 2 }}>{g.sous ? g.sous + " · " : ""}{g.liste.length} photo{g.liste.length > 1 ? "s" : ""}</div>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            )}
+            {photos.length === 0 ? <div style={{ ...box, ...muted }}>Aucune photo pour l’instant.</div> : (vue === "album" ? (albumOuvert ? groupes.filter((g) => g.titre === albumOuvert) : []) : groupes).map((g) => (
                 <div key={g.titre || "tout"} style={{ display: "grid", gap: 10 }}>
+                    {vue === "album" && <div><button style={small()} onClick={() => setAlbumOuvert(null)}>← Tous les albums</button></div>}
                     {g.titre && <h3 style={{ ...h2, fontSize: 22, margin: "8px 0 0", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>{g.titre}<span style={{ fontFamily: "Poppins, sans-serif", fontSize: 13, fontWeight: 400, color: C.mute }}>{g.sous ? g.sous + " · " : ""}{g.liste.length} photo{g.liste.length > 1 ? "s" : ""}</span></h3>}
                     {grille(g.liste)}
                 </div>
