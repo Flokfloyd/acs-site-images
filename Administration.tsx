@@ -11,7 +11,7 @@ import {
 import { GALERIE } from "./GalerieAccueil.tsx"
 import { ZONES_SALON, ouvrirFormulairePapier } from "./InscriptionSalon.tsx"
 import GuideAdmin from "./GuideAdmin.tsx"
-import { PlanningAdmin, RetroplanningAdmin, AlertesRetroplanning } from "./PlanningSalon.tsx"
+import { TachesAdmin, RetroplanningAdmin, AlertesRetroplanning } from "./PlanningSalon.tsx"
 import type { Champ, Question } from "./EspaceMembre.tsx"
 const { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage } = UI
 
@@ -97,9 +97,9 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "adherents" && <AdherentsAdmin moi={email} />}
             {onglet === "compta" && <Compta />}
             {onglet === "salon" && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {([["exposants", "Exposants et réglages"], ["planning", "Planning des bénévoles"], ["retro", "Rétroplanning"]] as const).map(([k, t]) => <button key={k} onClick={() => setSousSalon(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sousSalon === k ? C.accent : "transparent", color: sousSalon === k ? C.accentDark : C.txt, borderColor: sousSalon === k ? C.accent : C.line }}>{t}</button>)}
+                {([["exposants", "Exposants et réglages"], ["planning", "Tâches des bénévoles"], ["retro", "Rétroplanning"]] as const).map(([k, t]) => <button key={k} onClick={() => setSousSalon(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sousSalon === k ? C.accent : "transparent", color: sousSalon === k ? C.accentDark : C.txt, borderColor: sousSalon === k ? C.accent : C.line }}>{t}</button>)}
             </div>}
-            {onglet === "salon" && sousSalon === "planning" && <PlanningAdmin client={client} etroit={etroit} />}
+            {onglet === "salon" && sousSalon === "planning" && <TachesAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "retro" && <RetroplanningAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "exposants" && <><Aide>Les exposants déposent leur demande sur la page Salon (ou sur le formulaire papier). Acceptez, attribuez la zone, les mètres et le n° de stand, puis fixez la contribution : elle se calcule d’après les tarifs par mètre, et reste modifiable. Rien n’est envoyé aux exposants automatiquement.</Aide>
                 <GestionSalon etroit={etroit} /></>}
@@ -1245,7 +1245,7 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
                 <div style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr) minmax(0,1fr)" : "repeat(4, minmax(0,1fr))", gap: 12, marginTop: 12 }}>
                     <div><span style={label}>Premier jour du salon</span><input style={input} type="date" value={reg.date_debut || ""} onChange={(e) => majReg("date_debut", e.target.value || null)} /></div>
                     <div><span style={label}>Dernier jour</span><input style={input} type="date" value={reg.date_fin || ""} onChange={(e) => majReg("date_fin", e.target.value || null)} /></div>
-                    <p style={{ ...muted, fontSize: 13, gridColumn: etroit ? "1 / -1" : "span 2", alignSelf: "end" }}>Ces dates servent au planning des bénévoles (montage la veille, démontage le lendemain) et aux dates limites du rétroplanning. Pensez à mettre aussi le salon à jour dans l’Agenda : c’est lui qui s’affiche sur l’accueil.</p>
+                    <p style={{ ...muted, fontSize: 13, gridColumn: etroit ? "1 / -1" : "span 2", alignSelf: "end" }}>Ces dates servent aux tâches des bénévoles (montage la veille, démontage le lendemain) et aux dates limites du rétroplanning. Pensez à mettre aussi le salon à jour dans l’Agenda : c’est lui qui s’affiche sur l’accueil.</p>
                 </div>
                 <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14, cursor: "pointer" }}><input type="checkbox" checked={!!reg.ouvert} onChange={(e) => majReg("ouvert", e.target.checked)} style={{ width: 18, height: 18, accentColor: C.accent }} />Demandes en ligne ouvertes sur la page Salon</label>
                 <div style={{ marginTop: 12 }}><span style={label}>Message au-dessus du formulaire (facultatif)</span><input style={input} value={reg.message || ""} onChange={(e) => setReg((x: any) => ({ ...x, message: e.target.value }))} onBlur={(e) => majReg("message", e.target.value || null)} placeholder="Ex. : la grande salle est presque complète" /></div>
