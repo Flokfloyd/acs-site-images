@@ -2044,6 +2044,41 @@ function verifierNomBrut(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
     const groupe = GROUPES.find((l) => l.includes(g)) || []
     const choix = ailleurs.find((c) => groupe.includes(c.split(" ")[0]) || annexes.some((a) => sansAccent(a).includes(c.split(" ")[0]))) || ""
     if (choix && choix.split(" ")[0] !== g) return { ...base, statut: "GENRE", libelle: genreConnu ? "Autre genre chez Lodé" : "Genre non retenu", proposition: recompose(avecInfra(choix), maj1(genre)), note: `${espece} est classé en ${affiche(ix, choix).split(" ")[0]}${ailleurs.length > 1 ? ` (aussi : ${ailleurs.filter((c) => c !== choix).map((c) => affiche(ix, c)).join(", ")})` : ""}` }
+    // 4 bis. l’espèce n’est pas citée, mais ses variétés le sont, toutes rattachées à la même espèce
+    {
+        const cibles = new Set<string>()
+        for (const ga of [g, ...groupe.filter((x) => x !== g)]) for (const [k, t] of ix.syn) if (k.startsWith(`${ga} ${e} `)) cibles.add(cleTaxo(t.replace(/\?\s*$/, "")).split(" ").slice(0, 2).join(" "))
+        if (cibles.size === 1) { const t = [...cibles][0]; const v = parSyn(ix.orig.get(t) ?? affiche(ix, t), `${maj1(genre)} ${espece}`, true); return { ...v, libelle: "Synonyme (d’après ses variétés)", note: `${v.note} · Lodé ne cite que des variétés de ${maj1(genre)} ${espece}` } }
+    }
+    // 4 ter. même épithète à une terminaison ou une lettre près, dans le genre ou un genre équivalent (winkleri / winklerae, jajoiana / jajoana)
+    {
+        const radical = (x: string) => x.replace(/(ii|ae|i|a|us|um|is|e|os)$/, "")
+        let best = "", d = 99
+        for (const ga of [g, ...groupe.filter((x) => x !== g)]) for (const sp of ix.parGenre.get(ga) || []) {
+            if (sp.includes(" ") || sp[0] !== e[0]) continue
+            const x = radical(sp) === radical(e) ? 0.5 : lev(e, sp)
+            if (x < d || (x === d && ga === g)) { d = x; best = `${ga} ${sp}` }
+        }
+        if (best && d <= 1 && best !== cle) {
+            const autre = best.split(" ")[0] !== g
+            return { ...base, statut: "PROCHE", libelle: d < 1 ? "Terminaison latine différente" : "Orthographe proche", proposition: recompose(avecInfra(best), autre ? maj1(genre) : undefined), note: `vouliez-vous dire ${affiche(ix, best)} ?` }
+        }
+    }
+    // 4 quater. synonyme à une lettre près (Echinopsis eyresii ≈ eyriesii), ou épithète citée comme variété (Eriosyce taltalensis var. pygmaea)
+    {
+        const radical = (x: string) => x.replace(/(ii|ae|i|a|us|um|is|e|os)$/, "")
+        const genresOk = [g, ...groupe.filter((x) => x !== g)]
+        let proche: [string, string] | null = null, commeVar: [string, string][] = []
+        for (const [k, t] of ix.syn) {
+            const [kg, ke, kr, ki] = k.split(" ")
+            if (!genresOk.includes(kg)) continue
+            if (!kr && ke && ke[0] === e[0] && (radical(ke) === radical(e) || lev(ke, e) <= 1)) { if (!proche || kg === g) proche = [k, t] }
+            if (kr && ki === e && RANGS[kr]) commeVar.push([k, t])
+        }
+        if (proche) { const v = parSyn(proche[1], affiche(ix, proche[0]), true); return { ...v, statut: "PROCHE", libelle: "Orthographe proche d’un synonyme", note: `${maj1(genre)} ${espece} ≈ ${v.note}` } }
+        const cibles = [...new Set(commeVar.map(([, t]) => t))]
+        if (cibles.length === 1) { const v = parSyn(cibles[0], commeVar[0][0], true); return { ...v, libelle: "Cité comme variété", note: `Lodé cite ${commeVar[0][0]} : ${v.note}` } }
+    }
     // 5 bis. nom cité par Lodé sans nom de rattachement
     if (ix.nr.has(cle) || (complet && ix.nr.has(complet))) return { ...base, statut: "NONRETENU", libelle: "Nom non retenu", proposition: "", note: `Lodé cite ${maj1(genre)} ${espece}${complet && ix.nr.has(complet) ? ` ${r0} ${ep0}` : ""} sans le rattacher à une espèce acceptée` }
     // 6. faute de frappe probable dans le genre
