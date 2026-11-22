@@ -989,3 +989,6 @@ create policy pages_acces_gestion on public.pages_acces for all using (est_admin
 grant select on public.pages_acces to anon, authenticated;
 grant insert, update, delete on public.pages_acces to authenticated;
 insert into public.pages_acces (page, reserve) values ('boutique', true), ('semestriels', true) on conflict (page) do nothing;
+
+-- 25. Agenda : les événements sont réservés aux adhérents par défaut (seuls les salons restent publics)
+alter table public.evenements alter column reserve_membres set default true;

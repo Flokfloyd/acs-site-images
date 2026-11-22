@@ -782,7 +782,7 @@ function Agenda({ moi, ouvrirCampagne, etroit }: { moi: string; ouvrirCampagne: 
     const duJour = (d: string) => evts.filter((e) => e.date_debut && e.date_debut <= d && (e.date_fin || e.date_debut) >= d)
     const sansDate = evts.filter((e) => !e.date_debut)
     const prochains = evts.filter((e) => e.date_debut && (e.date_fin || e.date_debut) >= iso(auj)).slice(0, 6)
-    const nouveau = (d?: string) => { setMsg({ t: "", err: false }); setSel({ titre: "", date_debut: d || "", date_fin: "", heure: "", date_label: "", lieu: "", description: "", reserve_membres: false, inscription_ouverte: false, prix: 0, places: "", publie: true, __annoncer: false }) }
+    const nouveau = (d?: string) => { setMsg({ t: "", err: false }); setSel({ titre: "", date_debut: d || "", date_fin: "", heure: "", date_label: "", lieu: "", description: "", reserve_membres: true, inscription_ouverte: false, prix: 0, places: "", publie: true, __annoncer: false }) }
 
     return (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
