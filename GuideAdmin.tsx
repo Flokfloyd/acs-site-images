@@ -81,6 +81,7 @@ export default function GuideAdmin() {
                     <li style={li}><b>Hiver – printemps</b> : ouvrir les demandes d’exposants (onglet Salon), traiter les demandes au fil de l’eau, fixer les dates dans l’agenda. Quand le dépliant est prêt : charger le PDF et publier la liste des exposants.</li>
                     <li style={li}><b>Après le salon</b> : fermer les demandes, mettre à jour les chiffres de l’accueil (exposants, visiteurs) dans Framer.</li>
                     <li style={li}><b>Deux fois par an</b> : publier le nouveau semestriel.</li>
+                    <li style={li}><b>Fin octobre</b> : renouveler la remise association de Framer (formule Basic offerte un an, jusqu’au 22 novembre). Un bandeau jaune l’annonce en haut de l’administration un mois avant, jusqu’à ce qu’on clique sur « C’est fait ».</li>
                 </ul>
             </Partie>
 
@@ -88,19 +89,19 @@ export default function GuideAdmin() {
                 <ul style={{ paddingLeft: 20, margin: "0 0 10px" }}>
                     <li style={li}><b>L’espace membre reste sur « Chargement… », l’agenda ou la boutique sont vides.</b> Supabase s’est sans doute mis en veille (après une semaine sans aucune visite). Aller sur Supabase, ouvrir le projet et cliquer sur « Restore ». Rien n’est perdu, il faut quelques minutes.</li>
                     <li style={li}><b>Les codes de connexion n’arrivent plus.</b> Regarder d’abord dans les indésirables. Sinon, vérifier sur Brevo que le quota du jour n’est pas dépassé (300). Si la clé Brevo a été changée, il faut aussi la recopier dans Supabase › Authentication › Emails › SMTP.</li>
-                    <li style={li}><b>Le site public ne s’affiche plus.</b> L’offre gratuite de Framer limite le trafic à 1 Go par mois. Le tableau de bord Framer indique la consommation. Si c’est ça, soit on attend le mois suivant, soit on passe à la formule payante Basic.</li>
+                    <li style={li}><b>Le site public ne s’affiche plus.</b> Vérifier dans Framer (Settings › Plans) que la formule Basic est toujours active : si la remise n’a pas été renouvelée, le site repasse en gratuit, limité à 1 Go de trafic par mois.</li>
                     <li style={li}><b>Les messages du formulaire Contact n’arrivent pas.</b> Dans Framer, vérifier que l’adresse de réception est bien validée (réglages du formulaire).</li>
                     <li style={li}><b>Un adhérent n’arrive pas à se connecter.</b> Vérifier dans l’onglet Adhérents son e-mail et son statut, lui renvoyer son code ou un e-mail de connexion.</li>
                 </ul>
             </Partie>
 
-            <Partie titre="Les limites de la version gratuite">
+            <Partie titre="Les limites des offres gratuites">
                 <ul style={{ paddingLeft: 20, margin: "0 0 10px" }}>
-                    <li style={li}>Framer : 1 Go de trafic par mois, et le petit badge « Made in Framer ».</li>
+                    <li style={li}>Framer : formule Basic offerte à l’association (50 Go de trafic par mois), à redemander chaque année.</li>
                     <li style={li}>Supabase : 500 Mo de données et 1 Go de fichiers (on en utilise une trentaine de Mo), pas de sauvegarde automatique, mise en veille après une semaine sans activité.</li>
                     <li style={li}>Brevo : 300 e-mails par jour. Une campagne aux 100 adhérents passe sans problème.</li>
                 </ul>
-                <p style={p}>Pour 100 à 200 adhérents, c’est largement suffisant. Le seul vrai point à surveiller est le trafic Framer au moment du salon.</p>
+                <p style={p}>Pour 100 à 200 adhérents, c’est largement suffisant. Le seul vrai point à surveiller est le renouvellement de la remise Framer chaque automne.</p>
             </Partie>
 
             <Partie titre="Ce qu’il ne faut pas faire">
