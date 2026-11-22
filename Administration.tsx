@@ -86,6 +86,7 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "billets" && <ControleBillets />}
             {onglet === "paiements" && <><Aide>Les paiements encaissés sur AssoConnect (en ligne ou au salon avec l’appli) s’ajoutent ici en important un export AssoConnect, par exemple une fois par mois. Notez à la main les adhésions réglées par chèque ou en espèces hors AssoConnect.</Aide>
                 <ImportAssoConnect />
+                <Editeur table="campagnes_adhesion" ordre="annee" desc titre="Campagnes d’adhésion (page Adhésion)" champs={CHAMPS_CAMPAGNE_ADH} nouveau={(l) => { const a = Math.max(new Date().getFullYear(), ...l.map((x: any) => x.annee)) + 1; return { annee: a, ouverture: `${a - 1}-12-01`, tarif: l[0]?.tarif ?? 20 } }} resume={(r) => `${r.annee} · affichée dès le ${dateFr(r.ouverture)} · ${r.tarif} €${r.lien ? "" : " · lien de paiement à ajouter"}`} />
                 <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => { const a = new Date().getFullYear(); return { annee: a, montant: 20, formule: "Année complète", debut: `${a}-01-01`, fin: `${a}-12-31`, source: "Chèque" } }} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
                 <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
             {onglet === "adherents" && <AdherentsAdmin moi={email} />}
@@ -106,6 +107,14 @@ export default function Administration(props: { pageMembre: string }) {
 Administration.defaultProps = { pageMembre: "/espace-membre" }
 addPropertyControls(Administration, { pageMembre: { type: ControlType.String, title: "Page membre", defaultValue: "/espace-membre" } })
 
+// Page Adhésion : la campagne la plus récente dont la date d’ouverture est passée s’affiche (année, tarif, bouton)
+const CHAMPS_CAMPAGNE_ADH: Champ[] = [
+    { k: "annee", t: "Année d’adhésion", type: "number", requis: true },
+    { k: "ouverture", t: "Affichée sur le site à partir du", type: "date", requis: true },
+    { k: "tarif", t: "Cotisation (€)", type: "number", requis: true },
+    { k: "lien", t: "Lien de paiement AssoConnect de cette campagne", type: "text", place: "https://www.armorique-cactus-succulentes.com/collect/…" },
+    { k: "message", t: "Message en tête des formules (facultatif)", type: "textarea" },
+]
 const CHAMPS_PROD: Champ[] = [
     { k: "nom", t: "Nom de l’article", type: "text", requis: true, place: "Tee-shirt ACS" },
     { k: "categorie", t: "Catégorie", type: "text", place: "Tee-shirts, Substrats, Engrais…" },

@@ -6,7 +6,7 @@ import { addPropertyControls, ControlType } from "framer"
 import { sb } from "./AcsBase.tsx"
 
 type Issue = { n: number; date: string; resume: string; ch: [string, number][]; couv: string; pdf?: string | null; total: number }
-const GH = "https://raw.githubusercontent.com/Flokfloyd/acs-site-images/main/"
+const GH = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@main/"
 const STATIQUES: Issue[] = [
     { n: 1, date: "Mars 2025", resume: "Le programme du salon, débuter en cactées, l’étiquetage, Astrophytum, Pleiospilos et un voyage en Espagne.", ch: [["Salon", 4], ["Programme", 5], ["Débuter", 6], ["Histoire d’une passion", 7], ["Étiquetage", 8], ["Astrophytum", 11], ["Pleiospilos", 12], ["Espagne", 13], ["AG", 15]], couv: GH + "1-couvertures/couverture-n1.jpg", total: 16 },
     { n: 2, date: "Juillet 2025", resume: "Le retour sur le salon, le portrait de Yannick, les substrats et les Aeonium d’Arabie.", ch: [["Salon", 4], ["Yannick", 7], ["Substrats", 9], ["Aeonium d’Arabie", 12], ["Agenda", 16]], couv: GH + "1-couvertures/couverture-n2.jpg", total: 16 },

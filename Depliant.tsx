@@ -4,7 +4,7 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import { addPropertyControls, ControlType } from "framer"
 
-const BASE = "https://raw.githubusercontent.com/Flokfloyd/acs-site-images/main/5-depliant-2026/"
+const BASE = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@main/5-depliant-2026/"
 const img = (k: string) => BASE + k + ".jpg"
 // Recto (page 1, de gauche à droite) : A volet rabattu, B dos, C couverture
 // Verso (page 2) : D, E, F — l'intérieur ; C est derrière D, B derrière E, A derrière F

@@ -5,7 +5,7 @@ import { sb } from "./AcsBase.tsx"
 
 // Numéros déjà en ligne (pages en images). Les numéros ajoutés par les admins
 // dans l'espace membre viennent de la base et s'affichent depuis leur PDF.
-const BASE = "https://raw.githubusercontent.com/Flokfloyd/acs-site-images/main/4-pages/"
+const BASE = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@main/4-pages/"
 type Issue = { n: number; date: string; ch: [string, number][]; pdf?: string | null; total?: number }
 const STATIQUES: Issue[] = [
   { n: 1, date: "Mars 2025", ch: [["Salon", 4], ["Programme", 5], ["Débuter", 6], ["Histoire d’une passion", 7], ["Étiquetage", 8], ["Astrophytum", 11], ["Pleiospilos", 12], ["Espagne", 13], ["AG", 15]] },
