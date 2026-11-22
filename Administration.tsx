@@ -9,6 +9,7 @@ import {
     CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR, CHAMPS_PHOTO,
 } from "./EspaceMembre.tsx"
 import { GALERIE } from "./GalerieAccueil.tsx"
+import { ZONES_SALON, ouvrirFormulairePapier } from "./InscriptionSalon.tsx"
 import type { Champ, Question } from "./EspaceMembre.tsx"
 const { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage } = UI
 
@@ -25,7 +26,7 @@ function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
     return [setEl, etroit]
 }
 
-const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"]] as const
+const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["salon", "Salon"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"]] as const
 type O = (typeof ONGLETS)[number][0]
 const lireHash = (): O => {
     if (typeof window === "undefined") return "agenda"
@@ -89,6 +90,8 @@ export default function Administration(props: { pageMembre: string }) {
                 <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
             {onglet === "adherents" && <AdherentsAdmin moi={email} />}
             {onglet === "compta" && <Compta />}
+            {onglet === "salon" && <><Aide>Les exposants déposent leur demande sur la page Salon (ou sur le formulaire papier). Acceptez, attribuez la zone, les mètres et le n° de stand, puis fixez la contribution : elle se calcule d’après les tarifs par mètre, et reste modifiable. Rien n’est envoyé aux exposants automatiquement.</Aide>
+                <GestionSalon etroit={etroit} /></>}
             {onglet === "boutique" && <><Aide>Les articles cochés « En vente » apparaissent sur la page Boutique du site, dans l’ordre indiqué. Laissez le stock vide si vous ne le suivez pas.</Aide>
                 <Editeur table="produits" ordre="ordre" titre="Articles" champs={CHAMPS_PROD} nouveau={(l) => ({ actif: true, ordre: (l.length + 1) * 10 })} resume={(r) => `${r.categorie ? r.categorie + " · " : ""}${r.nom} · ${euros(r.prix)}${r.stock != null ? ` · stock ${r.stock}` : ""}${r.actif ? "" : " (retiré)"}`} /></>}
             {onglet === "campagnes" && <Campagnes moi={email} ouverte={campagneOuverte} setOuverte={setCampagneOuverte} />}
@@ -1110,6 +1113,143 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                     </button>
                 ))}
                 <Msg text={msg.t} err={msg.err} />
+            </div>
+        </div>
+    )
+}
+
+// ---------- Salon : demandes d’emplacement des exposants ----------
+const STATUTS_SALON: [string, string, string][] = [["nouvelle", "Nouvelle", "#d7b56d"], ["acceptee", "Acceptée", "#9bbd8a"], ["attente", "Liste d’attente", "#b9a3d6"], ["refusee", "Refusée", "#e08a73"], ["annulee", "Annulée", "rgba(246,240,230,0.45)"]]
+function GestionSalon({ etroit }: { etroit: boolean }) {
+    const [reg, setReg] = React.useState<any | null>(null)
+    const [l, setL] = React.useState<any[] | null>(null)
+    const [err, setErr] = React.useState("")
+    const [filtre, setFiltre] = React.useState("")
+    const [ouverte, setOuverte] = React.useState<string | null>(null)
+    const [msg, setMsg] = React.useState("")
+    const charger = React.useCallback(async () => {
+        const c = sb(); if (!c) return
+        const r = await c.from("salon_reglages").select("*").order("edition", { ascending: false }).limit(1)
+        if (r.error) { setErr(/salon_reglages|schema cache|exist/i.test(r.error.message) ? "La gestion du salon sera disponible dès que la base aura été mise à jour (script « 16. Salon »)." : r.error.message); return }
+        const g = r.data?.[0] ?? { edition: new Date().getFullYear() + 1, ouvert: false }
+        setReg(g)
+        const d = await c.from("demandes_salon").select("*").eq("edition", g.edition).order("cree_le", { ascending: true })
+        if (d.error) setErr(d.error.message); else setL(d.data ?? [])
+    }, [])
+    React.useEffect(() => { charger() }, [charger])
+    if (err) return <div style={box}><p style={muted}>{err}</p></div>
+    if (!reg || !l) return <div style={box}><p style={muted}>Chargement…</p></div>
+
+    const tarif = (d: any) => Number(d.profil === "Professionnel" ? reg.tarif_pro : reg.tarif_amateur) || 0
+    const suggere = (d: any) => Math.round((Number(d.metres_attribues ?? d.metres) || 0) * tarif(d) * 100) / 100
+    const majReg = async (k: string, v: any) => { setReg((x: any) => ({ ...x, [k]: v })); const { error } = await sb()!.from("salon_reglages").upsert({ ...reg, [k]: v, maj_le: new Date().toISOString() }); if (error) setMsg("Réglage non enregistré : " + error.message) }
+    const maj = async (d: any, champs: any) => {
+        setL((x) => x && x.map((y) => (y.id === d.id ? { ...y, ...champs } : y)))
+        const { error } = await sb()!.from("demandes_salon").update(champs).eq("id", d.id)
+        if (error) { setMsg("Modification non enregistrée : " + error.message); charger() }
+    }
+    const nouvelle = async () => {
+        const { data, error } = await sb()!.from("demandes_salon").insert({ edition: reg.edition, source: "papier", profil: "Professionnel", nom: "Nouvel exposant", email: "a-completer@exemple.fr", categorie: "À compléter", zone_1: ZONES_SALON[2], metres: 2 }).select().single()
+        if (error) return setMsg(error.message)
+        setL((x) => [...(x || []), data]); setOuverte(data.id)
+    }
+    const supprimer = async (d: any) => { if (!window.confirm(`Supprimer la demande de « ${d.nom} » ?`)) return; const { error } = await sb()!.from("demandes_salon").delete().eq("id", d.id); if (error) setMsg(error.message); else setL((x) => x && x.filter((y) => y.id !== d.id)) }
+    const vis = l.filter((d) => !filtre || d.statut === filtre)
+    const parZone = ZONES_SALON.map((z) => {
+        const dem = l.filter((d) => d.zone_1 === z && !["refusee", "annulee"].includes(d.statut))
+        const att = l.filter((d) => d.statut === "acceptee" && d.zone_attribuee === z)
+        return { z, n: dem.length, m: dem.reduce((a, d) => a + Number(d.metres || 0), 0), na: att.length, ma: att.reduce((a, d) => a + Number(d.metres_attribues || 0), 0) }
+    })
+    const acceptees = l.filter((d) => d.statut === "acceptee")
+    const totalContrib = acceptees.reduce((a, d) => a + Number(d.contribution || 0), 0), encaisse = acceptees.filter((d) => d.paye).reduce((a, d) => a + Number(d.contribution || 0), 0)
+    const nomDepliant = (d: any) => (d.profil === "Amateur" ? d.nom.trim().replace(/^(\S+)\s+(\S).*$/, "$1 $2.") : d.nom)
+    const cellule: React.CSSProperties = { padding: "8px 10px", borderBottom: `1px solid ${C.line}`, fontSize: 14, verticalAlign: "top" }
+    const zebre = "#2c231d"
+    const champ2: React.CSSProperties = { ...input, padding: "8px 10px", fontSize: 14 }
+    const coul = (s: string) => STATUTS_SALON.find((x) => x[0] === s)?.[2] || C.mute
+    return (
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0,1fr)" }}>
+            <div style={box}>
+                <h3 style={{ ...h2, fontSize: 22 }}>Salon {reg.edition}</h3>
+                <div style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr)" : "repeat(4, minmax(0,1fr))", gap: 12, marginTop: 10 }}>
+                    <div><span style={label}>Édition</span><input style={input} type="number" value={reg.edition} onChange={(e) => setReg((x: any) => ({ ...x, edition: Number(e.target.value) }))} onBlur={async () => { await sb()!.from("salon_reglages").upsert({ ...reg }); charger() }} /></div>
+                    <div><span style={label}>Date limite</span><input style={input} type="date" value={reg.date_limite || ""} onChange={(e) => majReg("date_limite", e.target.value || null)} /></div>
+                    <div><span style={label}>Tarif pro (€ / m)</span><input style={input} type="number" min={0} step={0.5} value={reg.tarif_pro ?? ""} onChange={(e) => majReg("tarif_pro", e.target.value === "" ? null : Number(e.target.value))} /></div>
+                    <div><span style={label}>Tarif amateur (€ / m)</span><input style={input} type="number" min={0} step={0.5} value={reg.tarif_amateur ?? ""} onChange={(e) => majReg("tarif_amateur", e.target.value === "" ? null : Number(e.target.value))} /></div>
+                </div>
+                <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14, cursor: "pointer" }}><input type="checkbox" checked={!!reg.ouvert} onChange={(e) => majReg("ouvert", e.target.checked)} style={{ width: 18, height: 18, accentColor: C.accent }} />Demandes en ligne ouvertes sur la page Salon</label>
+                <div style={{ marginTop: 12 }}><span style={label}>Message au-dessus du formulaire (facultatif)</span><input style={input} value={reg.message || ""} onChange={(e) => setReg((x: any) => ({ ...x, message: e.target.value }))} onBlur={(e) => majReg("message", e.target.value || null)} placeholder="Ex. : la grande salle est presque complète" /></div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: etroit ? "repeat(2, minmax(0,1fr))" : "repeat(4, minmax(0,1fr))", gap: 10 }}>
+                {parZone.map((z) => (
+                    <div key={z.z} style={{ ...box, padding: "14px 16px" }}>
+                        <div style={{ fontSize: 13, color: C.mute }}>{z.z}</div>
+                        <div style={{ fontFamily: serif, fontSize: 24, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{z.ma} m <span style={{ fontSize: 14, color: C.mute, fontFamily: "inherit", fontWeight: 400 }}>attribués</span></div>
+                        <div style={{ fontSize: 12.5, color: C.mute }}>{z.na} stand{z.na > 1 ? "s" : ""} · {z.n} demande{z.n > 1 ? "s" : ""} pour {z.m} m</div>
+                    </div>
+                ))}
+            </div>
+
+            <div style={box}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    {[["", `Toutes (${l.length})`], ...STATUTS_SALON.map(([k, t]) => [k, `${t} (${l.filter((d) => d.statut === k).length})`])].map(([k, t]) => <button key={k} onClick={() => setFiltre(k)} style={{ ...small(), background: filtre === k ? C.accent : "transparent", color: filtre === k ? C.accentDark : C.txt, borderColor: filtre === k ? C.accent : C.line }}>{t}</button>)}
+                    <span style={{ flex: 1 }} />
+                    <button style={small()} onClick={nouvelle}>+ Demande papier</button>
+                    <button style={small()} onClick={() => ouvrirFormulairePapier(reg.edition)}>Formulaire vierge</button>
+                    <button style={small()} onClick={() => exporter(`demandes-salon-${reg.edition}.csv`, ["Reçue le", "Source", "Profil", "Nom", "Contact", "E-mail", "Téléphone", "Ville", "Dépt", "SIRET", "Catégorie", "Zone 1", "Zone 2", "Mètres demandés", "Statut", "Zone attribuée", "Mètres attribués", "Stand", "Contribution", "Payé", "Remarques", "Note"], l.map((d) => [dateFr(d.cree_le), d.source, d.profil, d.nom, d.contact, d.email, d.telephone, d.ville, d.departement, d.siret, d.categorie, d.zone_1, d.zone_2, d.metres, STATUTS_SALON.find((x) => x[0] === d.statut)?.[1], d.zone_attribuee, d.metres_attribues, d.stand, d.contribution, d.paye ? "oui" : "", d.commentaire, d.note]))}>Exporter (Excel)</button>
+                    <button style={small()} disabled={!acceptees.length} onClick={() => exporter(`depliant-exposants-${reg.edition}.csv`, ["Stand", "Zone", "Nom", "Dépt", "Catégorie", "Type"], [...acceptees].sort((a, b) => ZONES_SALON.indexOf(a.zone_attribuee) - ZONES_SALON.indexOf(b.zone_attribuee) || String(a.stand || "").localeCompare(String(b.stand || ""), "fr", { numeric: true })).map((d) => [d.stand, d.zone_attribuee, nomDepliant(d), d.profil === "Professionnel" ? d.departement : "", d.categorie, d.profil === "Amateur" ? "amateur" : ""]))}>Liste pour le dépliant</button>
+                </div>
+                {msg && <p style={{ margin: "10px 0 0", color: C.danger, fontSize: 14 }}>{msg}</p>}
+                <p style={{ ...muted, fontSize: 13, marginTop: 10 }}>Contributions des demandes acceptées : {euros(totalContrib)}, dont {euros(encaisse)} encaissés.</p>
+                {vis.length === 0 ? <p style={{ ...muted, marginTop: 14 }}>Aucune demande{filtre ? " dans ce statut" : " pour l’instant"}.</p> : (
+                    <div style={{ marginTop: 12, border: `1px solid ${C.line}`, overflowX: "auto" }}>
+                        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 760 }}>
+                            <thead><tr>{["Exposant", "Catégorie", "Souhait", "Statut", "Attribution", "Contribution"].map((t) => <th key={t} style={{ ...cellule, textAlign: "left", fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: C.mute, fontWeight: 600 }}>{t}</th>)}</tr></thead>
+                            <tbody>{vis.map((d, i) => (
+                                <React.Fragment key={d.id}>
+                                    <tr style={{ background: i % 2 ? zebre : undefined, cursor: "pointer" }} onClick={() => setOuverte(ouverte === d.id ? null : d.id)}>
+                                        <td style={cellule}><b style={{ fontWeight: 600 }}>{d.nom}</b><span style={{ display: "block", fontSize: 12.5, color: C.mute }}>{d.profil}{d.departement ? ` · ${d.departement}` : ""}{d.source === "papier" ? " · papier" : ""} · {dateFr(d.cree_le)}</span></td>
+                                        <td style={cellule}>{d.categorie}</td>
+                                        <td style={cellule}>{d.zone_1}{d.zone_2 ? <span style={{ color: C.mute }}> (ou {d.zone_2})</span> : null}<span style={{ display: "block", fontSize: 12.5, color: C.mute }}>{d.metres} m</span></td>
+                                        <td style={{ ...cellule, color: coul(d.statut), fontWeight: 600, fontSize: 13 }}>{STATUTS_SALON.find((x) => x[0] === d.statut)?.[1]}</td>
+                                        <td style={cellule}>{d.zone_attribuee ? `${d.zone_attribuee} · ${d.metres_attribues ?? "?"} m${d.stand ? ` · stand ${d.stand}` : ""}` : <span style={{ color: C.mute }}>—</span>}</td>
+                                        <td style={cellule}>{d.contribution != null ? euros(d.contribution) : <span style={{ color: C.mute }}>—</span>}{d.paye ? <span style={{ display: "block", fontSize: 12.5, color: C.accent }}>payé</span> : null}</td>
+                                    </tr>
+                                    {ouverte === d.id && (
+                                        <tr><td colSpan={6} style={{ ...cellule, background: "#1b1511" }}>
+                                            <div style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr)" : "repeat(3, minmax(0,1fr))", gap: 12 }}>
+                                                <div><span style={label}>Statut</span><select style={champ2} value={d.statut} onChange={(e) => maj(d, { statut: e.target.value, ...(e.target.value === "acceptee" && !d.zone_attribuee ? { zone_attribuee: d.zone_1, metres_attribues: d.metres } : {}) })}>{STATUTS_SALON.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></div>
+                                                <div><span style={label}>Zone attribuée</span><select style={champ2} value={d.zone_attribuee || ""} onChange={(e) => maj(d, { zone_attribuee: e.target.value || null })}><option value="">—</option>{ZONES_SALON.map((z) => <option key={z}>{z}</option>)}</select></div>
+                                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                                    <div><span style={label}>Mètres</span><input style={champ2} type="number" min={0} step={1} value={d.metres_attribues ?? ""} onChange={(e) => maj(d, { metres_attribues: e.target.value === "" ? null : Number(e.target.value) })} /></div>
+                                                    <div><span style={label}>Stand n°</span><input style={champ2} value={d.stand || ""} onChange={(e) => setL((x) => x && x.map((y) => (y.id === d.id ? { ...y, stand: e.target.value } : y)))} onBlur={(e) => maj(d, { stand: e.target.value || null })} /></div>
+                                                </div>
+                                                <div><span style={label}>Contribution (€)</span>
+                                                    <div style={{ display: "flex", gap: 6 }}><input style={champ2} type="number" min={0} step={0.5} value={d.contribution ?? ""} onChange={(e) => maj(d, { contribution: e.target.value === "" ? null : Number(e.target.value) })} />
+                                                        {tarif(d) > 0 && <button style={{ ...small(), whiteSpace: "nowrap" }} title={`${d.metres_attribues ?? d.metres} m × ${tarif(d)} €`} onClick={() => maj(d, { contribution: suggere(d) })}>= {euros(suggere(d))}</button>}</div></div>
+                                                <label style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 22, cursor: "pointer" }}><input type="checkbox" checked={!!d.paye} onChange={(e) => maj(d, { paye: e.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent }} />Contribution payée</label>
+                                                <div><span style={label}>Note du bureau</span><input style={champ2} value={d.note || ""} onChange={(e) => setL((x) => x && x.map((y) => (y.id === d.id ? { ...y, note: e.target.value } : y)))} onBlur={(e) => maj(d, { note: e.target.value || null })} /></div>
+                                            </div>
+                                            <div style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr)" : "repeat(3, minmax(0,1fr))", gap: 12, marginTop: 12 }}>
+                                                {([["nom", "Nom"], ["contact", "Contact"], ["email", "E-mail"], ["telephone", "Téléphone"], ["ville", "Ville"], ["departement", "Dépt"], ["siret", "SIRET"], ["categorie", "Catégorie (dépliant)"]] as const).map(([k, t]) => (
+                                                    <div key={k}><span style={{ ...label, color: C.mute }}>{t}</span><input style={champ2} value={d[k] || ""} maxLength={k === "categorie" ? 60 : 160} onChange={(e) => setL((x) => x && x.map((y) => (y.id === d.id ? { ...y, [k]: e.target.value } : y)))} onBlur={(e) => maj(d, { [k]: e.target.value || (k === "nom" || k === "email" || k === "categorie" ? d[k] : null) })} /></div>
+                                                ))}
+                                                <div><span style={{ ...label, color: C.mute }}>Profil</span><select style={champ2} value={d.profil} onChange={(e) => maj(d, { profil: e.target.value })}><option>Amateur</option><option>Professionnel</option></select></div>
+                                            </div>
+                                            {d.commentaire && <p style={{ margin: "12px 0 0", fontSize: 14 }}><span style={{ color: C.mute }}>Remarques de l’exposant : </span>{d.commentaire}</p>}
+                                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                                                {d.email && !/exemple\.fr$/.test(d.email) && <a style={{ ...small(), textDecoration: "none" }} href={`mailto:${d.email}?subject=${encodeURIComponent(`Salon de Bédée ${reg.edition} : votre emplacement`)}&body=${encodeURIComponent(d.statut === "acceptee" ? `Bonjour,\n\nVotre demande pour le salon ${reg.edition} est acceptée : ${d.zone_attribuee || d.zone_1}, ${d.metres_attribues ?? d.metres} m${d.stand ? `, stand n° ${d.stand}` : ""}.${d.contribution != null ? `\nContribution : ${euros(d.contribution)}.` : ""}\n\nÀ bientôt,\nL’A.C.S.` : "Bonjour,\n\n")}`}>Écrire à l’exposant</a>}
+                                                <button style={small()} onClick={() => ouvrirFormulairePapier(reg.edition, d)}>Imprimer la demande</button>
+                                                <button style={small(true)} onClick={() => supprimer(d)}>Supprimer</button>
+                                            </div>
+                                        </td></tr>
+                                    )}
+                                </React.Fragment>
+                            ))}</tbody>
+                        </table>
+                    </div>
+                )}
             </div>
         </div>
     )

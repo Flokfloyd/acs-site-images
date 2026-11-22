@@ -688,3 +688,67 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.echanges() from public, anon;
 grant execute on function public.echanges() to authenticated;
+
+-- =====================================================================================
+-- 16. Salon : demandes d'emplacement des exposants (formulaire public) et réglages
+-- =====================================================================================
+create table if not exists public.salon_reglages (
+    edition int primary key,
+    ouvert boolean not null default true,
+    date_limite date,
+    tarif_pro numeric(8,2),          -- contribution indicative par mètre linéaire
+    tarif_amateur numeric(8,2),
+    message text,                    -- texte affiché au-dessus du formulaire
+    maj_le timestamptz not null default now()
+);
+alter table public.salon_reglages enable row level security;
+drop policy if exists salon_reglages_lecture on public.salon_reglages;
+create policy salon_reglages_lecture on public.salon_reglages for select using (true);
+drop policy if exists salon_reglages_gestion on public.salon_reglages;
+create policy salon_reglages_gestion on public.salon_reglages for all using (est_admin()) with check (est_admin());
+insert into public.salon_reglages (edition, ouvert) values (2027, true) on conflict (edition) do nothing;
+
+create table if not exists public.demandes_salon (
+    id uuid primary key default gen_random_uuid(),
+    cree_le timestamptz not null default now(),
+    edition int not null,
+    source text not null default 'en ligne' check (source in ('en ligne', 'papier')),
+    profil text not null check (profil in ('Amateur', 'Professionnel')),
+    nom text not null check (char_length(nom) between 2 and 120),
+    contact text check (char_length(contact) <= 120),
+    email text not null check (char_length(email) <= 160 and email like '%@%'),
+    telephone text check (char_length(telephone) <= 40),
+    ville text check (char_length(ville) <= 120),
+    departement text check (char_length(departement) <= 3),
+    siret text check (char_length(siret) <= 20),
+    categorie text not null check (char_length(categorie) between 2 and 60),
+    zone_1 text not null check (zone_1 in ('Petite salle', 'Entre les salles', 'Grande salle', 'Terrain de sport')),
+    zone_2 text check (zone_2 in ('Petite salle', 'Entre les salles', 'Grande salle', 'Terrain de sport')),
+    metres numeric(5,1) not null check (metres > 0 and metres <= 40),
+    commentaire text check (char_length(commentaire) <= 1500),
+    -- réservé au bureau
+    statut text not null default 'nouvelle' check (statut in ('nouvelle', 'acceptee', 'attente', 'refusee', 'annulee')),
+    zone_attribuee text check (zone_attribuee in ('Petite salle', 'Entre les salles', 'Grande salle', 'Terrain de sport')),
+    metres_attribues numeric(5,1),
+    stand text check (char_length(stand) <= 10),
+    contribution numeric(8,2),
+    paye boolean not null default false,
+    note text check (char_length(note) <= 1500),
+    maj_le timestamptz not null default now()
+);
+create index if not exists demandes_salon_edition on public.demandes_salon (edition, cree_le);
+alter table public.demandes_salon enable row level security;
+-- n'importe qui peut déposer une demande, sans toucher aux champs du bureau ; seuls les admins lisent et gèrent
+drop policy if exists demande_depot on public.demandes_salon;
+create policy demande_depot on public.demandes_salon for insert to anon, authenticated
+    with check (statut = 'nouvelle' and source = 'en ligne' and zone_attribuee is null and metres_attribues is null and stand is null and contribution is null and paye = false and note is null
+                and edition in (select edition from public.salon_reglages where ouvert));
+drop policy if exists demande_gestion on public.demandes_salon;
+create policy demande_gestion on public.demandes_salon for all using (est_admin()) with check (est_admin());
+grant insert on public.demandes_salon to anon, authenticated;
+grant select, update, delete on public.demandes_salon to authenticated;
+grant select on public.salon_reglages to anon, authenticated;
+grant insert, update, delete on public.salon_reglages to authenticated;
+drop trigger if exists demandes_salon_maj on public.demandes_salon;
+create or replace function public.demande_salon_maj() returns trigger language plpgsql as $$ begin new.maj_le := now(); return new; end $$;
+create trigger demandes_salon_maj before update on public.demandes_salon for each row execute function public.demande_salon_maj();
