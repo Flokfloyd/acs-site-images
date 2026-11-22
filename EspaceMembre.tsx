@@ -186,8 +186,10 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                     <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
                 </div>
             </div>
-            <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
-                {tabs.map(([k, t]) => <button key={k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", }}>{t}</button>)}
+            {/* téléphone : grille de 2 colonnes, tous les onglets visibles sans glisser */}
+            <style>{`@media (max-width:640px){.acs-onglets{display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important;border-bottom:none!important;overflow:visible!important}.acs-onglets>button{white-space:normal!important;text-align:left;padding:10px 12px!important;border:1px solid ${C.line}!important;border-left:3px solid transparent!important;font-size:14px!important}.acs-onglets>button[aria-selected=true]{border-left-color:${C.accent}!important;background:rgba(246,240,230,.06)!important}}`}</style>
+            <div className="acs-onglets" role="tablist" style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
+                {tabs.map(([k, t]) => <button key={k} role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", }}>{t}</button>)}
             </div>
             {onglet === "accueil" && <VueEnsemble moi={moi} aller={setOnglet} />}
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
