@@ -22,7 +22,7 @@ async function voletsDuPdf(url: string): Promise<{ img: Record<string, string>; 
     for (const [p, cles] of [[1, "ABC"], [2, "DEF"]] as const) {
         const page = await doc.getPage(p)
         const v1 = page.getViewport({ scale: 1 })
-        const vp = page.getViewport({ scale: 3600 / v1.width })
+        const vp = page.getViewport({ scale: 2400 / v1.width })
         const cv = document.createElement("canvas")
         cv.width = Math.round(vp.width); cv.height = Math.round(vp.height)
         await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise
