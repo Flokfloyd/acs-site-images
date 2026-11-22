@@ -801,3 +801,6 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.exposants_salon() from public;
 grant execute on function public.exposants_salon() to anon, authenticated;
+
+-- 19. Boutique : formats ou tailles d'un article (un par ligne : nom ; prix)
+alter table public.produits add column if not exists variantes text;

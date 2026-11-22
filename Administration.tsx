@@ -120,7 +120,8 @@ const CHAMPS_CAMPAGNE_ADH: Champ[] = [
 const CHAMPS_PROD: Champ[] = [
     { k: "nom", t: "Nom de l’article", type: "text", requis: true, place: "Tee-shirt ACS" },
     { k: "categorie", t: "Catégorie", type: "text", place: "Tee-shirts, Substrats, Engrais…" },
-    { k: "prix", t: "Prix (€)", type: "number", requis: true },
+    { k: "prix", t: "Prix (€, le plus bas s’il y a plusieurs formats)", type: "number", requis: true },
+    { k: "variantes", t: "Formats ou tailles, un par ligne : nom ; prix (facultatif)", type: "textarea", place: "Petites 8,5 × 1,2 cm ; 5\nGrandes 10 × 2 cm ; 6,50" },
     { k: "description", t: "Description", type: "textarea" },
     { k: "image_url", t: "Photo (sans personne reconnaissable)", type: "fichier", dossier: "boutique", accept: "image/*" },
     { k: "stock", t: "Stock (vide = non suivi)", type: "number" },
