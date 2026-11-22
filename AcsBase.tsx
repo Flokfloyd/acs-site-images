@@ -33,10 +33,10 @@ export const C = {
 export const font = { fontFamily: "Poppins, sans-serif", fontSize: 15, lineHeight: 1.5 }
 export const serif = "Fraunces, Georgia, serif"
 
-// Images hébergées par Framer : on demande au CDN une version à la bonne taille (512, 1024 ou 2048 px de large)
-// au lieu de l'original. Le navigateur choisit selon l'écran, donc l'image reste nette sur écran haute définition.
-export function imgLeger(u?: string | null, tailles = "(max-width: 640px) 100vw, 33vw"): { src?: string; srcSet?: string; sizes?: string } {
+// Images hébergées par Framer : on demande au CDN une version réduite (1024 px sur le plus grand côté)
+// au lieu de l'original. C'est largement assez pour les vignettes, nettes même sur écran haute définition ;
+// la photo agrandie garde l'original.
+export function imgLeger(u?: string | null, _tailles?: string): { src?: string } {
     if (!u || !/framerusercontent\.com\/images\//.test(u) || /scale-down-to/.test(u)) return { src: u || undefined }
-    const b = u.split("?")[0]
-    return { src: b + "?scale-down-to=1024", srcSet: [512, 1024, 2048].map((w) => `${b}?scale-down-to=${w} ${w}w`).join(", "), sizes: tailles }
+    return { src: u.split("?")[0] + "?scale-down-to=1024" }
 }
