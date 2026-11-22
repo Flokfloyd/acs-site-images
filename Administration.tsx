@@ -161,8 +161,12 @@ function GalerieAdmin() {
                 const up = await client.storage.from("semestriels").upload(nom, blob, { contentType: "image/jpeg", upsert: false })
                 if (up.error) throw up.error
                 const url = client.storage.from("semestriels").getPublicUrl(nom).data.publicUrl
+                // petite version (800 px) pour les vignettes : la grande ne se charge qu’à l’agrandissement
+                const nomV = nom.replace(/\.jpg$/, "-v.jpg")
+                const upV = await client.storage.from("semestriels").upload(nomV, await GALERIE.reduireImage(f, 800, 0.8), { contentType: "image/jpeg", upsert: false })
+                const vignette = upV.error ? null : client.storage.from("semestriels").getPublicUrl(nomV).data.publicUrl
                 const legende = f.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ").replace(/^(img|dsc|pxl|photo)\s*\d.*$/i, "").trim() || null
-                const ins = await client.from("photos").insert({ image_url: url, legende, album: album.trim() || null, accueil, ordre: 100 })
+                const ins = await client.from("photos").insert({ image_url: url, vignette_url: vignette, legende, album: album.trim() || null, accueil, ordre: 100 })
                 if (ins.error) throw ins.error
                 ok++
             } catch (e) { setEtat({ t: `Échec pour ${f.name} : ${String((e as any).message || e)}`, err: true }); return }

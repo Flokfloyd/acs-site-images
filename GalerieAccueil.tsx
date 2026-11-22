@@ -4,7 +4,7 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb, imgLeger } from "./AcsBase.tsx"
 
-export type Photo = { id: string; image_url: string; legende?: string | null; album?: string | null; accueil?: boolean; ordre?: number }
+export type Photo = { id: string; image_url: string; vignette_url?: string | null; legende?: string | null; album?: string | null; accueil?: boolean; ordre?: number }
 
 const sans = "'Poppins', system-ui, sans-serif"
 const serif = "'Fraunces', Georgia, serif"
@@ -15,7 +15,7 @@ const SECOURS: Photo[] = [
 ].map(([h, l], i) => ({ id: h, image_url: `https://framerusercontent.com/images/${h}.jpg`, legende: l, ordre: i }))
 
 // Réduit une photo avant envoi (côté le plus long 2000 px, JPEG) pour rester dans l'espace gratuit
-async function reduireImage(f: File, max = 2000): Promise<Blob> {
+async function reduireImage(f: File, max = 2000, qualite = 0.85): Promise<Blob> {
     const url = URL.createObjectURL(f)
     try {
         const img = await new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url })
@@ -23,7 +23,7 @@ async function reduireImage(f: File, max = 2000): Promise<Blob> {
         const c = document.createElement("canvas")
         c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k)
         c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height)
-        return await new Promise<Blob>((ok) => c.toBlob((b) => ok(b || f), "image/jpeg", 0.85))
+        return await new Promise<Blob>((ok) => c.toBlob((b) => ok(b || f), "image/jpeg", qualite))
     } finally { URL.revokeObjectURL(url) }
 }
 
@@ -62,7 +62,7 @@ function Vignette({ p, onClick, hauteur }: { p: Photo; onClick: () => void; haut
     return (
         <button onClick={onClick} onMouseEnter={() => setSur(true)} onMouseLeave={() => setSur(false)} aria-label={p.legende ? `Agrandir : ${p.legende}` : "Agrandir la photo"}
             style={{ all: "unset", cursor: "zoom-in", position: "relative", display: "block", height: hauteur, overflow: "hidden", background: "#2e241e" }}>
-            <img {...imgLeger(p.image_url)} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: sur ? "scale(1.04)" : "none", transition: "transform .5s ease" }} />
+            <img {...(p.vignette_url ? { src: p.vignette_url } : imgLeger(p.image_url))} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: sur ? "scale(1.04)" : "none", transition: "transform .5s ease" }} />
             {p.legende && (
                 <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "56px 16px 16px", background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%)", color: "#f6f0e6", fontFamily: sans, fontWeight: 600, fontSize: 15, textAlign: "center" }}>{p.legende}</div>
             )}
@@ -83,7 +83,7 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
     React.useEffect(() => {
         const c = sb()
         if (!c) return
-        c.from("photos").select("id,image_url,legende,album,ordre").eq("accueil", true).order("ordre").order("cree_le", { ascending: false }).limit(nombre)
+        c.from("photos").select("id,image_url,vignette_url,legende,album,ordre").eq("accueil", true).order("ordre").order("cree_le", { ascending: false }).limit(nombre)
             .then(({ data, error }: any) => { if (!error && data && data.length) setPhotos(data) })
     }, [nombre])
     return (

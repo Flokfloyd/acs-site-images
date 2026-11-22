@@ -804,3 +804,6 @@ grant execute on function public.exposants_salon() to anon, authenticated;
 
 -- 19. Boutique : formats ou tailles d'un article (un par ligne : nom ; prix)
 alter table public.produits add column if not exists variantes text;
+
+-- 20. Galerie : petite version (800 px) de chaque photo pour les vignettes
+alter table public.photos add column if not exists vignette_url text;

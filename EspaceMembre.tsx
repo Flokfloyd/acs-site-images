@@ -777,7 +777,11 @@ function Editeur({ table, ordre, desc, titre, champs, resume, fixes, nouveau, pr
     const supprimer = async (r: any) => {
         if (!window.confirm(`Supprimer définitivement : ${resume(r)} ?`)) return
         const { error } = await client.from(table).delete().eq("id", r.id)
-        if (error) setMsg({ t: error.message, err: true }); else { setMsg({ t: "Supprimé.", err: false }); charger() }
+        if (error) return setMsg({ t: error.message, err: true })
+        // libère aussi la place : les photos et fichiers envoyés pour cette fiche sont effacés du stockage
+        const chemins = [r.image_url, r.vignette_url, r.couverture_url].filter((u: any) => typeof u === "string" && u.includes("/object/public/semestriels/")).map((u: string) => decodeURIComponent(u.split("/object/public/semestriels/")[1].split("?")[0]))
+        if (chemins.length) await client.storage.from("semestriels").remove(chemins)
+        setMsg({ t: "Supprimé.", err: false }); charger()
     }
 
     const visibles = lignes.filter((r) => !filtre || resume(r).toLowerCase().includes(filtre.toLowerCase()))
@@ -856,8 +860,11 @@ export function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any)
     const [etat, setEtat] = React.useState("")
     const envoyer = async (f: File) => {
         setEtat("Envoi…")
-        const nom = `${dossier}/${Date.now()}-${f.name.normalize("NFD").replace(/[^\w.-]+/g, "-")}`
-        const { error } = await client.storage.from("semestriels").upload(nom, f, { upsert: false })
+        // les photos sont réduites (2 000 px au plus) avant l’envoi : elles restent nettes et pèsent 5 à 10 fois moins
+        const image = /^image\/(jpeg|png|webp)$/.test(f.type)
+        const contenu: Blob = image ? await GALERIE.reduireImage(f) : f
+        const nom = `${dossier}/${Date.now()}-${f.name.normalize("NFD").replace(/[^\w.-]+/g, "-").replace(/\.(png|webp|jpe?g)$/i, image ? ".jpg" : "$&")}`
+        const { error } = await client.storage.from("semestriels").upload(nom, contenu, { upsert: false, contentType: image ? "image/jpeg" : f.type || undefined })
         if (error) return setEtat("Échec : " + error.message)
         set(client.storage.from("semestriels").getPublicUrl(nom).data.publicUrl); setEtat("Fichier envoyé.")
     }
@@ -1020,7 +1027,7 @@ function GalerieMembres() {
     const [album, setAlbum] = React.useState<string>("")
     const [ouverte, setOuverte] = React.useState<number | null>(null)
     React.useEffect(() => {
-        client.from("photos").select("id,image_url,legende,album,accueil,ordre").order("ordre").order("cree_le", { ascending: false })
+        client.from("photos").select("id,image_url,vignette_url,legende,album,accueil,ordre").order("ordre").order("cree_le", { ascending: false })
             .then(({ data, error }: any) => setPhotos(error ? GALERIE.SECOURS : data ?? []))
     }, [])
     if (!photos) return <div style={{ ...box, ...muted }}>Chargement de la galerie…</div>
