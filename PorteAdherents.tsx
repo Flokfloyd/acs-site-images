@@ -28,7 +28,7 @@ export default function PorteAdherents(props: { titre: string; texte: string; pa
     return (
         <div className="acs-porte" style={{ width: "100%", background: "#16120f", color: C.txt, ...font, padding: "clamp(56px, 9vw, 96px) clamp(20px, 4vw, 40px)", boxSizing: "border-box", minHeight: "60vh" }}>
             {/* masque le reste de la page tant que l'accès n'est pas confirmé */}
-            <style>{":has(> .acs-porte) ~ *, :has(> * > .acs-porte) ~ * { display: none !important; }"}</style>
+            <style>{":has(> .acs-porte) ~ * { display: none !important; }"}</style>
             <div style={{ maxWidth: 1120, margin: "0 auto" }}>
                 <div style={{ fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: C.accent, fontWeight: 600 }}>Réservé aux adhérents</div>
                 <h1 style={{ fontFamily: serif, fontSize: "clamp(34px, 5vw, 52px)", lineHeight: 1.1, fontWeight: 600, margin: "14px 0 28px" }}>{props.titre}</h1>
