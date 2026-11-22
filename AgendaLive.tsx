@@ -31,7 +31,7 @@ function dateAffichee(e: Evt): string {
  * @framerSupportedLayoutHeight auto
  */
 export default function AgendaLive(props: { max: number; lienMembre: string; mode?: "liste" | "salon" | "boutons"; lienSalon?: string }) {
-    const { max = 6, lienMembre = "/espace-membre#evenements", mode = "liste", lienSalon = "/salon" } = props
+    const { max = 6, lienMembre = "/agenda", mode = "liste", lienSalon = "/salon" } = props
     if (mode === "salon") return <ProchainPublic lienSalon={lienSalon} />
     if (mode === "boutons") return <ProchainPublic lienSalon={lienSalon} boutonsSeuls />
     const [evts, setEvts] = React.useState<Evt[]>(SECOURS)
@@ -137,5 +137,5 @@ addPropertyControls(AgendaLive, {
     mode: { type: ControlType.Enum, title: "Affichage", options: ["liste", "salon", "boutons"], optionTitles: ["Liste des événements", "Prochain événement public", "Boutons « ajouter à l’agenda » seuls"], defaultValue: "liste" },
     lienSalon: { type: ControlType.String, title: "Lien salon", defaultValue: "/salon", hidden: (p: any) => p.mode === "liste" },
     max: { type: ControlType.Number, title: "Nombre max", min: 1, max: 20, step: 1, defaultValue: 6 },
-    lienMembre: { type: ControlType.String, title: "Lien inscription", defaultValue: "/espace-membre#evenements" },
+    lienMembre: { type: ControlType.String, title: "Lien inscription", defaultValue: "/agenda" },
 })

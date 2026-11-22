@@ -155,7 +155,7 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
-const ONGLETS = ["accueil", "profil", "evenements", "collection", "sondages", "discussion", "annuaire"] as const
+const ONGLETS = ["accueil", "profil", "collection", "sondages", "discussion", "annuaire"] as const
 type O = typeof ONGLETS[number]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
 
@@ -163,6 +163,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
     React.useEffect(() => {
         try {
             if (location.hash === "#galerie") { location.replace("/galerie"); return }
+            if (location.hash === "#evenements") { location.replace("/agenda"); return }
             const r = sessionStorage.getItem("acs-retour"); if (r) { sessionStorage.removeItem("acs-retour"); location.replace(r) }
         } catch (e) {}
     }, [])
@@ -180,7 +181,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
         client.from("discussion").select("id", { count: "exact", head: true }).gt("cree_le", vu).neq("email", moi.email.toLowerCase())
             .then(({ count, error }: any) => setNonLus(error ? 0 : count || 0))
     }, [onglet])
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["collection", "Collection"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["annuaire", "Annuaire"]]
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["collection", "Collection"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["annuaire", "Annuaire"]]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -200,7 +201,6 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
             </div>
             {onglet === "accueil" && <VueEnsemble moi={moi} aller={setOnglet} />}
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
-            {onglet === "evenements" && <Evenements moi={moi} />}
             {onglet === "sondages" && <Sondages moi={moi} />}
             {onglet === "discussion" && <Discussion moi={moi} />}
             {onglet === "annuaire" && <Annuaire />}
@@ -395,7 +395,7 @@ function Billet({ r, e }: { r: any; e: any }) {
     )
 }
 
-function Evenements({ moi }: { moi: any }) {
+export function Evenements({ moi }: { moi: any }) {
     const client = sb()!
     const [evts, setEvts] = React.useState<any[] | null>(null)
     const [mes, setMes] = React.useState<any[]>([])
@@ -519,7 +519,7 @@ function VueEnsemble({ moi, aller }: { moi: Adherent; aller: (o: any) => void })
                     <span style={label}>Mes prochaines sorties</span>
                     {inscr === null ? <p style={muted}>…</p> : prochaines.length === 0 ? <p style={muted}>Aucune inscription en cours.</p> :
                         prochaines.map((r) => <div key={r.id} style={{ padding: "8px 0", borderTop: `1px solid ${C.line}` }}><div style={{ fontWeight: 600 }}>{r.formulaire}</div><div style={{ ...muted, fontSize: 13 }}>{r.nb_personnes} pers.{r.statut === "en_attente" ? " · à régler" : ""}</div></div>)}
-                    <button style={{ ...btn(false), marginTop: 12 }} onClick={() => aller("evenements")}>Voir les sorties</button>
+                    <button style={{ ...btn(false), marginTop: 12 }} onClick={() => { window.location.href = "/agenda" }}>Voir les sorties</button>
                 </div>
             </div>
             <SondagesEnCours aller={aller} />

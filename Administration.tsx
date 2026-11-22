@@ -852,7 +852,7 @@ function FicheEvenement({ e, setE, moi, fermer, recharger, ouvrirCampagne }: { e
         if (error) return setMsg({ t: error.message, err: true })
         recharger()
         if (e.__annoncer) {
-            const contenu = `Bonjour,\n\nNous vous donnons rendez-vous : ${data.titre}\n${data.date_label}${data.heure ? ", " + data.heure : ""}${data.lieu ? "\n" + data.lieu : ""}\n\n${data.description || ""}${data.inscription_ouverte ? `\n\nLes inscriptions sont ouvertes dans votre espace membre${data.prix > 0 ? ` (${euros(data.prix)} par personne)` : ""} : https://acs-armorique-cactus-succulentes.framer.website/espace-membre#evenements` : ""}\n\nÀ bientôt,\nLe bureau de l’ACS`
+            const contenu = `Bonjour,\n\nNous vous donnons rendez-vous : ${data.titre}\n${data.date_label}${data.heure ? ", " + data.heure : ""}${data.lieu ? "\n" + data.lieu : ""}\n\n${data.description || ""}${data.inscription_ouverte ? `\n\nLes inscriptions sont ouvertes dans votre espace membre${data.prix > 0 ? ` (${euros(data.prix)} par personne)` : ""} : https://acs-armorique-cactus-succulentes.framer.website/agenda` : ""}\n\nÀ bientôt,\nLe bureau de l’ACS`
             const { data: c, error: e2 } = await client.from("campagnes").insert({ sujet: `${data.titre} · ${data.date_label}`, contenu, cible: "tous", auteur: moi }).select().single()
             if (e2) return setMsg({ t: "Événement enregistré, mais l’annonce n’a pas pu être préparée : " + e2.message, err: true })
             return ouvrirCampagne(c.id)
