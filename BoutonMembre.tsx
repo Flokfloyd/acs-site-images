@@ -17,6 +17,13 @@ html::-webkit-scrollbar-thumb{background:#9bbd8a;border-radius:9px;border:2px so
 html::-webkit-scrollbar-thumb:hover{background:#b5d1a6}`
     document.head.appendChild(st)
 }
+if (typeof document !== "undefined" && !document.getElementById("acs-menu-visiteur")) {
+    const st = document.createElement("style")
+    st.id = "acs-menu-visiteur"
+    const lien = (p: string) => `[data-framer-name="Liens"] a[href$="${p}"]`
+    st.textContent = `html:not(.acs-membre) ${lien("agenda")}, html:not(.acs-membre) ${lien("galerie")}, html:not(.acs-membre):not(.acs-pub-boutique) ${lien("boutique")}, html:not(.acs-membre):not(.acs-pub-semestriels) ${lien("semestriels")} { display: none !important; }`
+    document.head.appendChild(st)
+}
 
 function Deroulant({ titre, href, liens, compact, style, deconnexion, admin }: { titre: string; href: string; liens: [string, string][]; compact: boolean; style: React.CSSProperties; deconnexion?: boolean; admin?: string }) {
     const [ouvert, setOuvert] = React.useState(false)
@@ -73,6 +80,15 @@ export default function BoutonMembre(props: { page: string; pageAdmin: string; c
         c.from("adherents").select("prenom,nom,cotisation_annee,role").eq("email", email.toLowerCase()).maybeSingle().then(({ data }: any) => { if (!fini) setMoi(data ?? null) })
         return () => { fini = true }
     }, [email])
+    // menu du haut : un visiteur non connecté ne voit que L'association, Salon, Cultiver et Contact
+    // (Boutique et Semestriels réapparaissent si l'administration les a ouvertes à tous)
+    React.useEffect(() => {
+        const h = document.documentElement
+        h.classList.toggle("acs-membre", !!moi)
+        const c = sb(); if (!c || (window as any).__acsPagesLues) return
+        ;(window as any).__acsPagesLues = true
+        c.from("pages_acces").select("page,reserve").then(({ data }: any) => { for (const r of data ?? []) h.classList.toggle("acs-pub-" + r.page, r.reserve === false) })
+    }, [moi])
 
     const style: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(246,240,230,0.4)", background: "transparent", color: "#f6f0e6", padding: props.compact ? "10px 14px" : "10px 20px", font: `600 14px ${POLICE}`, textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap", borderRadius: 0 }
     const accent = props.accent || "#9bbd8a"
