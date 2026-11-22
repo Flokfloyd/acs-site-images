@@ -30,9 +30,10 @@ function dateAffichee(e: Evt): string {
  * @framerSupportedLayoutWidth any
  * @framerSupportedLayoutHeight auto
  */
-export default function AgendaLive(props: { max: number; lienMembre: string; mode?: "liste" | "salon"; lienSalon?: string }) {
+export default function AgendaLive(props: { max: number; lienMembre: string; mode?: "liste" | "salon" | "boutons"; lienSalon?: string }) {
     const { max = 6, lienMembre = "/espace-membre#evenements", mode = "liste", lienSalon = "/salon" } = props
     if (mode === "salon") return <ProchainPublic lienSalon={lienSalon} />
+    if (mode === "boutons") return <ProchainPublic lienSalon={lienSalon} boutonsSeuls />
     const [evts, setEvts] = React.useState<Evt[]>(SECOURS)
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(1000)
@@ -74,7 +75,7 @@ export default function AgendaLive(props: { max: number; lienMembre: string; mod
     )
 }
 
-function ProchainPublic({ lienSalon }: { lienSalon: string }) {
+function ProchainPublic({ lienSalon, boutonsSeuls }: { lienSalon: string; boutonsSeuls?: boolean }) {
     const [e, setE] = React.useState<Evt>(SECOURS[0])
     React.useEffect(() => {
         const client = sb()
@@ -87,6 +88,12 @@ function ProchainPublic({ lienSalon }: { lienSalon: string }) {
     }, [])
     const agenda = e.date_debut ? { titre: e.titre, jour: e.date_debut, jourFin: e.date_fin || undefined, lieu: e.lieu || "Bédée (35)", details: [e.heure, e.description, "https://acs-armorique-cactus-succulentes.framer.website" + lienSalon].filter(Boolean).join("\n") } : null
     const bouton: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 18px", border: `1px solid ${C.line}`, color: C.txt, textDecoration: "none", background: "transparent", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 0 }
+    if (boutonsSeuls) return agenda ? (
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", ...font }}>
+            <a href={lienGoogle(agenda)} target="_blank" rel="noopener" style={{ ...bouton, padding: "10px 16px", fontSize: 14 }}>+ Ajouter à Google Agenda</a>
+            <button style={{ ...bouton, padding: "10px 16px", fontSize: 14 }} onClick={() => telechargerIcs([agenda], "salon-acs.ics")}>Apple, Outlook…</button>
+        </div>
+    ) : null
     return (
         <div style={{ width: "100%", minWidth: 0, color: C.txt, ...font }}>
             <div style={{ fontFamily: serif, fontSize: "clamp(30px, 5vw, 44px)", lineHeight: 1.1, fontWeight: 600, color: C.accent }}>{dateAffichee(e)}</div>
@@ -102,8 +109,8 @@ function ProchainPublic({ lienSalon }: { lienSalon: string }) {
 }
 
 addPropertyControls(AgendaLive, {
-    mode: { type: ControlType.Enum, title: "Affichage", options: ["liste", "salon"], optionTitles: ["Liste des événements", "Prochain événement public"], defaultValue: "liste" },
-    lienSalon: { type: ControlType.String, title: "Lien salon", defaultValue: "/salon", hidden: (p: any) => p.mode !== "salon" },
+    mode: { type: ControlType.Enum, title: "Affichage", options: ["liste", "salon", "boutons"], optionTitles: ["Liste des événements", "Prochain événement public", "Boutons « ajouter à l’agenda » seuls"], defaultValue: "liste" },
+    lienSalon: { type: ControlType.String, title: "Lien salon", defaultValue: "/salon", hidden: (p: any) => p.mode === "liste" },
     max: { type: ControlType.Number, title: "Nombre max", min: 1, max: 20, step: 1, defaultValue: 6 },
     lienMembre: { type: ControlType.String, title: "Lien inscription", defaultValue: "/espace-membre#evenements" },
 })
