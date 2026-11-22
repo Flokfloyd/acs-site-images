@@ -1951,10 +1951,11 @@ export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
     const memeGenre = normTaxo(ag) === normTaxo(pg), memeReste = normTaxo(ar.join(" ")) === normTaxo(pr.join(" "))
     // simple changement de rang (var. → subsp., même épithète) : on note juste le rang
     const rangSeul = memeGenre && ar.length === 3 && pr.length >= 3 && normTaxo(ar[0]) === normTaxo(pr[0]) && normTaxo(ar[2]) === normTaxo(pr[pr.length - 1]) && RANGS[ar[1]] && RANGS[ar[1]] !== RANGS[pr[pr.length - 2]]
-    const annexe = rangSeul ? `(${ar[1]})` : memeGenre ? `(${ar.join(" ")})` : memeReste ? `(=${ag})` : `(=${A})`
-    // une ancienne correction entre parenthèses est remplacée ; les autres notes (ex., ?, hybrides) restent
-    const correction = (a: string) => /^\(\s*=/.test(a) || /^\(\s*[a-z-]{3,}(\s+(subsp|ssp|var|fma|f)\.?\s+[a-z-]{3,})?\s*\)$/.test(a)
-    const base = nom.replace(/\([^)]*\)?/g, (a) => (correction(a) ? "" : a)).replace(/\s+/g, " ").trim()
+    // sous-espèce devenue espèce : (=E. sharpii)
+    const devenueEspece = memeGenre && ar.length === 1 && pr.length >= 3 && normTaxo(pr[pr.length - 1]) === normTaxo(ar[0])
+    const annexe = rangSeul ? `(${ar[1]})` : devenueEspece ? `(=${ag.charAt(0)}. ${ar[0]})` : memeGenre ? `(${ar.join(" ")})` : memeReste ? `(=${ag})` : `(=${A})`
+    // les notes entre parenthèses du nom sont remplacées par le nom accepté
+    const base = nom.replace(/\([^)]*\)?/g, "").replace(/\s+/g, " ").trim()
     return { ...v, proposition: `${base} ${annexe}`, note: `${v.note}${v.note ? " · " : ""}nom d’achat conservé` }
 }
 function verifierNomBrut(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
