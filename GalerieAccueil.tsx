@@ -82,7 +82,7 @@ export const GALERIE = { Diaporama, Vignette, reduireImage, SECOURS, CATEGORIES,
  * @framerSupportedLayoutHeight auto
  */
 export default function GalerieAccueil(props: { nombre?: number; lien?: string }) {
-    const { lien = "/espace-membre#galerie" } = props
+    const { lien = "/galerie" } = props
     const [photos, setPhotos] = React.useState<Photo[]>([])
     const [ouverte, setOuverte] = React.useState<{ liste: Photo[]; i: number } | null>(null)
     React.useEffect(() => {
@@ -103,7 +103,7 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
                 {tuiles.map((t) => <Vignette key={t.cat} p={{ ...t.liste[0], legende: t.cat }} hauteur={210} onClick={() => setOuverte({ liste: t.liste.map((p) => ({ ...p, album: t.cat })), i: 0 })} />)}
             </div>
             {lien && (
-                <a href={lien} style={{ display: "inline-block", marginTop: 22, fontFamily: sans, fontSize: 14, color: "rgba(246,240,230,0.75)", textDecoration: "underline", textUnderlineOffset: 4 }}>Plus de photos dans l’espace adhérents →</a>
+                <a href={lien} style={{ display: "inline-block", marginTop: 22, fontFamily: sans, fontSize: 14, color: "rgba(246,240,230,0.75)", textDecoration: "underline", textUnderlineOffset: 4 }}>Toutes les photos (réservé aux adhérents) →</a>
             )}
             {ouverte && <Diaporama photos={ouverte.liste} index={ouverte.i} fermer={() => setOuverte(null)} />}
         </div>
@@ -111,5 +111,5 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
 }
 
 addPropertyControls(GalerieAccueil, {
-    lien: { type: ControlType.String, title: "Lien adhérents", defaultValue: "/espace-membre#galerie" },
+    lien: { type: ControlType.String, title: "Lien adhérents", defaultValue: "/galerie" },
 })

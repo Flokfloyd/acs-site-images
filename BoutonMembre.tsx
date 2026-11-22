@@ -3,7 +3,7 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb } from "./AcsBase.tsx"
 
-const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Collection", "#collection"], ["Sondages", "#sondages"], ["Discussion", "#discussion"], ["Galerie", "#galerie"], ["Annuaire", "#annuaire"]]
+const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Collection", "#collection"], ["Sondages", "#sondages"], ["Discussion", "#discussion"], ["Annuaire", "#annuaire"], ["Galerie", "/galerie"]]
 const POLICE = "Poppins, sans-serif"
 
 // Barre de défilement aux couleurs du site (injectée une fois : ce composant est dans la barre de navigation de toutes les pages)
@@ -37,7 +37,7 @@ function Deroulant({ titre, href, liens, compact, style, deconnexion, admin }: {
             {ouvert && (
                 <div style={{ position: "absolute", top: "100%", right: 0, paddingTop: 6, zIndex: 50 }}>
                     <div style={{ background: "#16120f", border: "1px solid rgba(246,240,230,0.2)", minWidth: 210, boxShadow: "0 12px 30px rgba(0,0,0,0.35)" }}>
-                        {liens.map(([t, h]) => <a key={t} href={href + h} onClick={() => setOuvert(false)} style={item} {...survol}>{t}</a>)}
+                        {liens.map(([t, h]) => <a key={t} href={h.startsWith("/") ? h : href + h} onClick={() => setOuvert(false)} style={item} {...survol}>{t}</a>)}
                         {admin && <a href={admin} onClick={() => setOuvert(false)} style={{ ...item, color: "#9bbd8a", fontWeight: 600 }} {...survol}>Administration</a>}
                         {deconnexion && <button onClick={() => { setOuvert(false); sb()?.auth.signOut().finally(() => { window.location.href = "/" }) }} style={{ ...item, color: "rgba(246,240,230,0.7)", borderBottom: "none" }} {...survol}>Se déconnecter</button>}
                     </div>
@@ -73,21 +73,6 @@ export default function BoutonMembre(props: { page: string; pageAdmin: string; c
         c.from("adherents").select("prenom,nom,cotisation_annee,role").eq("email", email.toLowerCase()).maybeSingle().then(({ data }: any) => { if (!fini) setMoi(data ?? null) })
         return () => { fini = true }
     }, [email])
-    // adhérent connecté : le lien « Galerie » du menu ouvre directement la galerie complète de l'espace membre
-    React.useEffect(() => {
-        const w = window as any
-        w.__acsGalerieMembre = moi ? page + "#galerie" : null
-        if (w.__acsGalerieEcoute) return
-        w.__acsGalerieEcoute = true
-        document.addEventListener("click", (e: MouseEvent) => {
-            const cible = w.__acsGalerieMembre
-            if (!cible) return
-            const a = (e.target as HTMLElement)?.closest?.("a") as HTMLAnchorElement | null
-            if (!a) return
-            const h = a.getAttribute("href") || ""
-            if (/#galerie$/.test(h) && !h.includes("espace-membre")) { e.preventDefault(); e.stopPropagation(); window.location.href = cible }
-        }, true)
-    }, [moi])
 
     const style: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(246,240,230,0.4)", background: "transparent", color: "#f6f0e6", padding: props.compact ? "10px 14px" : "10px 20px", font: `600 14px ${POLICE}`, textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap", borderRadius: 0 }
     const accent = props.accent || "#9bbd8a"

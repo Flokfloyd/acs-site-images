@@ -155,11 +155,17 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
-const ONGLETS = ["accueil", "profil", "evenements", "collection", "sondages", "discussion", "galerie", "annuaire"] as const
+const ONGLETS = ["accueil", "profil", "evenements", "collection", "sondages", "discussion", "annuaire"] as const
 type O = typeof ONGLETS[number]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
 
 function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: string }) {
+    React.useEffect(() => {
+        try {
+            if (location.hash === "#galerie") { location.replace("/galerie"); return }
+            const r = sessionStorage.getItem("acs-retour"); if (r) { sessionStorage.removeItem("acs-retour"); location.replace(r) }
+        } catch (e) {}
+    }, [])
     const client = sb()!
     const [onglet, setO] = React.useState<O>(lireHash())
     const admin = moi.role === "admin"
@@ -174,7 +180,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
         client.from("discussion").select("id", { count: "exact", head: true }).gt("cree_le", vu).neq("email", moi.email.toLowerCase())
             .then(({ count, error }: any) => setNonLus(error ? 0 : count || 0))
     }, [onglet])
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["collection", "Collection"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["galerie", "Galerie"], ["annuaire", "Annuaire"]]
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["collection", "Collection"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["annuaire", "Annuaire"]]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -197,7 +203,6 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
             {onglet === "evenements" && <Evenements moi={moi} />}
             {onglet === "sondages" && <Sondages moi={moi} />}
             {onglet === "discussion" && <Discussion moi={moi} />}
-            {onglet === "galerie" && <GalerieMembres />}
             {onglet === "annuaire" && <Annuaire />}
             {onglet === "collection" && <Collection client={sb()} email={moi.email} auteur={[moi.prenom, moi.nom ? moi.nom.charAt(0).toUpperCase() + "." : ""].filter(Boolean).join(" ") || moi.email.split("@")[0]} />}
         </div>
@@ -1023,7 +1028,7 @@ function Discussion({ moi }: { moi: Adherent }) {
 }
 
 // ---------- Galerie (réservée aux adhérents) ----------
-function GalerieMembres() {
+export function GalerieMembres() {
     const client = sb()!
     const [photos, setPhotos] = React.useState<Photo[] | null>(null)
     const [album, setAlbum] = React.useState<string>("")
