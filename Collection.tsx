@@ -331,7 +331,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     }
 
     const menuExport = <Menu id="exporter" titre="Exporter" droite plein={etroit} ouvert={menu} setOuvert={setMenu} items={[
-                    { t: "Étiquettes à piquer…", d: vue === "semis" ? "Planche A4 LINAD, par lot de semis" : "Planche A4 LINAD, de la liste affichée", f: () => { if (!outils) setVue("collection"); setEtq(true); setPdf(false); setCmd(false) } },
+                    { t: "Étiquettes à piquer…", d: "Planche A4 LINAD : collection, semis ou liste affichée", f: () => { if (!outils) setVue("collection"); setEtq(true); setPdf(false); setCmd(false) } },
                     { t: "Listes en PDF…", d: "Collection, semis, rusticité : à imprimer ou partager", f: () => { setPdf(true); setEtq(false); setCmd(false) } },
                     { t: "Tableau Excel", d: "Toutes vos plantes, une feuille par liste", f: exporter },
                 ]} />
@@ -388,7 +388,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
 
             {pdf && <PanneauPDF plantes={plantes} vue={vue} garde={garde} filtreTxt={filtreTxt} grouper={grouper} auteur={auteur} onFermer={() => setPdf(false)} />}
             {cmd && <PanneauCommande plantes={plantes} genres={genres} client={client} email={email} auteur={auteur} onFermer={(ok) => { setCmd(false); if (ok) { charger(); setVue("semis"); setMsg(ok) } }} />}
-            {etq && outils && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} client={client} onMaj={charger} onFermer={() => setEtq(false)} />}
+            {etq && outils && <PanneauEtiquettes liste={triee} plantes={plantes} vue={vue} auteur={auteur} genres={genres} client={client} onMaj={charger} onFermer={() => setEtq(false)} />}
             {imp && <ApercuImport imp={imp} onAnnuler={() => setImp(null)} onValider={validerImport} />}
             {edit && <Fiche p={edit} genres={genres} client={client} email={email} auteur={auteur} onFermer={(maj) => { setEdit(null); if (maj) charger() }} />}
 
@@ -589,20 +589,29 @@ const COLS_CACHEES: Record<string, string[]> = { collection: ["rempotage", "four
 type ItemMenu = { t: string; d?: string; f?: () => void; fichier?: (f: File) => void }
 function Menu({ id, titre, items, cases, ouvert, setOuvert, discret, droite, plein }: { id: "importer" | "exporter" | "colonnes"; titre: string; items?: ItemMenu[]; cases?: { t: string; actif: boolean; f: () => void }[]; ouvert: string; setOuvert: (v: any) => void; discret?: boolean; droite?: boolean; plein?: boolean }) {
     const ouv = ouvert === id
+    // le menu s’affiche au-dessus de la page (portail en position fixe) : jamais rogné par un cadre parent, sur mobile comme sur ordinateur
+    const btn = React.useRef<HTMLButtonElement>(null)
+    const [pos, setPos] = React.useState<{ top: number; left: number; right: number; bas: number } | null>(null)
+    React.useLayoutEffect(() => {
+        if (!ouv) return setPos(null)
+        const calc = () => { const r = btn.current?.getBoundingClientRect(); if (r) setPos({ top: r.bottom + 4, left: r.left, right: window.innerWidth - r.right, bas: window.innerHeight - r.bottom - 16 }) }
+        calc(); window.addEventListener("scroll", calc, true); window.addEventListener("resize", calc)
+        return () => { window.removeEventListener("scroll", calc, true); window.removeEventListener("resize", calc) }
+    }, [ouv])
     const ligne: React.CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", textAlign: "left", background: "none", border: "none", borderBottom: `1px solid ${C.line}`, color: C.txt, padding: "10px 14px", font: "inherit", fontSize: 14, cursor: "pointer" }
     const sous = (d?: string) => (d ? <span style={{ display: "block", fontSize: 12, color: C.mute, marginTop: 2 }}>{d}</span> : null)
     return (
         <div data-menu style={{ position: "relative", marginLeft: discret ? "auto" : 0, height: plein ? "100%" : undefined }}>
-            <button style={{ ...bouton(false), ...(discret ? { borderColor: "transparent", color: C.mute } : {}), ...(plein ? { width: "100%", height: "100%", padding: "10px 12px" } : {}) }} aria-haspopup="menu" aria-expanded={ouv} onClick={() => setOuvert(ouv ? "" : id)}>{titre}<span aria-hidden style={{ fontSize: 9, marginLeft: 8, display: "inline-block", transform: ouv ? "rotate(180deg)" : "none" }}>▼</span></button>
-            {ouv && (
-                <div role="menu" style={{ position: "absolute", top: "calc(100% + 4px)", ...(discret || droite ? { right: 0 } : { left: 0 }), zIndex: 20, width: discret ? 220 : 300, maxWidth: "86vw", background: C.panel2, border: `1px solid ${C.line}`, boxShadow: "0 10px 30px rgba(0,0,0,.45)" }}>
+            <button ref={btn} style={{ ...bouton(false), ...(discret ? { borderColor: "transparent", color: C.mute } : {}), ...(plein ? { width: "100%", height: "100%", padding: "10px 12px" } : {}) }} aria-haspopup="menu" aria-expanded={ouv} onClick={() => setOuvert(ouv ? "" : id)}>{titre}<span aria-hidden style={{ fontSize: 9, marginLeft: 8, display: "inline-block", transform: ouv ? "rotate(180deg)" : "none" }}>▼</span></button>
+            {ouv && pos && createPortal(
+                <div data-menu role="menu" style={{ position: "fixed", top: pos.top, ...(discret || droite ? { right: Math.max(8, pos.right) } : { left: Math.max(8, pos.left) }), zIndex: 1000, width: discret ? 220 : 300, maxWidth: "calc(100vw - 16px)", maxHeight: Math.max(160, pos.bas), overflowY: "auto", boxSizing: "border-box", background: C.panel2, border: `1px solid ${C.line}`, boxShadow: "0 10px 30px rgba(0,0,0,.45)", color: C.txt, ...font }}>
                     <style>{`.acs-item:hover{background:${C.panel}}`}</style>
                     {items?.map((it) => it.fichier
                         ? <label key={it.t} role="menuitem" style={ligne} className="acs-item">{it.t}{sous(it.d)}<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) it.fichier!(f); e.target.value = ""; setOuvert("") }} /></label>
                         : <button key={it.t} role="menuitem" style={ligne} className="acs-item" onClick={() => { setOuvert(""); it.f?.() }}>{it.t}{sous(it.d)}</button>)}
                     {cases && <div style={{ padding: "8px 14px 4px", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent }}>Colonnes affichées</div>}
                     {cases?.map((c) => <label key={c.t} style={{ ...ligne, display: "flex", gap: 10, alignItems: "center", padding: "7px 14px", borderBottom: "none" }} className="acs-item"><input type="checkbox" style={coche} checked={c.actif} onChange={c.f} />{c.t}</label>)}
-                </div>
+                </div>, document.body
             )}
         </div>
     )
@@ -1021,15 +1030,29 @@ function PanneauCommande({ plantes, genres, client, email, auteur, onFermer }: {
 }
 
 // ---------- panneau des étiquettes ----------
-function PanneauEtiquettes({ liste, vue, auteur, genres, client, onMaj, onFermer }: { liste: Plante[]; vue: Vue; auteur: string; genres: Genres; client: any; onMaj: () => void; onFermer: () => void }) {
+// Le mélange 6 ne sert qu’au semis : une plante repiquée passe au mélange 1 à 5 de son genre.
+const subEtiquette = (p: Plante, genres: Genres): number | null => {
+    const v = Number(p.substrat)
+    if (v >= 1 && v <= 5) return v
+    const g = Number(genres[genreDe(p.espece)]?.[2]?.[1])
+    return g >= 1 && g <= 5 ? g : null
+}
+type SourceEtq = "collection" | "tout" | "semis" | "affichee"
+function PanneauEtiquettes({ liste, plantes, vue, auteur, genres, client, onMaj, onFermer }: { liste: Plante[]; plantes: Plante[]; vue: Vue; auteur: string; genres: Genres; client: any; onMaj: () => void; onFermer: () => void }) {
+    const [source, setSource] = React.useState<SourceEtq>(vue === "semis" ? "semis" : "collection")
+    const parNom = (l: Plante[]) => [...l].sort((a, b) => a.espece.localeCompare(b.espece))
+    const src = source === "affichee" ? liste
+        : source === "semis" ? plantes.filter((p) => p.statut === "semis").sort((a, b) => cleDate(b.semis).localeCompare(cleDate(a.semis)) || a.espece.localeCompare(b.espece))
+        : source === "tout" ? parNom(plantes.filter(enCollection))
+        : parNom(plantes.filter((p) => p.statut !== "semis"))
     const [paysForce, setPaysForce] = React.useState<Record<string, string>>({})
     const [verifPays, setVerifPays] = React.useState(false)
     const [garderPays, setGarderPays] = React.useState(false)
     const lots = React.useMemo(() => {
         const m = new Map<string, number>()
-        for (const p of liste) if (p.statut === "semis" && p.semis) m.set(p.semis, (m.get(p.semis) || 0) + 1)
+        for (const p of src) if (p.statut === "semis" && p.semis) m.set(p.semis, (m.get(p.semis) || 0) + 1)
         return [...m.entries()].sort((a, b) => cleDate(b[0]).localeCompare(cleDate(a[0])))
-    }, [liste])
+    }, [src])
     const [lot, setLot] = React.useState("")
     const [sansLevee, setSansLevee] = React.useState(true)
     const [selon, setSelon] = React.useState(false)
@@ -1037,9 +1060,9 @@ function PanneauEtiquettes({ liste, vue, auteur, genres, client, onMaj, onFermer
     const [contours, setContours] = React.useState(true)
     const [choix, setChoix] = React.useState<Set<string> | null>(null)
     const [msg, setMsg] = React.useState("")
-    const base = liste.filter((p) => (!lot || p.semis === lot) && !(sansLevee && p.statut === "semis" && ((p.nb_vivants != null && p.nb_vivants === 0) || (p.nb_vivants == null && p.nb_leves === 0))))
+    const base = src.filter((p) => (!lot || p.semis === lot) && !(sansLevee && p.statut === "semis" && ((p.nb_vivants != null && p.nb_vivants === 0) || (p.nb_vivants == null && p.nb_leves === 0))))
     const coches = base.filter((p) => !choix || choix.has(p.id!))
-    const items = coches.map((p) => ({ ...p, _pays: paysForce[p.id!] ?? paysPlante(p, genres), _sub: p.substrat ?? genres[genreDe(p.espece)]?.[2]?.[1] ?? null } as Plante)).flatMap((p) => Array(Math.max(1, Math.min(50, selon ? (p.statut === "semis" ? p.nb_vivants ?? p.nb_leves ?? 1 : p.exemplaires ?? 1) : 1))).fill(p))
+    const items = coches.map((p) => ({ ...p, _pays: paysForce[p.id!] ?? paysPlante(p, genres), _sub: subEtiquette(p, genres) } as Plante)).flatMap((p) => Array(Math.max(1, Math.min(50, selon ? (p.statut === "semis" ? p.nb_vivants ?? p.nb_leves ?? 1 : p.exemplaires ?? 1) : 1))).fill(p))
     const manques = coches.filter((p) => tempEtiquette(p) == null || !paysPlante(p, genres))
     const bascule = (id: string) => setChoix((c) => { const n = new Set(c ?? base.map((p) => p.id!)); n.has(id) ? n.delete(id) : n.add(id); return n })
     // pays absents de la localité : complétés d’après le genre, à vérifier avant impression
@@ -1047,7 +1070,7 @@ function PanneauEtiquettes({ liste, vue, auteur, genres, client, onMaj, onFermer
     const imprimer = (confirme = false) => {
         if (!items.length) return setMsg("Aucune étiquette à imprimer.")
         if (aVerifier.length && !confirme) return setVerifPays(true)
-        const titre = lot ? `Semis du ${lot}` : vue === "semis" ? "Semis" : vue === "rusticite" ? "Collection" : "Collection"
+        const titre = lot ? `Semis du ${lot}` : source === "semis" ? "Semis" : "Collection"
         if (!ouvrirImpression(items, { debut, contours, titre, auteur })) setMsg("Le navigateur a bloqué la fenêtre d’impression : autorisez les fenêtres pour ce site.")
         else setMsg("")
     }
@@ -1094,8 +1117,14 @@ function PanneauEtiquettes({ liste, vue, auteur, genres, client, onMaj, onFermer
                 <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Étiquettes à piquer</h3>
                 <button onClick={onFermer} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Planche A4 de 44 étiquettes (gabarit LINAD) : n° de substrat dans le rond, nom latin, n° de collecte, température minimale, pays, date et exposition. Les plantes viennent de la liste affichée (onglet, recherche et filtre de type).</p>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Planche A4 de 44 étiquettes (gabarit LINAD) : n° de substrat dans le rond, nom latin, n° de collecte, température minimale, pays, date et exposition. Le mélange 6 (semis) n’est jamais imprimé : la plante prend le mélange 1 à 5 de son genre.</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 230px), 1fr))", gap: 12, marginTop: 14 }}>
+                <div><label style={etiquette}>Plantes</label><select value={source} onChange={(e) => { setSource(e.target.value as SourceEtq); setLot(""); setChoix(null) }} style={champ}>
+                    <option value="collection">Collection, sans les semis ({plantes.filter((p) => p.statut !== "semis").length})</option>
+                    <option value="tout">Collection et semis levés ({plantes.filter(enCollection).length})</option>
+                    <option value="semis">Semis ({plantes.filter((p) => p.statut === "semis").length})</option>
+                    <option value="affichee">Liste affichée, avec recherche et filtres ({liste.length})</option>
+                </select></div>
                 {lots.length > 0 && <div><label style={etiquette}>Lot de semis</label><select value={lot} onChange={(e) => { setLot(e.target.value); setChoix(null) }} style={champ}><option value="">Tous les lots affichés</option>{lots.map(([d, n]) => <option key={d} value={d}>Semis du {d} ({n})</option>)}</select></div>}
                 <div><label style={etiquette}>Commencer à l’étiquette</label><input type="number" min={1} max={44} value={debut} onChange={(e) => setDebut(Math.max(1, Math.min(44, Number(e.target.value) || 1)))} style={champ} /><div style={{ fontSize: 12, color: C.mute, marginTop: 4 }}>Pour finir une planche entamée (1 à 22 à gauche, 23 à 44 à droite).</div></div>
                 <div style={{ display: "grid", gap: 8, alignContent: "start", paddingTop: 18 }}>
@@ -1471,7 +1500,7 @@ function etiquetteSVG(p: Plante, x0: number, y0: number, droite: boolean, contou
     const date = p.statut === "semis" ? p.semis || "" : p.acquis ? p.acquis : p.semis || ""
     const expo = expoEtiquette(p)
     // n° du mélange (1 à 6, article « Des substrats à composer ») dans le rond
-    const sv = Number((p as any)._sub ?? p.substrat), sub = sv >= 1 && sv <= 6 ? String(sv) : ""
+    const sv = Number((p as any)._sub ?? p.substrat), sub = sv >= 1 && sv <= 5 ? String(sv) : ""
     const forme = `M0,0 L${corps},0 L${pointe},${h / 2} L${corps},${h} L0,${h} Z`
     const tr = droite ? `translate(${(x0).toFixed(2)},${(y0 + h).toFixed(2)}) rotate(180)` : `translate(${x0.toFixed(2)},${y0.toFixed(2)})`
     return `<g transform="${tr}">
