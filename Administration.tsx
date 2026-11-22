@@ -172,7 +172,7 @@ function RappelsEnCours() {
                 <div key={r.id} style={{ border: `2px solid #d9a441`, background: "rgba(217,164,65,0.12)", padding: "14px 18px", display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
                     <div style={{ flex: "1 1 320px", minWidth: 0 }}>
                         <div style={{ fontWeight: 700, color: "#f3c86b" }}>À faire{r.echeance ? ` avant le ${dateFr(r.echeance)}` : ""} : {r.titre}</div>
-                        {r.details && <div style={{ fontSize: 14, color: C.txt, marginTop: 4, lineHeight: 1.55 }}>{r.details}</div>}
+                        {r.details && <div style={{ fontSize: 14, color: C.txt, marginTop: 4, lineHeight: 1.55 }}>{String(r.details).split(/(https?:\/\/\S+)/).map((x: string, i: number) => /^https?:\/\//.test(x) ? <a key={i} href={x} target="_blank" rel="noopener" style={{ color: "#f3c86b", fontWeight: 600 }}>{/mail\.google\.com/.test(x) ? "ouvrir l’e-mail" : "ouvrir le lien"}</a> : x)}</div>}
                     </div>
                     <button style={btn()} onClick={() => fait(r)}>C’est fait</button>
                 </div>
