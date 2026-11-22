@@ -1031,43 +1031,47 @@ function Discussion({ moi }: { moi: Adherent }) {
 export function GalerieMembres() {
     const client = sb()!
     const [photos, setPhotos] = React.useState<Photo[] | null>(null)
-    const [album, setAlbum] = React.useState<string>("")
-    const [serie, setSerie] = React.useState<string>("")
-    const [ouverte, setOuverte] = React.useState<number | null>(null)
+    const [vue, setVue] = React.useState<"tout" | "section" | "album">("tout")
+    const [ouverte, setOuverte] = React.useState<{ liste: Photo[]; i: number } | null>(null)
     React.useEffect(() => {
         client.from("photos").select("*").order("ordre").order("cree_le", { ascending: false })
             .then(({ data, error }: any) => setPhotos(error ? GALERIE.SECOURS : data ?? []))
     }, [])
     if (!photos) return <div style={{ ...box, ...muted }}>Chargement de la galerie…</div>
-    const albums = GALERIE.CATEGORIES.filter((c) => photos.some((p) => GALERIE.categorie(p.album) === c))
-    const dansCat = album ? photos.filter((p) => GALERIE.categorie(p.album) === album) : photos
-    const series = Array.from(new Set(dansCat.map((p) => p.serie).filter(Boolean))) as string[]
-    const liste = serie ? dansCat.filter((p) => p.serie === serie) : dansCat
-    const puce = (actif: boolean): React.CSSProperties => ({ ...small(), background: actif ? C.accent : "transparent", color: actif ? C.accentDark : C.txt, borderColor: actif ? C.accent : C.line })
+    const puce = (actif: boolean): React.CSSProperties => ({ ...small(), padding: "8px 14px", fontWeight: 600, background: actif ? C.accent : "transparent", color: actif ? C.accentDark : C.txt, borderColor: actif ? C.accent : C.line })
+    // groupes affichés selon la vue choisie
+    const groupes: { titre: string; sous?: string; liste: Photo[] }[] =
+        vue === "tout" ? [{ titre: "", liste: photos }]
+            : vue === "section" ? GALERIE.CATEGORIES.map((c) => ({ titre: c, liste: photos.filter((p) => GALERIE.categorie(p.album) === c) })).filter((g) => g.liste.length)
+                : (() => {
+                    const noms = Array.from(new Set(photos.map((p) => p.serie || ""))) as string[]
+                    const g = noms.map((n) => { const l = photos.filter((p) => (p.serie || "") === n); return { titre: n || "Sans album", sous: n ? GALERIE.categorie(l[0]?.album) : undefined, liste: l } })
+                    // tri : section, puis nom d'album (« Sans album » en dernier)
+                    return g.sort((x, y) => (x.titre === "Sans album" ? 1 : 0) - (y.titre === "Sans album" ? 1 : 0) || GALERIE.CATEGORIES.indexOf(x.sous || "") - GALERIE.CATEGORIES.indexOf(y.sous || "") || x.titre.localeCompare(y.titre, "fr"))
+                })()
+    const grille = (liste: Photo[]) => (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
+            {liste.map((p, i) => <GALERIE.Vignette key={p.id} p={{ ...p, legende: null }} hauteur="clamp(150px, 20vw, 200px)" onClick={() => setOuverte({ liste, i })} />)}
+        </div>
+    )
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-                <h2 style={{ ...h2, margin: 0 }}>Galerie</h2>
-                <span style={{ ...muted, fontSize: 13 }}>{liste.length} photo{liste.length > 1 ? "s" : ""} · réservées aux adhérents, merci de ne pas les diffuser.</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.mute, marginRight: 4 }}>Affichage</span>
+                    <button style={puce(vue === "tout")} onClick={() => setVue("tout")}>Tout</button>
+                    <button style={puce(vue === "section")} onClick={() => setVue("section")}>Par section</button>
+                    <button style={puce(vue === "album")} onClick={() => setVue("album")}>Par album</button>
+                </div>
+                <span style={{ ...muted, fontSize: 13 }}>{photos.length} photo{photos.length > 1 ? "s" : ""} · réservées aux adhérents, merci de ne pas les diffuser.</span>
             </div>
-            {albums.length > 1 && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button style={puce(!album)} onClick={() => { setAlbum(""); setSerie("") }}>Toutes</button>
-                    {albums.map((a) => <button key={a} style={puce(album === a)} onClick={() => { setAlbum(a); setSerie("") }}>{a}</button>)}
+            {photos.length === 0 ? <div style={{ ...box, ...muted }}>Aucune photo pour l’instant.</div> : groupes.map((g) => (
+                <div key={g.titre || "tout"} style={{ display: "grid", gap: 10 }}>
+                    {g.titre && <h3 style={{ ...h2, fontSize: 22, margin: "8px 0 0", display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>{g.titre}<span style={{ fontFamily: "Poppins, sans-serif", fontSize: 13, fontWeight: 400, color: C.mute }}>{g.sous ? g.sous + " · " : ""}{g.liste.length} photo{g.liste.length > 1 ? "s" : ""}</span></h3>}
+                    {grille(g.liste)}
                 </div>
-            )}
-            {series.length > 0 && (
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: -6 }}>
-                    <button style={{ ...puce(!serie), fontSize: 12 }} onClick={() => setSerie("")}>Tous les albums</button>
-                    {series.map((a) => <button key={a} style={{ ...puce(serie === a), fontSize: 12 }} onClick={() => setSerie(a)}>{a}</button>)}
-                </div>
-            )}
-            {liste.length === 0 ? <div style={{ ...box, ...muted }}>Aucune photo pour l’instant.</div> : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
-                    {liste.map((p, i) => <GALERIE.Vignette key={p.id} p={{ ...p, legende: null }} hauteur="clamp(150px, 20vw, 200px)" onClick={() => setOuverte(i)} />)}
-                </div>
-            )}
-            {ouverte != null && <GALERIE.Diaporama photos={liste.map((p) => ({ ...p, album: [GALERIE.categorie(p.album), p.serie].filter(Boolean).join(" · ") }))} index={ouverte} fermer={() => setOuverte(null)} />}
+            ))}
+            {ouverte && <GALERIE.Diaporama photos={ouverte.liste.map((p) => ({ ...p, album: [GALERIE.categorie(p.album), p.serie].filter(Boolean).join(" · ") }))} index={ouverte.i} fermer={() => setOuverte(null)} />}
         </div>
     )
 }
