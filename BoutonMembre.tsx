@@ -73,6 +73,21 @@ export default function BoutonMembre(props: { page: string; pageAdmin: string; c
         c.from("adherents").select("prenom,nom,cotisation_annee,role").eq("email", email.toLowerCase()).maybeSingle().then(({ data }: any) => { if (!fini) setMoi(data ?? null) })
         return () => { fini = true }
     }, [email])
+    // adhérent connecté : le lien « Galerie » du menu ouvre directement la galerie complète de l'espace membre
+    React.useEffect(() => {
+        const w = window as any
+        w.__acsGalerieMembre = moi ? page + "#galerie" : null
+        if (w.__acsGalerieEcoute) return
+        w.__acsGalerieEcoute = true
+        document.addEventListener("click", (e: MouseEvent) => {
+            const cible = w.__acsGalerieMembre
+            if (!cible) return
+            const a = (e.target as HTMLElement)?.closest?.("a") as HTMLAnchorElement | null
+            if (!a) return
+            const h = a.getAttribute("href") || ""
+            if (/#galerie$/.test(h) && !h.includes("espace-membre")) { e.preventDefault(); e.stopPropagation(); window.location.href = cible }
+        }, true)
+    }, [moi])
 
     const style: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(246,240,230,0.4)", background: "transparent", color: "#f6f0e6", padding: props.compact ? "10px 14px" : "10px 20px", font: `600 14px ${POLICE}`, textDecoration: "none", cursor: "pointer", whiteSpace: "nowrap", borderRadius: 0 }
     const accent = props.accent || "#9bbd8a"

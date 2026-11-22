@@ -1059,7 +1059,7 @@ function GalerieMembres() {
             )}
             {liste.length === 0 ? <div style={{ ...box, ...muted }}>Aucune photo pour l’instant.</div> : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 10 }}>
-                    {liste.map((p, i) => <GALERIE.Vignette key={p.id} p={p} hauteur="clamp(150px, 20vw, 200px)" onClick={() => setOuverte(i)} />)}
+                    {liste.map((p, i) => <GALERIE.Vignette key={p.id} p={{ ...p, legende: null }} hauteur="clamp(150px, 20vw, 200px)" onClick={() => setOuverte(i)} />)}
                 </div>
             )}
             {ouverte != null && <GALERIE.Diaporama photos={liste.map((p) => ({ ...p, album: [GALERIE.categorie(p.album), p.serie].filter(Boolean).join(" · ") }))} index={ouverte} fermer={() => setOuverte(null)} />}

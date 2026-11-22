@@ -209,7 +209,7 @@ function GestionPhotos({ rev, changer }: { rev: number; changer: () => void }) {
     const liste = photos.filter((p) => (!cat || GALERIE.categorie(p.album) === cat) && (!serie || (serie === "—" ? !p.serie : p.serie === serie)))
     const choisis = photos.filter((p) => sel.has(p.id))
     const basculer = (id: string) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
-    const fin = (t: string) => { setMsg({ t, err: false }); setSel(new Set()); changer() }
+    const fin = (t: string) => { setMsg({ t, err: false }); setSel(new Set()); setVersCat(""); setVersAlbum(""); setLegende(""); changer() }
     const maj = async (champs: any, t: string) => {
         const { error } = await client.from("photos").update(champs).in("id", [...sel])
         if (error) return setMsg({ t: error.message, err: true })
@@ -314,13 +314,14 @@ function GestionPhotos({ rev, changer }: { rev: number; changer: () => void }) {
 function GalerieAdmin() {
     const client = sb()!
     const [rev, setRev] = React.useState(0)
-    const [album, setAlbum] = React.useState(GALERIE.CATEGORIES[0])
+    const [album, setAlbum] = React.useState("")
     const [serieEnvoi, setSerieEnvoi] = React.useState("")
     const [series, setSeries] = React.useState<string[]>([])
     React.useEffect(() => { client.from("photos").select("serie").then(({ data }: any) => setSeries(Array.from(new Set((data ?? []).map((r: any) => r.serie).filter(Boolean))) as string[])) }, [rev])
     const [etat, setEtat] = React.useState<{ t: string; err: boolean } | null>(null)
     const envoyer = async (fichiers: FileList | null) => {
         if (!fichiers || !fichiers.length) return
+        if (!album) return setEtat({ t: "Choisissez d’abord la catégorie.", err: true })
         const liste = Array.from(fichiers).filter((f) => f.type.startsWith("image/"))
         let ok = 0
         for (const [n, f] of liste.entries()) {
@@ -341,7 +342,9 @@ function GalerieAdmin() {
                 ok++
             } catch (e) { setEtat({ t: `Échec pour ${f.name} : ${String((e as any).message || e)}`, err: true }); return }
         }
-        setEtat({ t: `${ok} photo${ok > 1 ? "s" : ""} ajoutée${ok > 1 ? "s" : ""}. Ajoutez les légendes ci-dessous.`, err: false })
+        setEtat({ t: `${ok} photo${ok > 1 ? "s" : ""} ajoutée${ok > 1 ? "s" : ""} dans « ${album}${serieEnvoi.trim() ? " · " + serieEnvoi.trim() : ""} ». Pour un nouvel envoi, choisissez à nouveau la catégorie.`, err: false })
+        // on repart de zéro : impossible d'envoyer le lot suivant dans la mauvaise catégorie par oubli
+        setAlbum(""); setSerieEnvoi("")
         setRev((x) => x + 1)
     }
     return (
@@ -352,7 +355,7 @@ function GalerieAdmin() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 8 }}>
                     <label style={{ display: "block" }}>
                         <span style={label}>Catégorie</span>
-                        <select style={input} value={album} onChange={(e) => setAlbum(e.target.value)}>{GALERIE.CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
+                        <select style={{ ...input, borderColor: album ? C.line : C.accent }} value={album} onChange={(e) => { setAlbum(e.target.value); setEtat(null) }}><option value="">— Choisir la catégorie —</option>{GALERIE.CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select>
                     </label>
                     <label style={{ display: "block" }}>
                         <span style={label}>Album (facultatif)</span>
@@ -360,9 +363,9 @@ function GalerieAdmin() {
                         <datalist id="acs-series-envoi">{series.map((a) => <option key={a} value={a} />)}</datalist>
                     </label>
                 </div>
-                <label style={{ ...btn(), display: "inline-block", marginTop: 16, cursor: "pointer" }}>
+                <label style={{ ...btn(), display: "inline-block", marginTop: 16, cursor: album ? "pointer" : "not-allowed", opacity: album ? 1 : 0.45 }}>
                     Choisir des photos…
-                    <input type="file" accept="image/*" multiple style={{ display: "none" }} onChange={(e) => { envoyer(e.target.files); e.target.value = "" }} />
+                    <input type="file" accept="image/*" multiple disabled={!album} style={{ display: "none" }} onChange={(e) => { envoyer(e.target.files); e.target.value = "" }} />
                 </label>
                 {etat && <div><Msg text={etat.t} err={etat.err} /></div>}
             </div>
