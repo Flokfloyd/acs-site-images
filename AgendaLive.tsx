@@ -88,7 +88,7 @@ function ProchainPublic({ lienSalon }: { lienSalon: string }) {
     const agenda = e.date_debut ? { titre: e.titre, jour: e.date_debut, jourFin: e.date_fin || undefined, lieu: e.lieu || "Bédée (35)", details: [e.heure, e.description, "https://acs-armorique-cactus-succulentes.framer.website" + lienSalon].filter(Boolean).join("\n") } : null
     const bouton: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 18px", border: `1px solid ${C.line}`, color: C.txt, textDecoration: "none", background: "transparent", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 0 }
     return (
-        <div style={{ width: "100%", minWidth: 0, color: C.txt, ...font, borderTop: `1px solid ${C.line}`, paddingTop: 28 }}>
+        <div style={{ width: "100%", minWidth: 0, color: C.txt, ...font }}>
             <div style={{ fontFamily: serif, fontSize: "clamp(30px, 5vw, 44px)", lineHeight: 1.1, fontWeight: 600, color: C.accent }}>{dateAffichee(e)}</div>
             <div style={{ fontFamily: serif, fontSize: "clamp(22px, 3vw, 28px)", lineHeight: 1.25, fontWeight: 600, marginTop: 8 }}>{e.titre}</div>
             {(e.heure || e.lieu || e.description) && <div style={{ color: C.mute, marginTop: 8, fontSize: 16, lineHeight: 1.6, maxWidth: 680 }}>{[e.heure, e.lieu, e.description].filter(Boolean).join(" · ")}</div>}
