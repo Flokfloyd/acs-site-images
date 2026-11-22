@@ -119,7 +119,7 @@ const IconeAgenda = () => (
 // bouton « Ajouter à l'agenda », puis choix Google / Outlook / Apple
 function ChoixAgenda({ agenda }: { agenda: any }) {
     const [ouvert, setOuvert] = React.useState(false)
-    const base: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, boxSizing: "border-box", height: 48, padding: "0 20px", border: `1px solid rgba(246,240,230,0.45)`, color: C.txt, background: "transparent", textDecoration: "none", font: "inherit", fontFamily: "Poppins, sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 0, whiteSpace: "nowrap" }
+    const base: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, boxSizing: "border-box", height: 46, padding: "0 20px", border: `1px solid rgba(246,240,230,0.45)`, color: C.txt, background: "transparent", textDecoration: "none", font: "inherit", fontFamily: "Poppins, sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", borderRadius: 0, whiteSpace: "nowrap" }
     const choix: React.CSSProperties = { ...base, height: 40, padding: "0 14px", fontSize: 14, fontWeight: 500, background: "rgba(246,240,230,0.06)" }
     if (!ouvert) return <button style={base} onClick={() => setOuvert(true)}><IconeAgenda />Ajouter à l’agenda</button>
     return (
