@@ -672,7 +672,7 @@ function Aide({ children }: { children: React.ReactNode }) {
 }
 
 // ---------- Éditeur générique (liste + formulaire) ----------
-export type Champ = { k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "admin" | "sommaire" | "fichier" | "choix"; options?: [string, string][]; requis?: boolean; aide?: string; dossier?: string; accept?: string; place?: string }
+export type Champ = { defaut?: string; k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "admin" | "sommaire" | "fichier" | "choix"; options?: [string, string][]; requis?: boolean; aide?: string; dossier?: string; accept?: string; place?: string }
 
 export const JOURS_MOIS = (d: string) => { try { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase()) } catch (e) { return d } }
 export function preparerEvenement(r: any): string | null {
@@ -842,7 +842,7 @@ function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
     let el: React.ReactNode
     if (c.type === "textarea") el = <textarea style={{ ...input, minHeight: 90, resize: "vertical" }} value={v ?? ""} onChange={(e) => set(e.target.value)} />
         else if (c.type === "sommaire") el = <SommaireForm v={v} set={set} />
-    else if (c.type === "choix") el = <select style={input} value={v ?? ""} onChange={(e) => set(e.target.value)}>{(c.options || []).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
+    else if (c.type === "choix") el = <select style={input} value={v ?? ""} ref={(x) => { if (x && c.defaut && !(c.options || []).some(([k]) => k === v)) setTimeout(() => set(c.defaut), 0) }} onChange={(e) => set(e.target.value)}>{(c.options || []).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
     else if (c.type === "fichier") el = <FichierForm v={v} set={set} dossier={c.dossier || "divers"} accept={c.accept} />
     else el = <input style={input} type={c.type === "date" ? "date" : c.type === "number" ? "number" : "text"} placeholder={c.place} value={v ?? ""} onChange={(e) => set(e.target.value)} />
     return <div><span style={label}>{c.t}{c.requis ? " *" : ""}</span>{el}{aide}</div>
@@ -1033,8 +1033,8 @@ function GalerieMembres() {
             .then(({ data, error }: any) => setPhotos(error ? GALERIE.SECOURS : data ?? []))
     }, [])
     if (!photos) return <div style={{ ...box, ...muted }}>Chargement de la galerie…</div>
-    const albums = Array.from(new Set(photos.map((p) => p.album || "Divers"))).sort((a, b) => a.localeCompare(b, "fr"))
-    const liste = album ? photos.filter((p) => (p.album || "Divers") === album) : photos
+    const albums = GALERIE.CATEGORIES.filter((c) => photos.some((p) => GALERIE.categorie(p.album) === c))
+    const liste = album ? photos.filter((p) => GALERIE.categorie(p.album) === album) : photos
     const puce = (actif: boolean): React.CSSProperties => ({ ...small(), background: actif ? C.accent : "transparent", color: actif ? C.accentDark : C.txt, borderColor: actif ? C.accent : C.line })
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -1157,7 +1157,7 @@ export const UI = { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSon
 export const CHAMPS_PHOTO: Champ[] = [
     { k: "image_url", t: "Photo", type: "fichier", dossier: "galerie", accept: "image/*", requis: true },
     { k: "legende", t: "Légende", type: "text", place: "Ex. : Copiapoa cinerea, Chili" },
-    { k: "album", t: "Album", type: "text", place: "Ex. : Salon 2026, Voyage à Madère, Collections" },
-    { k: "accueil", t: "Afficher sur la page d’accueil (visible de tous : aucune personne reconnaissable)", type: "bool" },
+    { k: "album", t: "Catégorie", type: "choix", defaut: "Divers", options: GALERIE.CATEGORIES.map((c) => [c, c] as [string, string]) },
+    { k: "accueil", t: "Afficher sur la page d’accueil (visible de tous : aucune personne reconnaissable)", type: "bool", aide: "Sur l’accueil, chaque catégorie montre sa première photo cochée (ordre 1 en premier) ; un clic ouvre toutes ses photos cochées." },
     { k: "ordre", t: "Ordre d’affichage (1 = en premier)", type: "number" },
 ]

@@ -9,10 +9,15 @@ export type Photo = { id: string; image_url: string; vignette_url?: string | nul
 const sans = "'Poppins', system-ui, sans-serif"
 const serif = "'Fraunces', Georgia, serif"
 
+// Les six catégories de la galerie (une vignette chacune sur la page d'accueil)
+export const CATEGORIES = ["Salon des Plantes", "Sortie", "Voyage", "Plantes", "Semestrielles", "Divers"]
+export const categorie = (album?: string | null) => (album && CATEGORIES.includes(album) ? album : "Divers")
+
+// photos de secours (avant que l'administration n'en ait ajouté), une par catégorie
 const SECOURS: Photo[] = [
-    ["u24jE1XFwpIS1ZTudAPbwhz8", "Jardin Majorelle"], ["Hhr8UCPbAO7x1jNY8RVDG6gGq5s", "Madère"], ["iIVUFH0jRRuu4b6rtMNVIpdowu8", "Agave"],
-    ["nNFsqvAFZ62Gc4uVcCCjZdkaQ", "Cierge"], ["3IFb9YLmwND3KZxWa42klDHQxF4", "Epiphyllum"], ["EiFCYebHOmQ4xh2kTo7DoCMPVY", "Cactus"],
-].map(([h, l], i) => ({ id: h, image_url: `https://framerusercontent.com/images/${h}.jpg`, legende: l, ordre: i }))
+    ["EiFCYebHOmQ4xh2kTo7DoCMPVY", "Salon des Plantes"], ["nNFsqvAFZ62Gc4uVcCCjZdkaQ", "Sortie"], ["Hhr8UCPbAO7x1jNY8RVDG6gGq5s", "Voyage"],
+    ["iIVUFH0jRRuu4b6rtMNVIpdowu8", "Plantes"], ["3IFb9YLmwND3KZxWa42klDHQxF4", "Semestrielles"], ["u24jE1XFwpIS1ZTudAPbwhz8", "Divers"],
+].map(([h, a], i) => ({ id: h, image_url: `https://framerusercontent.com/images/${h}.jpg`, album: a, legende: null, ordre: i }))
 
 // Réduit une photo avant envoi (côté le plus long 2000 px, JPEG) pour rester dans l'espace gratuit
 async function reduireImage(f: File, max = 2000, qualite = 0.85): Promise<Blob> {
@@ -57,49 +62,53 @@ function Diaporama({ photos, index, fermer }: { photos: Photo[]; index: number; 
     )
 }
 
-function Vignette({ p, onClick, hauteur }: { p: Photo; onClick: () => void; hauteur: number | string }) {
+function Vignette({ p, onClick, hauteur, sous }: { p: Photo; onClick: () => void; hauteur: number | string; sous?: string }) {
     const [sur, setSur] = React.useState(false)
     return (
         <button onClick={onClick} onMouseEnter={() => setSur(true)} onMouseLeave={() => setSur(false)} aria-label={p.legende ? `Agrandir : ${p.legende}` : "Agrandir la photo"}
             style={{ all: "unset", cursor: "zoom-in", position: "relative", display: "block", height: hauteur, overflow: "hidden", background: "#2e241e" }}>
             <img {...(p.vignette_url ? { src: p.vignette_url } : imgLeger(p.image_url))} alt={p.legende || ""} loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", transform: sur ? "scale(1.04)" : "none", transition: "transform .5s ease" }} />
             {p.legende && (
-                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "56px 16px 16px", background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%)", color: "#f6f0e6", fontFamily: sans, fontWeight: 600, fontSize: 15, textAlign: "center" }}>{p.legende}</div>
+                <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "56px 16px 16px", background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%)", color: "#f6f0e6", fontFamily: sans, fontWeight: 600, fontSize: 15, textAlign: "center" }}>{p.legende}{sous && <span style={{ display: "block", fontWeight: 400, fontSize: 12, opacity: 0.75, marginTop: 2 }}>{sous}</span>}</div>
             )}
         </button>
     )
 }
 
-export const GALERIE = { Diaporama, Vignette, reduireImage, SECOURS }
+export const GALERIE = { Diaporama, Vignette, reduireImage, SECOURS, CATEGORIES, categorie }
 
 /**
  * @framerSupportedLayoutWidth any
  * @framerSupportedLayoutHeight auto
  */
 export default function GalerieAccueil(props: { nombre?: number; lien?: string }) {
-    const { nombre = 6, lien = "/espace-membre#galerie" } = props
-    const [photos, setPhotos] = React.useState<Photo[]>(SECOURS.slice(0, nombre))
-    const [ouverte, setOuverte] = React.useState<number | null>(null)
+    const { lien = "/espace-membre#galerie" } = props
+    const [photos, setPhotos] = React.useState<Photo[]>([])
+    const [ouverte, setOuverte] = React.useState<{ liste: Photo[]; i: number } | null>(null)
     React.useEffect(() => {
         const c = sb()
         if (!c) return
-        c.from("photos").select("id,image_url,vignette_url,legende,album,ordre").eq("accueil", true).order("ordre").order("cree_le", { ascending: false }).limit(nombre)
-            .then(({ data, error }: any) => { if (!error && data && data.length) setPhotos(data) })
-    }, [nombre])
+        c.from("photos").select("id,image_url,vignette_url,legende,album,ordre").eq("accueil", true).order("ordre").order("cree_le", { ascending: false }).limit(300)
+            .then(({ data, error }: any) => { if (!error && data) setPhotos(data) })
+    }, [])
+    // une vignette par catégorie : la première photo publique de la catégorie (ordre 1 en premier), sinon la photo de secours
+    const tuiles = CATEGORIES.map((cat) => {
+        const liste = photos.filter((p) => categorie(p.album) === cat)
+        return { cat, liste: liste.length ? liste : SECOURS.filter((p) => p.album === cat), vraies: liste.length }
+    })
     return (
         <div style={{ width: "100%" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
-                {photos.map((p, i) => <Vignette key={p.id} p={p} hauteur={210} onClick={() => setOuverte(i)} />)}
+                {tuiles.map((t) => <Vignette key={t.cat} p={{ ...t.liste[0], legende: t.cat }} sous={t.vraies > 1 ? `${t.vraies} photos` : undefined} hauteur={210} onClick={() => setOuverte({ liste: t.liste.map((p) => ({ ...p, album: t.cat })), i: 0 })} />)}
             </div>
             {lien && (
                 <a href={lien} style={{ display: "inline-block", marginTop: 22, fontFamily: sans, fontSize: 14, color: "rgba(246,240,230,0.75)", textDecoration: "underline", textUnderlineOffset: 4 }}>Plus de photos dans l’espace adhérents →</a>
             )}
-            {ouverte != null && <Diaporama photos={photos} index={ouverte} fermer={() => setOuverte(null)} />}
+            {ouverte && <Diaporama photos={ouverte.liste} index={ouverte.i} fermer={() => setOuverte(null)} />}
         </div>
     )
 }
 
 addPropertyControls(GalerieAccueil, {
-    nombre: { type: ControlType.Number, title: "Nombre de photos", defaultValue: 6, min: 3, max: 12, step: 3 },
     lien: { type: ControlType.String, title: "Lien adhérents", defaultValue: "/espace-membre#galerie" },
 })
