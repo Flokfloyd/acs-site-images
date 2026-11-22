@@ -72,7 +72,6 @@ export default function Administration(props: { pageMembre: string }) {
 
     return wrap(
         <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <Sauvegarde />
             {etroit ? (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
                     {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ ...small(), padding: "10px 8px", textAlign: "center", fontSize: 14, fontWeight: 600, background: onglet === k ? C.accent : "transparent", color: onglet === k ? C.accentDark : C.txt, borderColor: onglet === k ? C.accent : C.line }}>{t}</button>)}
@@ -97,6 +96,7 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "galerie" && <GalerieAdmin />}
             {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
+            <Sauvegarde />
         </div>
     )
 }

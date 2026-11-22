@@ -3,6 +3,7 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import { C, font, serif } from "./AcsBase.tsx"
+import { COTE_MONDE, GENRES as GENRES_CARTE, pt } from "./CarteMonde.tsx"
 
 const URL_ESPECES = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@64adc7b/data/especes.json"
 const URL_LODE = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@509be86/data/lode-index.json"
@@ -59,6 +60,9 @@ const chargerLode = () => (LODE ??= fetch(URL_LODE).then((r) => r.json()).catch(
 const chargerEspeces = () => (ESPECES ??= fetch(URL_ESPECES).then((r) => r.json()).then((j) => j.genres as Genres).catch(() => { ESPECES = null; return {} as Genres }))
 
 const sansAccent = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
+// semis avec au moins une levée et au moins un plant vivant : il compte aussi dans la collection
+export const semisVivant = (p: Plante) => p.statut === "semis" && (p.nb_vivants ?? 0) >= 1
+export const enCollection = (p: Plante) => p.statut === "collection" || semisVivant(p)
 const genreDe = (espece: string) => { const m = espece.trim().match(/^([A-Z][a-zé-]+)/); return m ? m[1] : "" }
 const taux = (p: Plante) => (p.nb_graines ? Math.round(((p.nb_leves ?? 0) / p.nb_graines) * 100) : null)
 const nbOuVide = (v: any) => (v === "" || v == null || isNaN(Number(v)) ? null : Number(v))
@@ -81,7 +85,7 @@ const th: React.CSSProperties = { textAlign: "left", fontSize: 11, letterSpacing
 const td: React.CSSProperties = { padding: "8px 10px", borderBottom: `1px solid ${C.line}`, fontSize: 14, whiteSpace: "nowrap", verticalAlign: "middle" }
 const coche: React.CSSProperties = { width: 18, height: 18, accentColor: C.accent, cursor: "pointer", margin: 0 }
 
-type Vue = "collection" | "semis" | "rusticite" | "echanges"
+type Vue = "collection" | "semis" | "rusticite" | "synthese" | "echanges"
 type Col = { k: string; t: string; v: (p: Plante) => any; tri?: (p: Plante) => any; w?: number }
 
 const NomEspece = ({ p }: { p: { espece: string } }) => {
@@ -90,9 +94,9 @@ const NomEspece = ({ p }: { p: { espece: string } }) => {
     return <span>{parts.map((s, i) => (i % 2 ? <span key={i}>{s}</span> : <em key={i} style={{ fontStyle: "italic" }}>{s}</em>))}</span>
 }
 
-const COLS: Record<Exclude<Vue, "echanges">, Col[]> = {
+const COLS: Record<Exclude<Vue, "echanges" | "synthese">, Col[]> = {
     collection: [
-        { k: "espece", w: 270, t: "Espèce", v: (p) => <NomEspece p={p} />, tri: (p) => p.espece },
+        { k: "espece", w: 270, t: "Espèce", v: (p) => <>{<NomEspece p={p} />}{p.statut === "semis" && <span title={`Semis du ${p.semis ?? "?"} : ${p.nb_vivants ?? p.nb_leves} plant(s)`} style={{ marginLeft: 8, fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em", color: C.accent, border: `1px solid ${C.accent}`, padding: "0 5px", fontStyle: "normal", whiteSpace: "nowrap" }}>SEMIS</span>}</>, tri: (p) => p.espece },
         { k: "code", w: 72, t: "N°", v: (p) => p.code },
         { k: "origine", w: 190, t: "Origine", v: (p) => p.origine },
         { k: "n_collecte", w: 110, t: "N° collecte", v: (p) => p.n_collecte },
@@ -149,6 +153,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const [verif, setVerif] = React.useState(false)
     const [verifMsg, setVerifMsg] = React.useState("")
     const [pdf, setPdf] = React.useState(false)
+    const [avecSemis, setAvecSemis] = React.useState(true)
     const [drapeau, setDrapeau] = React.useState<"" | "echange" | "graines" | "incomplete">("")
     const [replies, setReplies] = React.useState<Set<string>>(new Set())
     const [menu, setMenu] = React.useState<"" | "importer" | "exporter" | "colonnes">("")
@@ -182,15 +187,17 @@ export default function Collection({ client, email, auteur }: { client: any; ema
 
     const nSemis = plantes.filter((p) => p.statut === "semis").length
     const nEch = plantes.filter((p) => p.a_echanger || p.graines_a_donner).length
-    const onglets: [Vue, string][] = [["collection", `Collection (${plantes.length - nSemis})`], ["semis", `Semis (${nSemis})`], ["rusticite", "Rusticité"], ["echanges", "Bourse d’échange"]]
+    const nVivants = plantes.filter(semisVivant).length
+    const onglets: [Vue, string][] = [["collection", `Collection (${plantes.length - nSemis + (avecSemis ? nVivants : 0)})`], ["semis", `Semis (${nSemis})`], ["rusticite", "Rusticité"], ["synthese", "Synthèse"], ["echanges", "Bourse d’échange"]]
+    const outils = vue !== "echanges" && vue !== "synthese"
 
     const cherche = (p: Plante) => !q || sansAccent([p.espece, p.origine, p.n_collecte, p.code, p.fournisseur, p.reference, p.notes].join(" ")).includes(sansAccent(q))
-    const incomplete = (p: Plante) => p.t_min == null || !p.substrat || !p.exposition || !p.origine
+    const incomplete = (p: Plante) => (p.statut === "semis" ? (p.nb_leves ?? 0) >= 1 && p.nb_vivants == null : p.t_min == null || !p.substrat || !p.exposition || !p.origine)
     const garde = (p: Plante) => (!type || (p.type || "Autre") === type) && cherche(p) && (drapeau === "echange" ? !!p.a_echanger : drapeau === "graines" ? !!p.graines_a_donner : drapeau === "incomplete" ? incomplete(p) : true)
-    const dansVue = (p: Plante, v: Vue) => (v === "collection" ? p.statut === "collection" : v === "semis" ? p.statut === "semis" : true)
+    const dansVue = (p: Plante, v: Vue) => (v === "collection" ? (avecSemis ? enCollection(p) : p.statut === "collection") : v === "semis" ? p.statut === "semis" : enCollection(p))
     const liste = plantes.filter((p) => dansVue(p, vue) && garde(p))
     const filtreTxt = [q && `recherche « ${q} »`, type, drapeau === "echange" ? "à échanger" : drapeau === "graines" ? "graines à donner" : drapeau === "incomplete" ? "fiches incomplètes" : ""].filter(Boolean).join(", ")
-    const cols = vue === "echanges" ? [] : COLS[vue].filter((c) => c.k === "espece" || !(cachees[vue] || []).includes(c.k))
+    const cols = !outils ? [] : COLS[vue as "collection"].filter((c) => c.k === "espece" || !(cachees[vue] || []).includes(c.k))
     const col = cols.find((c) => c.k === tri.k) || cols[0]
     const val = (p: Plante) => { const x = col ? (col.tri ? col.tri(p) : col.v(p)) : p.espece; return typeof x === "string" ? sansAccent(x) : x ?? "" }
     const triee = [...liste].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * tri.sens || a.espece.localeCompare(b.espece))
@@ -292,9 +299,9 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                 </div>
                 <p style={{ margin: "6px 0 0", color: C.mute, fontSize: 14 }}>Visible de vous seul. {etroit ? "Touchez" : "Cliquez sur"} une plante pour ouvrir sa fiche. « À échanger » et « Graines à donner » la proposent aux autres adhérents dans la bourse d’échange.</p>
                 <div role="tablist" style={{ display: etroit ? "grid" : "flex", gridTemplateColumns: "1fr 1fr", gap: 0, borderBottom: etroit ? "none" : `1px solid ${C.line}`, marginTop: 16 }}>
-                    {onglets.map(([k, t]) => <button key={k} role="tab" aria-selected={vue === k} onClick={() => { setVue(k); setEdit(null); setImp(null); setPdf(false); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: etroit && vue === k ? C.panel2 : "transparent", color: vue === k ? C.txt : C.mute, border: etroit ? `1px solid ${C.line}` : "none", borderBottom: `2px solid ${vue === k ? C.accent : etroit ? C.line : "transparent"}`, borderRadius: 0, padding: "10px 12px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginRight: etroit ? -1 : 0, marginBottom: etroit ? -1 : 0 }}>{t}</button>)}
+                    {onglets.map(([k, t], i) => <button key={k} role="tab" aria-selected={vue === k} onClick={() => { setVue(k); setEdit(null); setImp(null); setPdf(false); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: etroit && vue === k ? C.panel2 : "transparent", color: vue === k ? C.txt : C.mute, border: etroit ? `1px solid ${C.line}` : "none", borderBottom: `2px solid ${vue === k ? C.accent : etroit ? C.line : "transparent"}`, borderRadius: 0, padding: "10px 12px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginRight: etroit ? -1 : 0, marginBottom: etroit ? -1 : 0, gridColumn: etroit && i === onglets.length - 1 && onglets.length % 2 ? "1 / -1" : undefined }}>{t}</button>)}
                 </div>
-                {vue !== "echanges" && <>
+                {outils && <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, alignItems: "center" }}>
                         <div style={{ position: "relative", flex: "1 1 240px", minWidth: 0 }}>
                             <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setQ("") }} placeholder="Rechercher : espèce, n°, collecte, origine…" style={{ ...champ, paddingRight: 36 }} aria-label="Rechercher" />
@@ -303,12 +310,15 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                         <select value={type} onChange={(e) => setType(e.target.value)} style={{ ...champ, flex: etroit ? "1 1 100%" : "0 1 190px", width: "auto" }} aria-label="Type"><option value="">Tous les types</option>{TYPES.map((t) => <option key={t}>{t}</option>)}</select>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10, alignItems: "center" }}>
-                        {([["", "Toutes"], ["echange", "À échanger"], ["graines", "Graines à donner"], ["incomplete", "Fiches à compléter"]] as const).map(([k, t]) => <button key={k} style={{ ...petit(drapeau === k), padding: "6px 11px" }} aria-pressed={drapeau === k} onClick={() => setDrapeau(k)}>{t}</button>)}
-                        {vue !== "rusticite" && <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: C.mute, cursor: "pointer", marginLeft: etroit ? 0 : "auto" }}><input type="checkbox" checked={grouper} onChange={(e) => setGrouper(e.target.checked)} style={coche} />Classer par type</label>}
+                        {([["", "Toutes"], ["echange", "À échanger"], ["graines", "Graines à donner"], ["incomplete", vue === "semis" ? "Vivants à compter" : "Fiches à compléter"]] as const).map(([k, t]) => <button key={k} title={k === "incomplete" ? (vue === "semis" ? "Semis levés dont le nombre de plants vivants n’est pas renseigné" : "Température, substrat, exposition ou origine manquants") : undefined} style={{ ...petit(drapeau === k), padding: "6px 11px" }} aria-pressed={drapeau === k} onClick={() => setDrapeau(k)}>{t}</button>)}
+                        <span style={{ display: "flex", gap: 16, flexWrap: "wrap", marginLeft: etroit ? 0 : "auto" }}>
+                            {vue === "collection" && nVivants > 0 && <label title="Semis dont au moins un plant a levé et vit encore" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: C.mute, cursor: "pointer" }}><input type="checkbox" checked={avecSemis} onChange={(e) => setAvecSemis(e.target.checked)} style={coche} />Avec les semis levés ({nVivants})</label>}
+                            {vue !== "rusticite" && <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: C.mute, cursor: "pointer" }}><input type="checkbox" checked={grouper} onChange={(e) => setGrouper(e.target.checked)} style={coche} />Classer par type</label>}
+                        </span>
                     </div>
                 </>}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}`, alignItems: "center" }}>
-                    {vue !== "echanges" && <button style={bouton()} onClick={() => setEdit(nouvelle())}>{vue === "semis" ? "+ Nouveau semis" : "+ Ajouter une plante"}</button>}
+                    {outils && <button style={bouton()} onClick={() => setEdit(nouvelle())}>{vue === "semis" ? "+ Nouveau semis" : "+ Ajouter une plante"}</button>}
                     <Menu id="importer" titre="Importer" ouvert={menu} setOuvert={setMenu} items={[
                         { t: "Fichier Excel…", d: "Votre tableau de collection ou de semis", fichier: (f: File) => importer(f) },
                         { t: "Commande de graines…", d: "Facture ADBLPS, SuccSeed, Köhres, Cono, Uhlig", f: () => { setCmd(true); setEtq(false); setPdf(false) } },
@@ -318,8 +328,8 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                         { t: "Listes en PDF…", d: "Collection, semis, rusticité : à imprimer ou partager", f: () => { setPdf(true); setEtq(false); setCmd(false) } },
                         { t: "Tableau Excel", d: "Toutes vos plantes, une feuille par liste", f: exporter },
                     ]} />
-                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setPdf(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
-                    {vue !== "echanges" && !etroit && <Menu id="colonnes" titre="Colonnes" discret ouvert={menu} setOuvert={setMenu} cases={COLS[vue].filter((c) => c.k !== "espece").map((c) => ({ t: c.t, actif: !(cachees[vue] || []).includes(c.k), f: () => cacher(vue, c.k) }))} />}
+                    {outils && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setPdf(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
+                    {outils && !etroit && <Menu id="colonnes" titre="Colonnes" discret ouvert={menu} setOuvert={setMenu} cases={COLS[vue as "collection"].filter((c) => c.k !== "espece").map((c) => ({ t: c.t, actif: !(cachees[vue] || []).includes(c.k), f: () => cacher(vue, c.k) }))} />}
                 </div>
                 {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
                 {msg && <p style={{ margin: "12px 0 0", fontSize: 14, color: /impossible|Erreur|Aucune/.test(msg) ? C.danger : C.accent }}>{msg}</p>}
@@ -327,11 +337,11 @@ export default function Collection({ client, email, auteur }: { client: any; ema
 
             {pdf && <PanneauPDF plantes={plantes} vue={vue} garde={garde} filtreTxt={filtreTxt} grouper={grouper} auteur={auteur} onFermer={() => setPdf(false)} />}
             {cmd && <PanneauCommande plantes={plantes} genres={genres} client={client} email={email} auteur={auteur} onFermer={(ok) => { setCmd(false); if (ok) { charger(); setVue("semis"); setMsg(ok) } }} />}
-            {etq && vue !== "echanges" && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} onFermer={() => setEtq(false)} />}
+            {etq && outils && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} onFermer={() => setEtq(false)} />}
             {imp && <ApercuImport imp={imp} onAnnuler={() => setImp(null)} onValider={validerImport} />}
             {edit && <Fiche p={edit} genres={genres} client={client} email={email} auteur={auteur} onFermer={(maj) => { setEdit(null); if (maj) charger() }} />}
 
-            {vue === "echanges" ? <Bourse client={client} email={email} /> : (
+            {vue === "echanges" ? <Bourse client={client} email={email} /> : vue === "synthese" ? <Synthese plantes={plantes} genres={genres} etroit={etroit} /> : (
                 <div style={{ ...box, padding: etroit ? 0 : box.padding, background: etroit ? "transparent" : C.panel, border: etroit ? "none" : box.border }}>
                     {liste.length === 0 ? <p style={{ margin: 0, color: C.mute, padding: etroit ? 16 : 0, background: etroit ? C.panel : undefined }}>{plantes.length ? "Aucune plante ne correspond." : vue === "semis" ? "Aucun semis pour l’instant." : "Votre collection est vide. Ajoutez une plante ou importez votre fichier Excel."}</p>
                         : groupes.map(([g, l]) => {
@@ -350,7 +360,7 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                 </div>
             )}
 
-            {vue !== "echanges" && plantes.length > 0 && (verif
+            {outils && plantes.length > 0 && (verif
                 ? <PanneauVerif plantes={plantes} genres={genres} client={client} email={email} onFermer={(ok) => { setVerif(false); setVerifMsg(ok || ""); if (ok) charger() }} />
                 : <div style={{ ...box, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ flex: "1 1 280px", minWidth: 0 }}>
@@ -360,6 +370,112 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     </div>
                     <button style={bouton(false)} onClick={() => { setVerif(true); setVerifMsg("") }}>Lancer la vérification</button>
                 </div>)}
+        </div>
+    )
+}
+
+// ---------- synthèse : chiffres, graphiques et carte de la collection ----------
+type Carte = { COTE_MONDE: string; GENRES: { n: string; pts: [number, number][] }[]; pt: (lon: number, lat: number) => [number, number] }
+// la carte du monde et l’aire des genres viennent de la carte de la page Cultiver
+const chargerCarte = () => Promise.resolve<Carte | null>({ COTE_MONDE, GENRES: GENRES_CARTE, pt })
+
+function Barres({ titre, sous, lignes, unite = "", max: maxImpose, fmt }: { titre: string; sous?: string; lignes: [string, number, string?][]; unite?: string; max?: number; fmt?: (v: number) => string }) {
+    // la ligne « N autres » cumule le reste : elle ne fixe pas l’échelle et n’a pas de barre
+    const autre = (l: string) => / autres$/.test(l)
+    const max = maxImpose ?? Math.max(1, ...lignes.filter(([l]) => !autre(l)).map(([, v]) => v))
+    return (
+        <div style={{ ...box, padding: "clamp(14px, 3vw, 20px)" }}>
+            <h4 style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, margin: 0 }}>{titre}</h4>
+            {sous && <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.mute }}>{sous}</p>}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, auto) minmax(0, 1fr) auto", gap: "6px 10px", alignItems: "center", marginTop: 12 }}>
+                {lignes.map(([l, v, aide]) => (
+                    <React.Fragment key={l}>
+                        <span title={aide || l} style={{ fontSize: 13, color: "rgba(246,240,230,0.86)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 170 }}>{l}</span>
+                        <span title={`${l} : ${fmt ? fmt(v) : v}${unite}${aide ? " · " + aide : ""}`} style={{ height: 12, display: "block" }}>{!autre(l) && <span style={{ display: "block", height: "100%", width: `${Math.min(100, Math.max(v > 0 ? 1.5 : 0, (v / max) * 100))}%`, background: C.accent }} />}</span>
+                        <span style={{ fontSize: 13, fontVariantNumeric: "tabular-nums", textAlign: "right", color: C.txt }}>{fmt ? fmt(v) : v}{unite}</span>
+                    </React.Fragment>
+                ))}
+            </div>
+            {!lignes.length && <p style={{ margin: "10px 0 0", fontSize: 13, color: C.mute }}>Pas encore de données.</p>}
+        </div>
+    )
+}
+
+function Synthese({ plantes, genres, etroit }: { plantes: Plante[]; genres: Genres; etroit: boolean }) {
+    const [carte, setCarte] = React.useState<Carte | null | undefined>(undefined)
+    React.useEffect(() => { chargerCarte().then(setCarte) }, [])
+    const d = React.useMemo(() => {
+        const coll = plantes.filter(enCollection), semis = plantes.filter((p) => p.statut === "semis")
+        const compte = (l: string[]) => { const m = new Map<string, number>(); for (const k of l) if (k) m.set(k, (m.get(k) || 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])) }
+        const taxon = (e: string) => e.replace(/\([^)]*\)/g, "").replace(/['‘][^'’]*['’]?/g, "").replace(/\s+/g, " ").trim().toLowerCase()
+        const genresL = compte(coll.map((p) => genreDe(p.espece)))
+        const pays = compte(coll.map((p) => paysPlante(p, genres) || ""))
+        const types = compte(coll.map((p) => p.type || "Autre"))
+        const bornes: [string, (t: number) => boolean][] = [["−10 °C et moins", (t) => t <= -10], ["−9 à −5 °C", (t) => t > -10 && t <= -5], ["−4 à −1 °C", (t) => t > -5 && t < 0], ["0 à 4 °C", (t) => t >= 0 && t < 5], ["5 °C et plus", (t) => t >= 5]]
+        const rust: [string, number][] = bornes.map(([l, f]) => [l, coll.filter((p) => p.t_min != null && f(Number(p.t_min))).length])
+        const sansT = coll.filter((p) => p.t_min == null).length
+        const inst = plantes.filter((p) => p.statut === "collection")
+        const expo = EXPOS.map((e) => [e, inst.filter((p) => p.exposition === e).length] as [string, number])
+        const sub = [1, 2, 3, 4, 5].map((n) => [`${CERCLES[n]} ${SUB_COURT[n]}`, inst.filter((p) => p.substrat === n).length] as [string, number])
+        const an = (p: Plante) => (cleDate(p.semis).match(/^\d{4}/) || [""])[0]
+        const lev = (l: Plante[]) => { const g = l.reduce((a, p) => a + (p.nb_graines || 0), 0), v = l.filter((p) => p.nb_graines).reduce((a, p) => a + (p.nb_leves || 0), 0); return { g, v, t: g ? Math.round((v / g) * 100) : 0 } }
+        const annees = [...new Set(semis.map(an).filter(Boolean))].sort()
+        const parAn = annees.map((a) => { const l = semis.filter((p) => an(p) === a); const x = lev(l); return [a, x.t, `${l.length} lots · ${x.v} levées sur ${x.g} graines`] as [string, number, string] })
+        const prods = compte(semis.map((p) => p.fournisseur || "")).filter(([, n]) => n >= 3).map(([f]) => { const l = semis.filter((p) => p.fournisseur === f); const x = lev(l); return [f, x.t, `${l.length} lots · ${x.v}/${x.g}`, x.g] as [string, number, string, number] }).filter((x) => x[3] >= 20).sort((a, b) => b[1] - a[1]).map(([f, t, a]) => [f, t, a] as [string, number, string])
+        const tot = lev(semis)
+        return {
+            coll, semis, nVivants: coll.filter((p) => p.statut === "semis").length, especes: new Set(coll.map((p) => taxon(p.espece))).size, genresL, pays, types, rust, sansT, expo, sub, parAn, prods, tot,
+            bourse: plantes.filter((p) => p.a_echanger || p.graines_a_donner).length,
+        }
+    }, [plantes, genres])
+    const tuile = (v: React.ReactNode, l: string, s?: string) => (
+        <div style={{ ...box, padding: "14px 16px" }}>
+            <div style={{ fontFamily: serif, fontSize: 30, fontWeight: 600, lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{v}</div>
+            <div style={{ fontSize: 13, color: C.txt, marginTop: 4 }}>{l}</div>
+            {s && <div style={{ fontSize: 12, color: C.mute, marginTop: 2 }}>{s}</div>}
+        </div>
+    )
+    if (!plantes.length) return <div style={box}><p style={{ margin: 0, color: C.mute }}>La synthèse apparaîtra dès que votre collection contiendra des plantes.</p></div>
+    const top = 12
+    const autres = (l: [string, number][]) => (l.length > top ? [...l.slice(0, top), [`${l.length - top} autres`, l.slice(top).reduce((a, [, n]) => a + n, 0)] as [string, number]] : l)
+    // carte : aire de répartition naturelle des genres présents, pastille proportionnelle au nombre de plantes
+    const parGenre = new Map(d.genresL)
+    const points: { x: number; y: number; n: number; g: string }[] = []
+    if (carte) for (const g of carte.GENRES) { const n = parGenre.get(g.n); if (!n) continue; for (const [lon, lat] of g.pts) { const [x, y] = carte.pt(lon, lat); points.push({ x, y, n, g: g.n }) } }
+    const surCarte = new Set(points.map((p) => p.g)).size
+    const grille2: React.CSSProperties = { display: "grid", gridTemplateColumns: etroit ? "minmax(0, 1fr)" : "repeat(2, minmax(0, 1fr))", gap: 16 }
+    return (
+        <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1fr)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 160px), 1fr))", gap: 12 }}>
+                {tuile(d.coll.length, "plantes vivantes", d.nVivants ? `dont ${d.nVivants} issues de semis` : undefined)}
+                {tuile(d.especes, "espèces et taxons")}
+                {tuile(d.genresL.length, "genres")}
+                {tuile(d.pays.length, "pays d’origine")}
+                {tuile(d.semis.length, "lots de semis", d.tot.g ? `${d.tot.t} % de levée sur ${d.tot.g} graines` : undefined)}
+                {tuile(d.bourse, "dans la bourse d’échange")}
+            </div>
+            <div style={{ ...box, padding: "clamp(14px, 3vw, 20px)" }}>
+                <h4 style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, margin: 0 }}>D’où viennent vos plantes</h4>
+                <p style={{ margin: "3px 0 0", fontSize: 12.5, color: C.mute }}>Aire naturelle des genres de votre collection (fiches de la page Cultiver){carte ? ` : ${surCarte} genre${surCarte > 1 ? "s" : ""} sur ${d.genresL.length} placés` : ""}. Plus la pastille est grande, plus vous avez de plantes du genre.</p>
+                <div style={{ marginTop: 12, overflow: "hidden", border: `1px solid ${C.line}`, background: C.bg }}>
+                    {carte === undefined ? <p style={{ margin: 0, padding: 20, color: C.mute, fontSize: 13 }}>Chargement de la carte…</p>
+                        : carte === null ? <p style={{ margin: 0, padding: 20, color: C.mute, fontSize: 13 }}>Carte indisponible.</p>
+                        : <svg viewBox="80 20 870 420" style={{ display: "block", width: "100%", height: "auto" }} role="img" aria-label="Carte de l’aire naturelle des genres de la collection">
+                            <path d={carte.COTE_MONDE} fill="none" stroke="rgba(246,240,230,0.28)" strokeWidth={0.8} />
+                            {points.sort((a, b) => b.n - a.n).map((p, i) => <circle key={i} cx={p.x} cy={p.y} r={2.2 + Math.sqrt(p.n) * 1.6} fill="rgba(155,189,138,0.55)" stroke={C.bg} strokeWidth={0.8}><title>{`${p.g} : ${p.n} plante${p.n > 1 ? "s" : ""}`}</title></circle>)}
+                        </svg>}
+                </div>
+            </div>
+            <div style={grille2}>
+                <Barres titre="Genres les plus présents" sous={`${d.genresL.length} genres au total`} lignes={autres(d.genresL)} />
+                <Barres titre="Pays d’origine" sous="D’après la localité, sinon le pays du genre quand il est unique" lignes={autres(d.pays)} />
+                <Barres titre="Types de plantes" lignes={d.types} />
+                <Barres titre="Rusticité" sous={`Température minimale supportée${d.sansT ? ` · ${d.sansT} fiche${d.sansT > 1 ? "s" : ""} sans température` : ""}`} lignes={d.rust} />
+                <Barres titre="Exposition" sous="Plantes installées, hors semis" lignes={d.expo} />
+                <Barres titre="Substrats" sous="Plantes installées, hors semis · mélanges de l’article « Des substrats à composer »" lignes={d.sub} />
+                <Barres titre="Taux de levée par année" sous="Levées sur graines semées, lots renseignés" lignes={d.parAn} unite=" %" max={100} />
+                <Barres titre="Taux de levée par producteur" sous="Producteurs d’au moins 3 lots et 20 graines" lignes={d.prods} unite=" %" max={100} />
+            </div>
         </div>
     )
 }
@@ -391,16 +507,16 @@ function Menu({ id, titre, items, cases, ouvert, setOuvert, discret }: { id: "im
 
 // ---------- export PDF : choix des listes ----------
 function PanneauPDF({ plantes, vue, garde, filtreTxt, grouper, auteur, onFermer }: { plantes: Plante[]; vue: Vue; garde: (p: Plante) => boolean; filtreTxt: string; grouper: boolean; auteur: string; onFermer: () => void }) {
-    const [listes, setListes] = React.useState<Set<"collection" | "semis" | "rusticite">>(() => new Set([vue === "echanges" ? "collection" : vue]))
+    const [listes, setListes] = React.useState<Set<"collection" | "semis" | "rusticite">>(() => new Set([vue === "echanges" || vue === "synthese" ? "collection" : vue]))
     const [filtre, setFiltre] = React.useState(!!filtreTxt)
     const [parType, setParType] = React.useState(grouper)
     const [msg, setMsg] = React.useState("")
     const base = plantes.filter((p) => !filtre || garde(p))
     const par = (l: Plante[]): [string, Plante[]][] => (parType ? TYPES.map((t) => [t, l.filter((p) => (p.type || "Autre") === t)] as [string, Plante[]]).filter(([, x]) => x.length) : [["", l]])
     const sections: SectionPdf[] = []
-    if (listes.has("collection")) sections.push({ titre: "Collection", vue: "collection", groupes: par(base.filter((p) => p.statut === "collection").sort((a, b) => a.espece.localeCompare(b.espece))) })
+    if (listes.has("collection")) sections.push({ titre: "Collection", vue: "collection", groupes: par(base.filter(enCollection).sort((a, b) => a.espece.localeCompare(b.espece))) })
     if (listes.has("semis")) sections.push({ titre: "Semis", vue: "semis", groupes: par(base.filter((p) => p.statut === "semis").sort((a, b) => cleDate(a.semis).localeCompare(cleDate(b.semis)) || a.espece.localeCompare(b.espece))) })
-    if (listes.has("rusticite")) sections.push({ titre: "Rusticité", vue: "rusticite", groupes: [["", [...base].sort((a, b) => (a.t_min ?? 99) - (b.t_min ?? 99) || a.espece.localeCompare(b.espece))]] })
+    if (listes.has("rusticite")) sections.push({ titre: "Rusticité", vue: "rusticite", groupes: [["", base.filter(enCollection).sort((a, b) => (a.t_min ?? 99) - (b.t_min ?? 99) || a.espece.localeCompare(b.espece))]] })
     const n = sections.reduce((a, sec) => a + sec.groupes.reduce((x, [, l]) => x + l.length, 0), 0)
     const bascule = (k: "collection" | "semis" | "rusticite") => setListes((s) => { const x = new Set(s); x.has(k) ? x.delete(k) : x.add(k); return x })
     const ligne: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", fontSize: 14, cursor: "pointer" }
@@ -418,9 +534,9 @@ function PanneauPDF({ plantes, vue, garde, filtreTxt, grouper, auteur, onFermer 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 230px), 1fr))", gap: 16, marginTop: 14 }}>
                 <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
                     <span style={etiquette}>Listes à inclure</span>
-                    <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("collection")} onChange={() => bascule("collection")} />Collection ({base.filter((p) => p.statut === "collection").length})</label>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("collection")} onChange={() => bascule("collection")} />Collection, semis levés compris ({base.filter(enCollection).length})</label>
                     <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("semis")} onChange={() => bascule("semis")} />Semis ({base.filter((p) => p.statut === "semis").length})</label>
-                    <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("rusticite")} onChange={() => bascule("rusticite")} />Rusticité, de la plus frileuse à la plus rustique ({base.length})</label>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("rusticite")} onChange={() => bascule("rusticite")} />Rusticité, de la plus rustique à la plus frileuse ({base.filter(enCollection).length})</label>
                 </div>
                 <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
                     <span style={etiquette}>Options</span>
@@ -483,6 +599,7 @@ function Cartes({ l, vue, onOuvrir }: { l: Plante[]; vue: Vue; onOuvrir: (p: Pla
                             <span style={{ display: "block", fontSize: 15, lineHeight: 1.3 }}><NomEspece p={p} /></span>
                             <span style={{ display: "flex", flexWrap: "wrap", gap: "2px 8px", alignItems: "center", fontSize: 12.5, color: C.mute, marginTop: 2 }}>
                                 {(infos.filter(Boolean) as React.ReactNode[]).map((x, k) => <span key={k}>{x}</span>)}
+                                {vue === "collection" && p.statut === "semis" && <span style={badge}>Semis</span>}
                                 {p.a_echanger && <span style={badge}>Échange</span>}
                                 {p.graines_a_donner && <span style={badge}>Graines</span>}
                             </span>
