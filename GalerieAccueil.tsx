@@ -9,14 +9,14 @@ export type Photo = { id: string; image_url: string; vignette_url?: string | nul
 const sans = "'Poppins', system-ui, sans-serif"
 const serif = "'Fraunces', Georgia, serif"
 
-// Les six catégories de la galerie (une vignette chacune sur la page d'accueil)
-export const CATEGORIES = ["Salon des Plantes", "Sortie", "Voyage", "Plantes", "Semestrielles", "Divers"]
-export const categorie = (album?: string | null) => (album && CATEGORIES.includes(album) ? album : "Divers")
+// Les cinq catégories de la galerie (une vignette chacune sur la page d'accueil)
+export const CATEGORIES = ["Salon des Plantes", "Sortie", "Voyage", "Plantes", "Semestrielles"]
+export const categorie = (album?: string | null) => (album && CATEGORIES.includes(album) ? album : "Plantes")
 
 // photos de secours (avant que l'administration n'en ait ajouté), une par catégorie
 const SECOURS: Photo[] = [
     ["EiFCYebHOmQ4xh2kTo7DoCMPVY", "Salon des Plantes"], ["nNFsqvAFZ62Gc4uVcCCjZdkaQ", "Sortie"], ["u24jE1XFwpIS1ZTudAPbwhz8", "Voyage"],
-    ["iIVUFH0jRRuu4b6rtMNVIpdowu8", "Plantes"], ["3IFb9YLmwND3KZxWa42klDHQxF4", "Semestrielles"], ["Hhr8UCPbAO7x1jNY8RVDG6gGq5s", "Divers"],
+    ["iIVUFH0jRRuu4b6rtMNVIpdowu8", "Plantes"], ["3IFb9YLmwND3KZxWa42klDHQxF4", "Semestrielles"],
 ].map(([h, a], i) => ({ id: h, image_url: `https://framerusercontent.com/images/${h}.jpg`, album: a, legende: null, ordre: i }))
 
 // Réduit une photo avant envoi (côté le plus long 2000 px, JPEG) pour rester dans l'espace gratuit
@@ -99,7 +99,7 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
     })
     return (
         <div style={{ width: "100%" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 16 }}>
                 {tuiles.map((t) => <Vignette key={t.cat} p={{ ...t.liste[0], legende: t.cat }} hauteur={210} onClick={() => setOuverte({ liste: t.liste.map((p) => ({ ...p, album: t.cat })), i: 0 })} />)}
             </div>
             {lien && (
