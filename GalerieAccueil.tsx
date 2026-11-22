@@ -88,18 +88,19 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
     React.useEffect(() => {
         const c = sb()
         if (!c) return
-        c.from("photos").select("id,image_url,vignette_url,legende,album,ordre").eq("accueil", true).order("ordre").order("cree_le", { ascending: false }).limit(300)
+        c.from("photos").select("id,image_url,vignette_url,legende,album,ordre").eq("accueil", true).order("ordre").order("cree_le", { ascending: false }).limit(60)
             .then(({ data, error }: any) => { if (!error && data) setPhotos(data) })
     }, [])
-    // une vignette par catégorie : la première photo publique de la catégorie (ordre 1 en premier), sinon la photo de secours
+    // une vignette par catégorie : seule la photo de couverture est publique (la première cochée « page d'accueil »,
+    // ordre 1 en premier) ; toutes les autres photos restent dans la galerie des adhérents
     const tuiles = CATEGORIES.map((cat) => {
-        const liste = photos.filter((p) => categorie(p.album) === cat)
-        return { cat, liste: liste.length ? liste : SECOURS.filter((p) => p.album === cat), vraies: liste.length }
+        const couverture = photos.find((p) => categorie(p.album) === cat) || SECOURS.find((p) => p.album === cat)!
+        return { cat, liste: [couverture] }
     })
     return (
         <div style={{ width: "100%" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
-                {tuiles.map((t) => <Vignette key={t.cat} p={{ ...t.liste[0], legende: t.cat }} sous={t.vraies > 1 ? `${t.vraies} photos` : undefined} hauteur={210} onClick={() => setOuverte({ liste: t.liste.map((p) => ({ ...p, album: t.cat })), i: 0 })} />)}
+                {tuiles.map((t) => <Vignette key={t.cat} p={{ ...t.liste[0], legende: t.cat }} hauteur={210} onClick={() => setOuverte({ liste: t.liste.map((p) => ({ ...p, album: t.cat })), i: 0 })} />)}
             </div>
             {lien && (
                 <a href={lien} style={{ display: "inline-block", marginTop: 22, fontFamily: sans, fontSize: 14, color: "rgba(246,240,230,0.75)", textDecoration: "underline", textUnderlineOffset: 4 }}>Plus de photos dans l’espace adhérents →</a>

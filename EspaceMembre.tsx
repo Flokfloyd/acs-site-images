@@ -1158,6 +1158,6 @@ export const CHAMPS_PHOTO: Champ[] = [
     { k: "image_url", t: "Photo", type: "fichier", dossier: "galerie", accept: "image/*", requis: true },
     { k: "legende", t: "Légende", type: "text", place: "Ex. : Copiapoa cinerea, Chili" },
     { k: "album", t: "Catégorie", type: "choix", defaut: "Divers", options: GALERIE.CATEGORIES.map((c) => [c, c] as [string, string]) },
-    { k: "accueil", t: "Afficher sur la page d’accueil (visible de tous : aucune personne reconnaissable)", type: "bool", aide: "Sur l’accueil, chaque catégorie montre sa première photo cochée (ordre 1 en premier) ; un clic ouvre toutes ses photos cochées." },
+    { k: "accueil", t: "Afficher sur la page d’accueil (visible de tous : aucune personne reconnaissable)", type: "bool", aide: "À cocher pour une seule photo par catégorie : c’est la couverture de la vignette sur l’accueil, la seule photo que voit le public. Toutes les autres restent réservées aux adhérents." },
     { k: "ordre", t: "Ordre d’affichage (1 = en premier)", type: "number" },
 ]

@@ -223,7 +223,7 @@ function GalerieAdmin() {
     }
     return (
         <>
-            <Aide>Les photos cochées « page d’accueil » sont visibles de tous : uniquement des plantes, paysages ou stands, sans personne reconnaissable. Les autres ne sont visibles que des adhérents connectés (onglet Galerie de l’espace membre). Les photos sont réduites automatiquement avant l’envoi. Six catégories : Salon des Plantes, Sortie, Voyage, Plantes, Semestrielles (les plus belles photos) et Divers ; sur l’accueil, chacune a sa vignette avec sa première photo cochée.</Aide>
+            <Aide>Les photos cochées « page d’accueil » sont visibles de tous : uniquement des plantes, paysages ou stands, sans personne reconnaissable. Les autres ne sont visibles que des adhérents connectés (onglet Galerie de l’espace membre). Les photos sont réduites automatiquement avant l’envoi. Six catégories : Salon des Plantes, Sortie, Voyage, Plantes, Semestrielles (les plus belles photos) et Divers ; sur l’accueil, chaque catégorie n’affiche qu’une photo, sa couverture (la photo cochée « page d’accueil »). Le public ne voit rien d’autre : le reste de la galerie est réservé aux adhérents.</Aide>
             <div style={box}>
                 <h2 style={h2}>Ajouter des photos</h2>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14, marginTop: 8 }}>
@@ -233,7 +233,7 @@ function GalerieAdmin() {
                     </label>
                     <label style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 22, cursor: "pointer", fontSize: 14 }}>
                         <input type="checkbox" checked={accueil} onChange={(e) => setAccueil(e.target.checked)} />
-                        Montrer aussi sur la page d’accueil
+                        Photo de couverture sur l’accueil (visible de tous)
                     </label>
                 </div>
                 <label style={{ ...btn(), display: "inline-block", marginTop: 16, cursor: "pointer" }}>
