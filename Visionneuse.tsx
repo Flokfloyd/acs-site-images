@@ -14,6 +14,7 @@ const STATIQUES: Issue[] = [
   { n: 4, date: "Septembre 2026", ch: [["Édito", 2], ["Printemps", 4], ["Echeveria", 6], ["Ouest américain", 9], ["Majorelle", 12], ["Bilan du salon", 15], ["Gerrardanthus", 16]] },
 ]
 const RATIO_IMG = 910 / 1287
+const APERCU = 5 // pages lisibles sans être adhérent
 const srcImg = (n: number, p: number) => BASE + "n" + n + "/p-" + String(p).padStart(2, "0") + ".jpg"
 const C = { bg: "#15100d", panel: "#241c17", line: "rgba(246,240,230,0.16)", txt: "#f6f0e6", mut: "#b9ab98", acc: "#9bbd8a", accTxt: "#1d1612" }
 const FONT = "Poppins, sans-serif"
@@ -64,6 +65,22 @@ export default function Visionneuse(props: { start: number }) {
   const [size, setSize] = React.useState({ w: 800, h: 600 })
   const [toc, setToc] = React.useState(false)
   const [ratioPdf, setRatioPdf] = React.useState<Record<string, number>>({})
+  // visiteur non connecté : aperçu des APERCU premières pages (réglable dans l'admin : page Semestriels ouverte à tous ou non)
+  const [limite, setLimite] = React.useState<number | null>(APERCU)
+  const [bloque, setBloque] = React.useState(false)
+  React.useEffect(() => {
+    const c = sb(); if (!c) return
+    const verifier = async (s: any) => {
+      const { data: a } = await c.from("pages_acces").select("reserve").eq("page", "semestriels").maybeSingle()
+      if (a && a.reserve === false) return setLimite(null)
+      if (!s) return setLimite(APERCU)
+      const { data } = await c.rpc("est_membre")
+      setLimite(data === true ? null : APERCU)
+    }
+    c.auth.getSession().then(({ data }: any) => verifier(data.session))
+    const { data } = c.auth.onAuthStateChange((_e: any, s: any) => verifier(s))
+    return () => data.subscription.unsubscribe()
+  }, [])
   const root = React.useRef<HTMLDivElement>(null)
   const stage = React.useRef<HTMLDivElement>(null)
   const ptrs = React.useRef(new Map<number, { x: number; y: number }>())
@@ -121,15 +138,17 @@ export default function Visionneuse(props: { start: number }) {
   else if (page <= 1) pages = [1]
   else if (page >= TOTAL) pages = [TOTAL]
   else { const a = page % 2 === 0 ? page : page - 1; pages = [a, Math.min(a + 1, TOTAL)].filter((x, i, t) => t.indexOf(x) === i) }
+  if (limite) pages = pages.filter((p) => p <= limite)
 
   const go = (p: number) => {
+    if (limite && p > limite) { setBloque(true); return }
     let t = Math.max(1, Math.min(TOTAL, p))
     if (!single && t > 1 && t < TOTAL && t % 2 === 1) t -= 1
     if (t !== page) { setDir(t > page ? 1 : -1); setTick((k) => k + 1); setPage(t); setZoom(1) }
   }
   const next = () => go(single ? page + 1 : (page <= 1 ? 2 : pages[pages.length - 1] + 1))
   const prev = () => go(single ? page - 1 : (page <= 2 ? 1 : pages[0] - 2))
-  const pick = (i: number) => { setIssue(i); setPage(1); setZoom(1); setDir(0); setToc(false) }
+  const pick = (i: number) => { setIssue(i); setPage(1); setZoom(1); setDir(0); setToc(false); setBloque(false) }
   const pickNumero = (num: number) => { const i = issuesRef.current.findIndex((x) => x.n === num); if (i >= 0) { pick(i); return true } return false }
 
   // plein écran : API native si possible, sinon repli plein viewport
@@ -297,6 +316,20 @@ export default function Visionneuse(props: { start: number }) {
               : <img key={p} src={srcImg(n, p)} alt={"Semestriel N°" + n + ", page " + p} draggable={false} style={pageStyle} />)}
           </div>
         </div>
+        {bloque && (
+          <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} style={{ position: "absolute", inset: 0, zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(21,16,13,0.88)", padding: 20, cursor: "default" }}>
+            <div style={{ background: C.panel, border: "1px solid " + C.line, padding: "26px 24px", maxWidth: 440, textAlign: "center", font: "400 15px/1.55 " + FONT, color: C.txt }}>
+              <div style={{ font: "600 12px " + FONT, letterSpacing: "0.12em", textTransform: "uppercase", color: C.acc }}>Fin de l’aperçu</div>
+              <div style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 24, fontWeight: 600, margin: "8px 0 10px" }}>La suite est réservée aux adhérents</div>
+              <p style={{ margin: "0 0 18px", color: C.mut }}>Vous avez lu les {limite} premières pages. Connectez-vous pour lire le numéro en entier, ou adhérez à l’association (20 € par an).</p>
+              <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+                <button style={{ ...btn(true), padding: "11px 18px", fontSize: 14 }} onClick={() => { try { sessionStorage.setItem("acs-retour", location.pathname + "#n" + n) } catch (e) {} ; location.href = "/espace-membre" }}>Se connecter</button>
+                <a href="/adhesion" style={{ ...btn(false), padding: "11px 18px", fontSize: 14, textDecoration: "none" }}>Adhérer</a>
+              </div>
+              <button onClick={() => setBloque(false)} style={{ marginTop: 14, background: "transparent", border: "none", color: C.mut, font: "500 13px " + FONT, cursor: "pointer", textDecoration: "underline" }}>Revenir à l’aperçu</button>
+            </div>
+          </div>
+        )}
         {zoom <= 1.05 && page > 1 && (<div style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", color: C.txt, background: "rgba(21,16,13,0.55)", width: 40, height: 56, display: "flex", alignItems: "center", justifyContent: "center", font: "500 24px " + FONT, pointerEvents: "none" }}>‹</div>)}
         {zoom <= 1.05 && pages[pages.length - 1] < TOTAL && (<div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: C.txt, background: "rgba(21,16,13,0.55)", width: 40, height: 56, display: "flex", alignItems: "center", justifyContent: "center", font: "500 24px " + FONT, pointerEvents: "none" }}>›</div>)}
       </div>
@@ -306,7 +339,7 @@ export default function Visionneuse(props: { start: number }) {
           <button style={{ ...ico, opacity: page <= 1 ? 0.35 : 1 }} aria-label="Page précédente" onClick={prev} disabled={page <= 1}>‹</button>
           <button style={{ ...ico, opacity: pages[pages.length - 1] >= TOTAL ? 0.35 : 1 }} aria-label="Page suivante" onClick={next} disabled={pages[pages.length - 1] >= TOTAL}>›</button>
         </div>
-        <span style={{ font: "500 13px " + FONT, color: C.mut, textAlign: "center" }}>{pages.length === 1 ? "Page " + pages[0] : "Pages " + pages[0] + "–" + pages[1]} / {TOTAL}</span>
+        <span style={{ font: "500 13px " + FONT, color: C.mut, textAlign: "center" }}>{pages.length === 1 ? "Page " + pages[0] : "Pages " + pages[0] + "–" + pages[1]} / {TOTAL}{limite ? ` · aperçu de ${limite} pages` : ""}</span>
         <div style={{ display: "flex", gap: 8 }}>
           <button style={ico} aria-label="Zoom arrière" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))}>−</button>
           <button style={ico} aria-label="Zoom avant" onClick={() => setZoom((z) => Math.min(4, +(z + 0.5).toFixed(1)))}>+</button>

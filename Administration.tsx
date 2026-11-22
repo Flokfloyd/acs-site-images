@@ -109,7 +109,7 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "sondages" && <SondagesAdmin moi={email} ouvrirCampagne={ouvrirCampagne} />}
             {onglet === "galerie" && <GalerieAdmin />}
             {onglet === "guide" && <><GuideAdmin /><Editeur table="rappels_admin" ordre="a_partir_du" titre="Rappels de l’administration" champs={CHAMPS_RAPPEL} nouveau={() => ({ chaque_annee: false, fait: false })} resume={(r) => `${r.titre} · affiché dès le ${dateFr(r.a_partir_du)}${r.fait ? " · fait" : ""}`} /></>}
-            {onglet === "semestriels" && <><AccesPage page="semestriels" nom="Semestriels" /><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
+            {onglet === "semestriels" && <><AccesPage page="semestriels" nom="Semestriels" reservee="Adhérents (visiteurs : 5 pages d’aperçu)" /><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
             <Sauvegarde />
         </div>
@@ -312,7 +312,7 @@ function GestionPhotos({ rev, changer }: { rev: number; changer: () => void }) {
 }
 
 // Réglage d'accès d'une page du site : réservée aux adhérents ou ouverte à tous
-function AccesPage({ page, nom }: { page: string; nom: string }) {
+function AccesPage({ page, nom, reservee = "Réservée aux adhérents" }: { page: string; nom: string; reservee?: string }) {
     const client = sb()!
     const [reserve, setReserve] = React.useState<boolean | null>(null)
     const [msg, setMsg] = React.useState("")
@@ -323,7 +323,7 @@ function AccesPage({ page, nom }: { page: string; nom: string }) {
         <div style={{ ...box, display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", padding: "14px 18px" }}>
             <b style={{ fontWeight: 600 }}>Page {nom} du site :</b>
             <span style={{ display: "inline-flex", border: `1px solid ${C.line}` }}>
-                {([[true, "Réservée aux adhérents"], [false, "Ouverte à tous"]] as const).map(([v, t]) => <button key={t} onClick={() => changer(v)} style={{ ...small(), border: "none", padding: "8px 14px", fontWeight: 600, background: reserve === v ? C.accent : "transparent", color: reserve === v ? C.accentDark : C.txt }}>{t}</button>)}
+                {([[true, reservee], [false, "Ouverte à tous"]] as const).map(([v, t]) => <button key={t} onClick={() => changer(v)} style={{ ...small(), border: "none", padding: "8px 14px", fontWeight: 600, background: reserve === v ? C.accent : "transparent", color: reserve === v ? C.accentDark : C.txt }}>{t}</button>)}
             </span>
             {msg && <span style={{ fontSize: 13, color: C.mute }}>{msg}</span>}
         </div>
