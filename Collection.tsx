@@ -1,6 +1,7 @@
 // Collection.tsx — gestionnaire de collection des adhérents (plantes, semis, rusticité, bourse d’échange)
 // Utilisé comme onglet de l’espace membre. Base d’espèces légère chargée à la demande depuis un CDN.
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { C, font, serif } from "./AcsBase.tsx"
 
 const URL_ESPECES = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@64adc7b/data/especes.json"
@@ -141,12 +142,18 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const [imp, setImp] = React.useState<{ lignes: Plante[]; maj: { id: string; t_min: number }[]; ignores: string[]; doublons: number } | null>(null)
     const [msg, setMsg] = React.useState("")
     const [genres, setGenres] = React.useState<Genres>({})
-    const [limite, setLimite] = React.useState(200)
+    const [limite, setLimite] = React.useState(300)
     const [aide, setAide] = React.useState(false)
     const [etq, setEtq] = React.useState(false)
     const [cmd, setCmd] = React.useState(false)
     const [verif, setVerif] = React.useState(false)
     const [verifMsg, setVerifMsg] = React.useState("")
+    const [pdf, setPdf] = React.useState(false)
+    const [drapeau, setDrapeau] = React.useState<"" | "echange" | "graines" | "incomplete">("")
+    const [replies, setReplies] = React.useState<Set<string>>(new Set())
+    const [menu, setMenu] = React.useState<"" | "importer" | "exporter" | "colonnes">("")
+    const [cachees, setCachees] = React.useState<Record<string, string[]>>(() => { try { const v = JSON.parse(localStorage.getItem("acs-collection-colonnes") || "null"); if (v && typeof v === "object") return v } catch {} return COLS_CACHEES })
+    const cacher = (v: string, k: string) => setCachees((c) => { const l = c[v] || []; const n = { ...c, [v]: l.includes(k) ? l.filter((x) => x !== k) : [...l, k] }; try { localStorage.setItem("acs-collection-colonnes", JSON.stringify(n)) } catch {} return n })
     const ref = React.useRef<HTMLDivElement>(null)
     const [w, setW] = React.useState(900)
     const etroit = w < 720
@@ -160,7 +167,8 @@ export default function Collection({ client, email, auteur }: { client: any; ema
         })
     }, [client, email])
     React.useEffect(() => { charger() }, [charger])
-    React.useEffect(() => { setLimite(200) }, [vue, q, type])
+    React.useEffect(() => { setLimite(300) }, [vue, q, type, drapeau])
+    React.useEffect(() => { if (!menu) return; const f = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest?.("[data-menu]")) setMenu("") }; document.addEventListener("mousedown", f); return () => document.removeEventListener("mousedown", f) }, [menu])
 
     const basculer = async (p: Plante, k: "a_echanger" | "graines_a_donner") => {
         const v = !p[k]
@@ -177,10 +185,12 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     const onglets: [Vue, string][] = [["collection", `Collection (${plantes.length - nSemis})`], ["semis", `Semis (${nSemis})`], ["rusticite", "Rusticité"], ["echanges", "Bourse d’échange"]]
 
     const cherche = (p: Plante) => !q || sansAccent([p.espece, p.origine, p.n_collecte, p.code, p.fournisseur, p.reference, p.notes].join(" ")).includes(sansAccent(q))
-    const liste = plantes
-        .filter((p) => (vue === "collection" ? p.statut === "collection" : vue === "semis" ? p.statut === "semis" : true))
-        .filter((p) => (!type || (p.type || "Autre") === type) && cherche(p))
-    const cols = vue === "echanges" ? [] : COLS[vue]
+    const incomplete = (p: Plante) => p.t_min == null || !p.substrat || !p.exposition || !p.origine
+    const garde = (p: Plante) => (!type || (p.type || "Autre") === type) && cherche(p) && (drapeau === "echange" ? !!p.a_echanger : drapeau === "graines" ? !!p.graines_a_donner : drapeau === "incomplete" ? incomplete(p) : true)
+    const dansVue = (p: Plante, v: Vue) => (v === "collection" ? p.statut === "collection" : v === "semis" ? p.statut === "semis" : true)
+    const liste = plantes.filter((p) => dansVue(p, vue) && garde(p))
+    const filtreTxt = [q && `recherche « ${q} »`, type, drapeau === "echange" ? "à échanger" : drapeau === "graines" ? "graines à donner" : drapeau === "incomplete" ? "fiches incomplètes" : ""].filter(Boolean).join(", ")
+    const cols = vue === "echanges" ? [] : COLS[vue].filter((c) => c.k === "espece" || !(cachees[vue] || []).includes(c.k))
     const col = cols.find((c) => c.k === tri.k) || cols[0]
     const val = (p: Plante) => { const x = col ? (col.tri ? col.tri(p) : col.v(p)) : p.espece; return typeof x === "string" ? sansAccent(x) : x ?? "" }
     const triee = [...liste].sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * tri.sens || a.espece.localeCompare(b.espece))
@@ -276,30 +286,46 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     return (
         <div ref={ref} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, color: C.txt, ...font }}>
             <div style={box}>
-                <h2 style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.2, margin: "0 0 6px", fontWeight: 600 }}>Ma collection</h2>
-                <p style={{ margin: 0, color: C.mute, fontSize: 14 }}>Vos plantes et vos semis, visibles de vous seul. Cochez « À échanger » ou « Graines à donner » pour les proposer aux autres adhérents dans la bourse d’échange.</p>
-                <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto", marginTop: 16 }}>
-                    {onglets.map(([k, t]) => <button key={k} onClick={() => { setVue(k); setEdit(null); setImp(null); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: "transparent", color: vue === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${vue === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "10px 12px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>)}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+                    <h2 style={{ fontFamily: serif, fontSize: 26, lineHeight: 1.2, margin: 0, fontWeight: 600 }}>Collection</h2>
+                    <span style={{ fontSize: 13, color: C.mute }}>{plantes.length - nSemis} plante{plantes.length - nSemis > 1 ? "s" : ""} · {nSemis} semis{nEch ? ` · ${nEch} dans la bourse` : ""}</span>
                 </div>
-                {vue !== "echanges" && (
+                <p style={{ margin: "6px 0 0", color: C.mute, fontSize: 14 }}>Visible de vous seul. {etroit ? "Touchez" : "Cliquez sur"} une plante pour ouvrir sa fiche. « À échanger » et « Graines à donner » la proposent aux autres adhérents dans la bourse d’échange.</p>
+                <div role="tablist" style={{ display: etroit ? "grid" : "flex", gridTemplateColumns: "1fr 1fr", gap: 0, borderBottom: etroit ? "none" : `1px solid ${C.line}`, marginTop: 16 }}>
+                    {onglets.map(([k, t]) => <button key={k} role="tab" aria-selected={vue === k} onClick={() => { setVue(k); setEdit(null); setImp(null); setPdf(false); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: etroit && vue === k ? C.panel2 : "transparent", color: vue === k ? C.txt : C.mute, border: etroit ? `1px solid ${C.line}` : "none", borderBottom: `2px solid ${vue === k ? C.accent : etroit ? C.line : "transparent"}`, borderRadius: 0, padding: "10px 12px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginRight: etroit ? -1 : 0, marginBottom: etroit ? -1 : 0 }}>{t}</button>)}
+                </div>
+                {vue !== "echanges" && <>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, alignItems: "center" }}>
-                        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une espèce, un n° de collecte…" style={{ ...champ, flex: "1 1 220px", width: "auto" }} />
-                        <select value={type} onChange={(e) => setType(e.target.value)} style={{ ...champ, flex: "0 1 190px", width: "auto" }}><option value="">Tous les types</option>{TYPES.map((t) => <option key={t}>{t}</option>)}</select>
-                        {vue !== "rusticite" && <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: C.mute, cursor: "pointer" }}><input type="checkbox" checked={grouper} onChange={(e) => setGrouper(e.target.checked)} style={coche} />Classer par type</label>}
+                        <div style={{ position: "relative", flex: "1 1 240px", minWidth: 0 }}>
+                            <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape") setQ("") }} placeholder="Rechercher : espèce, n°, collecte, origine…" style={{ ...champ, paddingRight: 36 }} aria-label="Rechercher" />
+                            {q && <button onClick={() => setQ("")} aria-label="Effacer la recherche" style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: C.mute, fontSize: 20, cursor: "pointer", padding: "2px 8px" }}>×</button>}
+                        </div>
+                        <select value={type} onChange={(e) => setType(e.target.value)} style={{ ...champ, flex: etroit ? "1 1 100%" : "0 1 190px", width: "auto" }} aria-label="Type"><option value="">Tous les types</option>{TYPES.map((t) => <option key={t}>{t}</option>)}</select>
                     </div>
-                )}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
-                    {vue !== "echanges" && <button style={bouton()} onClick={() => setEdit(nouvelle())}>{vue === "semis" ? "Nouveau semis" : "Ajouter une plante"}</button>}
-                    <label style={{ ...bouton(false), display: "inline-flex", alignItems: "center" }}>Importer Excel<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) importer(f); e.target.value = "" }} /></label>
-                    <button style={bouton(false)} onClick={exporter} disabled={!plantes.length}>Exporter Excel</button>
-                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setAide(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
-                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setCmd((x) => !x); setEtq(false); setAide(false) }} aria-expanded={cmd}>Importer une commande</button>}
-                    <button style={{ ...bouton(false), border: "none", textDecoration: "underline", textUnderlineOffset: 3, paddingLeft: 6, paddingRight: 6 }} onClick={() => setAide((a) => !a)} aria-expanded={aide}>Comment importer sa collection ?</button>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10, alignItems: "center" }}>
+                        {([["", "Toutes"], ["echange", "À échanger"], ["graines", "Graines à donner"], ["incomplete", "Fiches à compléter"]] as const).map(([k, t]) => <button key={k} style={{ ...petit(drapeau === k), padding: "6px 11px" }} aria-pressed={drapeau === k} onClick={() => setDrapeau(k)}>{t}</button>)}
+                        {vue !== "rusticite" && <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, color: C.mute, cursor: "pointer", marginLeft: etroit ? 0 : "auto" }}><input type="checkbox" checked={grouper} onChange={(e) => setGrouper(e.target.checked)} style={coche} />Classer par type</label>}
+                    </div>
+                </>}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.line}`, alignItems: "center" }}>
+                    {vue !== "echanges" && <button style={bouton()} onClick={() => setEdit(nouvelle())}>{vue === "semis" ? "+ Nouveau semis" : "+ Ajouter une plante"}</button>}
+                    <Menu id="importer" titre="Importer" ouvert={menu} setOuvert={setMenu} items={[
+                        { t: "Fichier Excel…", d: "Votre tableau de collection ou de semis", fichier: (f: File) => importer(f) },
+                        { t: "Commande de graines…", d: "Facture ADBLPS, SuccSeed, Köhres, Cono, Uhlig", f: () => { setCmd(true); setEtq(false); setPdf(false) } },
+                        { t: "Mode d’emploi et modèle", d: "Fichier Excel à remplir", f: () => setAide(true) },
+                    ]} />
+                    <Menu id="exporter" titre="Exporter" ouvert={menu} setOuvert={setMenu} items={[
+                        { t: "Listes en PDF…", d: "Collection, semis, rusticité : à imprimer ou partager", f: () => { setPdf(true); setEtq(false); setCmd(false) } },
+                        { t: "Tableau Excel", d: "Toutes vos plantes, une feuille par liste", f: exporter },
+                    ]} />
+                    {vue !== "echanges" && <button style={bouton(false)} onClick={() => { setEtq((x) => !x); setPdf(false); setCmd(false) }} aria-expanded={etq}>Étiquettes</button>}
+                    {vue !== "echanges" && !etroit && <Menu id="colonnes" titre="Colonnes" discret ouvert={menu} setOuvert={setMenu} cases={COLS[vue].filter((c) => c.k !== "espece").map((c) => ({ t: c.t, actif: !(cachees[vue] || []).includes(c.k), f: () => cacher(vue, c.k) }))} />}
                 </div>
                 {aide && <AideImport onModele={() => modele().catch((e: any) => setMsg("Téléchargement impossible : " + (e?.message || e)))} onFermer={() => setAide(false)} />}
                 {msg && <p style={{ margin: "12px 0 0", fontSize: 14, color: /impossible|Erreur|Aucune/.test(msg) ? C.danger : C.accent }}>{msg}</p>}
             </div>
 
+            {pdf && <PanneauPDF plantes={plantes} vue={vue} garde={garde} filtreTxt={filtreTxt} grouper={grouper} auteur={auteur} onFermer={() => setPdf(false)} />}
             {cmd && <PanneauCommande plantes={plantes} genres={genres} client={client} email={email} auteur={auteur} onFermer={(ok) => { setCmd(false); if (ok) { charger(); setVue("semis"); setMsg(ok) } }} />}
             {etq && vue !== "echanges" && <PanneauEtiquettes liste={triee} vue={vue} auteur={auteur} genres={genres} onFermer={() => setEtq(false)} />}
             {imp && <ApercuImport imp={imp} onAnnuler={() => setImp(null)} onValider={validerImport} />}
@@ -312,11 +338,11 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                             let reste = limite
                             const vis = l.slice(0, Math.max(0, reste))
                             return (
-                                <div key={g || "tout"} style={{ marginBottom: g ? 22 : 0 }}>
-                                    {g && <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "4px 0 8px", padding: etroit ? "0 2px" : 0 }}><span style={{ fontFamily: serif, fontSize: 20, fontWeight: 600 }}>{g}</span><span style={{ color: C.mute, fontSize: 13 }}>{l.length}</span></div>}
-                                    {etroit ? <Cartes l={vis} vue={vue} onOuvrir={setEdit} basculer={basculer} />
+                                <div key={g || "tout"} style={{ marginBottom: g ? 18 : 0 }}>
+                                    {g && <button onClick={() => setReplies((r) => { const n = new Set(r); n.has(g) ? n.delete(g) : n.add(g); return n })} aria-expanded={!replies.has(g)} style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "4px 0 8px", padding: etroit ? "0 2px" : 0, background: "none", border: "none", color: C.txt, cursor: "pointer", font: "inherit", width: "100%", textAlign: "left" }}><span aria-hidden style={{ display: "inline-block", width: 12, color: C.mute, fontSize: 12, transform: replies.has(g) ? "none" : "rotate(90deg)", transition: "transform .15s" }}>▶</span><span style={{ fontFamily: serif, fontSize: 20, fontWeight: 600 }}>{g}</span><span style={{ color: C.mute, fontSize: 13 }}>{l.length}</span></button>}
+                                    {replies.has(g) ? null : etroit ? <Cartes l={vis} vue={vue} onOuvrir={setEdit} basculer={basculer} />
                                         : <Tableau l={vis} cols={cols} tri={tri} setTri={setTri} onOuvrir={setEdit} basculer={basculer} vue={vue} />}
-                                    {l.length > vis.length && <button style={{ ...petit(), marginTop: 10 }} onClick={() => setLimite((x) => x + 500)}>Afficher les {l.length - vis.length} suivantes</button>}
+                                    {!replies.has(g) && l.length > vis.length && <button style={{ ...petit(), marginTop: 10 }} onClick={() => setLimite((x) => x + 500)}>Afficher les {l.length - vis.length} suivantes</button>}
                                 </div>
                             )
                         })}
@@ -338,19 +364,91 @@ export default function Collection({ client, email, auteur }: { client: any; ema
     )
 }
 
+const COLS_CACHEES: Record<string, string[]> = { collection: ["rempotage", "fournisseur", "exemplaires"], semis: ["origine", "code"], rusticite: [] }
+
+// ---------- menu déroulant (Importer, Exporter, Colonnes) ----------
+type ItemMenu = { t: string; d?: string; f?: () => void; fichier?: (f: File) => void }
+function Menu({ id, titre, items, cases, ouvert, setOuvert, discret }: { id: "importer" | "exporter" | "colonnes"; titre: string; items?: ItemMenu[]; cases?: { t: string; actif: boolean; f: () => void }[]; ouvert: string; setOuvert: (v: any) => void; discret?: boolean }) {
+    const ouv = ouvert === id
+    const ligne: React.CSSProperties = { display: "block", width: "100%", boxSizing: "border-box", textAlign: "left", background: "none", border: "none", borderBottom: `1px solid ${C.line}`, color: C.txt, padding: "10px 14px", font: "inherit", fontSize: 14, cursor: "pointer" }
+    const sous = (d?: string) => (d ? <span style={{ display: "block", fontSize: 12, color: C.mute, marginTop: 2 }}>{d}</span> : null)
+    return (
+        <div data-menu style={{ position: "relative", marginLeft: discret ? "auto" : 0 }}>
+            <button style={{ ...bouton(false), ...(discret ? { borderColor: "transparent", color: C.mute } : {}) }} aria-haspopup="menu" aria-expanded={ouv} onClick={() => setOuvert(ouv ? "" : id)}>{titre}<span aria-hidden style={{ fontSize: 9, marginLeft: 8, display: "inline-block", transform: ouv ? "rotate(180deg)" : "none" }}>▼</span></button>
+            {ouv && (
+                <div role="menu" style={{ position: "absolute", top: "calc(100% + 4px)", ...(discret ? { right: 0 } : { left: 0 }), zIndex: 20, width: discret ? 220 : 300, maxWidth: "86vw", background: C.panel2, border: `1px solid ${C.line}`, boxShadow: "0 10px 30px rgba(0,0,0,.45)" }}>
+                    <style>{`.acs-item:hover{background:${C.panel}}`}</style>
+                    {items?.map((it) => it.fichier
+                        ? <label key={it.t} role="menuitem" style={ligne} className="acs-item">{it.t}{sous(it.d)}<input type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) it.fichier!(f); e.target.value = ""; setOuvert("") }} /></label>
+                        : <button key={it.t} role="menuitem" style={ligne} className="acs-item" onClick={() => { setOuvert(""); it.f?.() }}>{it.t}{sous(it.d)}</button>)}
+                    {cases && <div style={{ padding: "8px 14px 4px", fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent }}>Colonnes affichées</div>}
+                    {cases?.map((c) => <label key={c.t} style={{ ...ligne, display: "flex", gap: 10, alignItems: "center", padding: "7px 14px", borderBottom: "none" }} className="acs-item"><input type="checkbox" style={coche} checked={c.actif} onChange={c.f} />{c.t}</label>)}
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ---------- export PDF : choix des listes ----------
+function PanneauPDF({ plantes, vue, garde, filtreTxt, grouper, auteur, onFermer }: { plantes: Plante[]; vue: Vue; garde: (p: Plante) => boolean; filtreTxt: string; grouper: boolean; auteur: string; onFermer: () => void }) {
+    const [listes, setListes] = React.useState<Set<"collection" | "semis" | "rusticite">>(() => new Set([vue === "echanges" ? "collection" : vue]))
+    const [filtre, setFiltre] = React.useState(!!filtreTxt)
+    const [parType, setParType] = React.useState(grouper)
+    const [msg, setMsg] = React.useState("")
+    const base = plantes.filter((p) => !filtre || garde(p))
+    const par = (l: Plante[]): [string, Plante[]][] => (parType ? TYPES.map((t) => [t, l.filter((p) => (p.type || "Autre") === t)] as [string, Plante[]]).filter(([, x]) => x.length) : [["", l]])
+    const sections: SectionPdf[] = []
+    if (listes.has("collection")) sections.push({ titre: "Collection", vue: "collection", groupes: par(base.filter((p) => p.statut === "collection").sort((a, b) => a.espece.localeCompare(b.espece))) })
+    if (listes.has("semis")) sections.push({ titre: "Semis", vue: "semis", groupes: par(base.filter((p) => p.statut === "semis").sort((a, b) => cleDate(a.semis).localeCompare(cleDate(b.semis)) || a.espece.localeCompare(b.espece))) })
+    if (listes.has("rusticite")) sections.push({ titre: "Rusticité", vue: "rusticite", groupes: [["", [...base].sort((a, b) => (a.t_min ?? 99) - (b.t_min ?? 99) || a.espece.localeCompare(b.espece))]] })
+    const n = sections.reduce((a, sec) => a + sec.groupes.reduce((x, [, l]) => x + l.length, 0), 0)
+    const bascule = (k: "collection" | "semis" | "rusticite") => setListes((s) => { const x = new Set(s); x.has(k) ? x.delete(k) : x.add(k); return x })
+    const ligne: React.CSSProperties = { display: "flex", gap: 8, alignItems: "center", fontSize: 14, cursor: "pointer" }
+    const generer = () => {
+        if (!n) return setMsg("Aucune ligne à exporter.")
+        setMsg(ouvrirListes(sections, { auteur, filtre: filtre ? filtreTxt : "" }) ? "" : "Le navigateur a bloqué la fenêtre : autorisez les fenêtres pour ce site.")
+    }
+    return (
+        <div style={{ ...box, border: `1px solid ${C.accent}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
+                <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Listes en PDF</h3>
+                <button onClick={onFermer} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Mise en page A4 paysage, une liste par partie. Dans la fenêtre qui s’ouvre, choisissez « Enregistrer au format PDF » ou imprimez directement.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 230px), 1fr))", gap: 16, marginTop: 14 }}>
+                <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
+                    <span style={etiquette}>Listes à inclure</span>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("collection")} onChange={() => bascule("collection")} />Collection ({base.filter((p) => p.statut === "collection").length})</label>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("semis")} onChange={() => bascule("semis")} />Semis ({base.filter((p) => p.statut === "semis").length})</label>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={listes.has("rusticite")} onChange={() => bascule("rusticite")} />Rusticité, de la plus frileuse à la plus rustique ({base.length})</label>
+                </div>
+                <div style={{ display: "grid", gap: 8, alignContent: "start" }}>
+                    <span style={etiquette}>Options</span>
+                    <label style={{ ...ligne, opacity: filtreTxt ? 1 : 0.5 }}><input type="checkbox" style={coche} checked={filtre && !!filtreTxt} disabled={!filtreTxt} onChange={(e) => setFiltre(e.target.checked)} />Seulement le filtre en cours{filtreTxt ? ` (${filtreTxt})` : ""}</label>
+                    <label style={ligne}><input type="checkbox" style={coche} checked={parType} onChange={(e) => setParType(e.target.checked)} />Classer par type (collection et semis)</label>
+                </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
+                <button style={bouton()} onClick={generer} disabled={!n}>Créer le PDF ({n} ligne{n > 1 ? "s" : ""})</button>
+                {msg && <span style={{ fontSize: 14, color: C.danger }}>{msg}</span>}
+            </div>
+        </div>
+    )
+}
+
 // ---------- tableau (ordinateur) ----------
 function Tableau({ l, cols, tri, setTri, onOuvrir, basculer, vue }: { l: Plante[]; cols: Col[]; tri: { k: string; sens: 1 | -1 }; setTri: (t: any) => void; onOuvrir: (p: Plante) => void; basculer: (p: Plante, k: "a_echanger" | "graines_a_donner") => void; vue: Vue }) {
     const cases = vue !== "rusticite"
-    const largeur = cols.reduce((a, c) => a + (c.w || 100), 0) + (cases ? 192 : 0)
+    const largeur = cols.reduce((a, c) => a + (c.w || 100), 0) + (cases ? 176 : 0)
     const fixe = (k: string, entete = false): React.CSSProperties => (k === "espece" ? { position: "sticky", left: 0, zIndex: entete ? 3 : 1, background: C.panel, boxShadow: `1px 0 0 ${C.line}` } : {})
     return (
-        <div style={{ overflowX: "auto", maxHeight: 640, border: `1px solid ${C.line}` }}>
+        <div style={{ overflow: "auto", maxHeight: "min(72vh, 760px)", border: `1px solid ${C.line}` }}>
             <style>{`.acs-ligne:hover td{background:${C.panel2}!important}`}</style>
             <table style={{ borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed", width: Math.max(largeur, 0), minWidth: "100%" }}>
-                <colgroup>{cols.map((c) => <col key={c.k} style={{ width: c.w || 100 }} />)}{cases && <><col style={{ width: 96 }} /><col style={{ width: 96 }} /></>}</colgroup>
+                <colgroup>{cols.map((c) => <col key={c.k} style={{ width: c.w || 100 }} />)}{cases && <><col style={{ width: 88 }} /><col style={{ width: 88 }} /></>}</colgroup>
                 <thead><tr>
                     {cols.map((c) => <th key={c.k} style={{ ...th, ...fixe(c.k, true), whiteSpace: "normal" }} onClick={() => setTri({ k: c.k, sens: tri.k === c.k ? -tri.sens : 1 })}>{c.t}{tri.k === c.k ? (tri.sens > 0 ? " ↑" : " ↓") : ""}</th>)}
-                    {cases && <><th style={{ ...th, cursor: "default", textAlign: "center", whiteSpace: "normal" }}>À échanger</th><th style={{ ...th, cursor: "default", textAlign: "center", whiteSpace: "normal" }}>Graines à donner</th></>}
+                    {cases && <><th title="Proposer la plante à l’échange" style={{ ...th, cursor: "default", textAlign: "center", whiteSpace: "normal" }}>Échange</th><th title="Proposer des graines" style={{ ...th, cursor: "default", textAlign: "center", whiteSpace: "normal" }}>Graines</th></>}
                 </tr></thead>
                 <tbody>
                     {l.map((p) => (
@@ -368,31 +466,30 @@ function Tableau({ l, cols, tri, setTri, onOuvrir, basculer, vue }: { l: Plante[
     )
 }
 
-// ---------- cartes (téléphone) ----------
-function Cartes({ l, vue, onOuvrir, basculer }: { l: Plante[]; vue: Vue; onOuvrir: (p: Plante) => void; basculer: (p: Plante, k: "a_echanger" | "graines_a_donner") => void }) {
+// ---------- cartes (téléphone) : une ligne compacte par plante, la fiche s’ouvre au toucher ----------
+function Cartes({ l, vue, onOuvrir }: { l: Plante[]; vue: Vue; onOuvrir: (p: Plante) => void; basculer?: (p: Plante, k: "a_echanger" | "graines_a_donner") => void }) {
+    const badge: React.CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: "0.03em", color: C.accent, border: `1px solid ${C.accent}`, padding: "1px 6px", whiteSpace: "nowrap" }
     return (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 8 }}>
-            {l.map((p) => {
+        <div style={{ border: `1px solid ${C.line}`, background: C.panel }}>
+            {l.map((p, i) => {
                 const infos = vue === "semis"
-                    ? [p.semis, p.nb_graines ? `${p.nb_leves ?? 0}/${p.nb_graines} levées (${taux(p)} %)` : "", p.nb_vivants != null ? `${p.nb_vivants} vivants` : "", p.n_collecte, p.fournisseur]
+                    ? [p.semis, p.nb_graines ? `${p.nb_leves ?? 0}/${p.nb_graines} levées` : "", p.nb_vivants != null ? `${p.nb_vivants} viv.` : "", p.n_collecte]
                     : vue === "rusticite" ? [p.exposition ? <ExpoTxt e={p.exposition} /> : "", p.arrosage ? <IcoEau e={p.arrosage} /> : "", subAff(p.substrat)]
-                        : [p.code, p.origine, p.n_collecte, p.t_min != null ? `${p.t_min} °C` : "", p.acquis ? `acquis ${p.acquis}` : p.semis ? `semé ${p.semis}` : ""]
+                        : [p.code, p.origine, p.n_collecte]
+                const droite = vue === "semis" ? (taux(p) != null ? `${taux(p)} %` : "") : p.t_min != null ? `${p.t_min} °C` : ""
                 return (
-                    <div key={p.id} style={{ background: C.panel, border: `1px solid ${C.line}`, padding: "12px 14px" }}>
-                        <div onClick={() => onOuvrir(p)} style={{ cursor: "pointer" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
-                                <span style={{ fontSize: 16, lineHeight: 1.35 }}><NomEspece p={p} /></span>
-                                {vue === "rusticite" && <span style={{ fontWeight: 600, whiteSpace: "nowrap" }}>{p.t_min != null ? `${p.t_min} °C` : "—"}</span>}
-                            </div>
-                            <div style={{ fontSize: 13, color: C.mute, marginTop: 3 }}>{infos.filter(Boolean).length ? (infos.filter(Boolean) as React.ReactNode[]).map((x, i) => <React.Fragment key={i}>{i ? " · " : ""}{x}</React.Fragment>) : "Touchez pour compléter la fiche"}</div>
-                        </div>
-                        {vue !== "rusticite" && (
-                            <div style={{ display: "flex", gap: 18, marginTop: 10, fontSize: 13 }}>
-                                <label style={{ display: "flex", gap: 7, alignItems: "center", cursor: "pointer" }}><input type="checkbox" style={coche} checked={!!p.a_echanger} onChange={() => basculer(p, "a_echanger")} />À échanger</label>
-                                <label style={{ display: "flex", gap: 7, alignItems: "center", cursor: "pointer" }}><input type="checkbox" style={coche} checked={!!p.graines_a_donner} onChange={() => basculer(p, "graines_a_donner")} />Graines à donner</label>
-                            </div>
-                        )}
-                    </div>
+                    <button key={p.id} onClick={() => onOuvrir(p)} style={{ display: "flex", gap: 10, alignItems: "center", width: "100%", textAlign: "left", background: "none", border: "none", borderTop: i ? `1px solid ${C.line}` : "none", color: C.txt, padding: "10px 12px", font: "inherit", cursor: "pointer" }}>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: "block", fontSize: 15, lineHeight: 1.3 }}><NomEspece p={p} /></span>
+                            <span style={{ display: "flex", flexWrap: "wrap", gap: "2px 8px", alignItems: "center", fontSize: 12.5, color: C.mute, marginTop: 2 }}>
+                                {(infos.filter(Boolean) as React.ReactNode[]).map((x, k) => <span key={k}>{x}</span>)}
+                                {p.a_echanger && <span style={badge}>Échange</span>}
+                                {p.graines_a_donner && <span style={badge}>Graines</span>}
+                            </span>
+                        </span>
+                        {droite && <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", color: "rgba(246,240,230,0.86)" }}>{droite}</span>}
+                        <span aria-hidden style={{ color: C.mute, fontSize: 16 }}>›</span>
+                    </button>
                 )
             })}
         </div>
@@ -452,7 +549,14 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
     const [occupe, setOccupe] = React.useState(false)
     const set = (k: keyof Plante, v: any) => setF((x) => ({ ...x, [k]: v }))
     const ref = React.useRef<HTMLDivElement>(null)
-    React.useEffect(() => { ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }) }, [])
+    // fenêtre par-dessus la liste : Échap ferme, la page derrière ne défile pas
+    React.useEffect(() => {
+        const avant = document.body.style.overflow; document.body.style.overflow = "hidden"
+        const k = (e: KeyboardEvent) => { if (e.key === "Escape") onFermer(false) }
+        document.addEventListener("keydown", k)
+        ref.current?.focus()
+        return () => { document.body.style.overflow = avant; document.removeEventListener("keydown", k) }
+    }, [])
 
     // pré-remplissage depuis la fiche du genre, sans écraser ce que l’adhérent a saisi
     const g = genreDe(f.espece), info = genres[g]
@@ -495,10 +599,11 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
     const titre = (t: string) => <div style={{ fontFamily: serif, fontSize: 18, fontWeight: 600, margin: "18px 0 10px", paddingTop: 14, borderTop: `1px solid ${C.line}` }}>{t}</div>
     const semee = f.statut === "semis" || !!f.semis || !!f.nb_graines
 
-    return (
-        <div ref={ref} style={{ ...box, border: `1px solid ${C.accent}`, scrollMarginTop: 90 }}>
+    return createPortal(
+        <div onMouseDown={(e) => { if (e.target === e.currentTarget) onFermer(false) }} style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(10,7,5,0.72)", display: "flex", justifyContent: "center", alignItems: "flex-start", overflowY: "auto", padding: "max(12px, 4vh) 12px", boxSizing: "border-box" }}>
+        <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={f.espece || "Fiche"} style={{ ...box, border: `1px solid ${C.accent}`, width: "100%", maxWidth: 820, boxSizing: "border-box", outline: "none", boxShadow: "0 20px 60px rgba(0,0,0,.6)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}>
-                <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>{f.id ? "Modifier la fiche" : f.statut === "semis" ? "Nouveau semis" : "Nouvelle plante"}</h3>
+                <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600, minWidth: 0 }}>{f.id ? <NomEspece p={f} /> : f.statut === "semis" ? "Nouveau semis" : "Nouvelle plante"}</h3>
                 <button onClick={() => onFermer(false)} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
             </div>
             <div style={{ marginTop: 14 }}><label style={etiquette}>Espèce</label><ChoixEspece valeur={f.espece} genres={genres} onChange={(v) => set("espece", v)} /></div>
@@ -555,6 +660,8 @@ function Fiche({ p, genres, client, email, auteur, onFermer }: { p: Plante; genr
                 {f.id && <button style={{ ...bouton(false), color: C.danger, borderColor: C.danger, marginLeft: "auto" }} onClick={supprimer}>Supprimer</button>}
             </div>
         </div>
+        </div>,
+        document.body
     )
 }
 
@@ -721,7 +828,7 @@ function PanneauEtiquettes({ liste, vue, auteur, genres, onFermer }: { liste: Pl
     const [msg, setMsg] = React.useState("")
     const base = liste.filter((p) => (!lot || p.semis === lot) && !(sansLevee && p.statut === "semis" && ((p.nb_vivants != null && p.nb_vivants === 0) || (p.nb_vivants == null && p.nb_leves === 0))))
     const coches = base.filter((p) => !choix || choix.has(p.id!))
-    const items = coches.map((p) => ({ ...p, _pays: paysPlante(p, genres) } as Plante)).flatMap((p) => Array(Math.max(1, Math.min(50, selon ? (p.statut === "semis" ? p.nb_vivants ?? p.nb_leves ?? 1 : p.exemplaires ?? 1) : 1))).fill(p))
+    const items = coches.map((p) => ({ ...p, _pays: paysPlante(p, genres), _sub: p.substrat ?? genres[genreDe(p.espece)]?.[2]?.[1] ?? null } as Plante)).flatMap((p) => Array(Math.max(1, Math.min(50, selon ? (p.statut === "semis" ? p.nb_vivants ?? p.nb_leves ?? 1 : p.exemplaires ?? 1) : 1))).fill(p))
     const manques = coches.filter((p) => tempEtiquette(p) == null || !paysPlante(p, genres))
     const bascule = (id: string) => setChoix((c) => { const n = new Set(c ?? base.map((p) => p.id!)); n.has(id) ? n.delete(id) : n.add(id); return n })
     const imprimer = () => {
@@ -737,7 +844,7 @@ function PanneauEtiquettes({ liste, vue, auteur, genres, onFermer }: { liste: Pl
                 <h3 style={{ fontFamily: serif, fontSize: 22, margin: 0, fontWeight: 600 }}>Étiquettes à piquer</h3>
                 <button onClick={onFermer} style={{ background: "none", border: "none", color: C.mute, fontSize: 22, cursor: "pointer", padding: 0 }} aria-label="Fermer">×</button>
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Planche A4 de 44 étiquettes (gabarit LINAD) : nom latin, n° de collecte, température minimale, pays, date et exposition. Les plantes viennent de la liste affichée (onglet, recherche et filtre de type).</p>
+            <p style={{ margin: "6px 0 0", fontSize: 14, color: C.mute }}>Planche A4 de 44 étiquettes (gabarit LINAD) : n° de substrat dans le rond, nom latin, n° de collecte, température minimale, pays, date et exposition. Les plantes viennent de la liste affichée (onglet, recherche et filtre de type).</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 230px), 1fr))", gap: 12, marginTop: 14 }}>
                 {lots.length > 0 && <div><label style={etiquette}>Lot de semis</label><select value={lot} onChange={(e) => { setLot(e.target.value); setChoix(null) }} style={champ}><option value="">Tous les lots affichés</option>{lots.map(([d, n]) => <option key={d} value={d}>Semis du {d} ({n})</option>)}</select></div>}
                 <div><label style={etiquette}>Commencer à l’étiquette</label><input type="number" min={1} max={44} value={debut} onChange={(e) => setDebut(Math.max(1, Math.min(44, Number(e.target.value) || 1)))} style={champ} /><div style={{ fontSize: 12, color: C.mute, marginTop: 4 }}>Pour finir une planche entamée (1 à 22 à gauche, 23 à 44 à droite).</div></div>
@@ -1114,11 +1221,14 @@ function etiquetteSVG(p: Plante, x0: number, y0: number, droite: boolean, contou
     const pays = (p as any)._pays || paysDe(p.origine) || "Pays ?"
     const date = p.statut === "semis" ? p.semis || "" : p.acquis ? p.acquis : p.semis || ""
     const expo = expoEtiquette(p)
+    // n° du mélange (1 à 6, article « Des substrats à composer ») dans le rond
+    const sv = Number((p as any)._sub ?? p.substrat), sub = sv >= 1 && sv <= 6 ? String(sv) : ""
     const forme = `M0,0 L${corps},0 L${pointe},${h / 2} L${corps},${h} L0,${h} Z`
     const tr = droite ? `translate(${(x0).toFixed(2)},${(y0 + h).toFixed(2)}) rotate(180)` : `translate(${x0.toFixed(2)},${y0.toFixed(2)})`
     return `<g transform="${tr}">
 ${contours ? `<path d="${forme}" fill="none" stroke="#9a9a9a" stroke-width="0.35"/>` : ""}
-<circle cx="9.5" cy="${h / 2}" r="2.6" fill="none" stroke="#222" stroke-width="0.6"/>
+<circle cx="9.5" cy="${h / 2}" r="3.7" fill="none" stroke="#222" stroke-width="0.6"/>
+${sub ? `<text x="9.5" y="${(h / 2 + 1.95).toFixed(2)}" font-size="5.6" font-weight="700" font-style="normal" text-anchor="middle">${sub}</text>` : ""}
 <text class="l1" x="18" y="13.4" font-size="9.4">${segmentsNom(l1)}</text>
 <text class="l2" x="18" y="25.6" font-size="8.6">${l2 ? segmentsNom(l2) + "<tspan> </tspan>" : ""}${p.n_collecte ? `<tspan font-style="normal">${echXml(p.n_collecte)} </tspan>` : ""}<tspan font-style="normal" font-size="5.4" dy="-0.2">${echXml(t)} </tspan><tspan font-style="normal" font-weight="600" dy="0.2">${echXml(pays)}</tspan>${date ? `<tspan font-style="normal" font-size="5.4"> ${echXml(date)}</tspan>` : ""}</text>
 <use class="ico" href="#ico-${expo === "Ombre" ? "ombre" : expo === "Mi-ombre" ? "miombre" : "soleil"}" x="0" y="${h - 10.6}"/>
@@ -1196,6 +1306,62 @@ ${svg}
         try { placer() } catch {}
         setTimeout(() => { try { w.focus(); w.print() } catch {} }, 300)
     })
+    return true
+}
+
+// =====================================================================================
+// EXPORT PDF DES LISTES — page imprimable (A4 paysage), enregistrée en PDF par le navigateur
+// =====================================================================================
+type ColPdf = [string, (p: Plante) => string, number?]
+const nomHtml = (s: string) => s.split(/(\s(?:var\.|subsp\.|ssp\.|fma\.|f\.|cv\.|x)\s|'[^']*'|‘[^’]*’|\([^)]*\))/g).map((x, i) => (i % 2 ? echXml(x) : `<i>${echXml(x)}</i>`)).join("")
+const COLS_PDF: Record<"collection" | "semis" | "rusticite", ColPdf[]> = {
+    collection: [["N°", (p) => p.code ?? "", 6], ["Espèce", (p) => p.espece, 29], ["Origine", (p) => p.origine ?? "", 15], ["N° collecte", (p) => p.n_collecte ?? "", 9], ["Expo.", (p) => p.exposition ?? "", 7.5], ["Substrat", (p) => (p.substrat ? `${CERCLES[p.substrat]} ${SUB_COURT[p.substrat] ?? ""}` : ""), 14], ["T min", (p) => (p.t_min != null ? `${p.t_min} °C` : ""), 5.5], ["Eau", (p) => p.arrosage ?? "", 6.5], ["Depuis", (p) => p.acquis || p.semis || "", 6.5], ["Bourse", (p) => [p.a_echanger ? "échange" : "", p.graines_a_donner ? "graines" : ""].filter(Boolean).join(", "), 6]],
+    semis: [["N°", (p) => p.code ?? "", 5], ["Espèce", (p) => p.espece, 28], ["Semé le", (p) => p.semis ?? "", 9], ["Méthode", (p) => p.methode ?? "", 8], ["Graines", (p) => (p.nb_graines ?? "") + "", 6], ["Levées", (p) => (p.nb_leves ?? "") + "", 6], ["%", (p) => (taux(p) != null ? `${taux(p)} %` : ""), 5], ["Vivants", (p) => (p.nb_vivants ?? "") + "", 6], ["N° collecte", (p) => p.n_collecte ?? "", 9], ["Réf.", (p) => p.reference ?? "", 10], ["Producteur", (p) => p.fournisseur ?? "", 10]],
+    rusticite: [["T min", (p) => (p.t_min != null ? `${p.t_min} °C` : "—"), 7], ["Espèce", (p) => p.espece, 36], ["Liste", (p) => (p.statut === "semis" ? "Semis" : "Collection"), 9], ["Expo.", (p) => p.exposition ?? "", 9], ["Eau", (p) => p.arrosage ?? "", 9], ["Substrat", (p) => (p.substrat ? `${CERCLES[p.substrat]} ${SUB_COURT[p.substrat] ?? ""}` : ""), 15], ["Origine", (p) => p.origine ?? "", 15]],
+}
+export type SectionPdf = { titre: string; vue: "collection" | "semis" | "rusticite"; groupes: [string, Plante[]][] }
+export function htmlListes(sections: SectionPdf[], o: { auteur: string; filtre: string }) {
+    const date = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+    const total = (sec: SectionPdf) => sec.groupes.reduce((a, [, l]) => a + l.length, 0)
+    const corps = sections.map((sec) => {
+        const cols = COLS_PDF[sec.vue]
+        const tete = `<tr>${cols.map(([t, , w]) => `<th style="width:${w}%">${echXml(t)}</th>`).join("")}</tr>`
+        return `<section class="liste"><h2${sections.length === 1 ? ' class="seul"' : ""}>${echXml(sec.titre)} <span>${total(sec)} ligne${total(sec) > 1 ? "s" : ""}</span></h2>${sec.groupes.map(([g, l]) => `
+${g ? `<h3>${echXml(g)} <span>${l.length}</span></h3>` : ""}<table><thead>${tete}</thead><tbody>${l.map((p) => `<tr>${cols.map(([t, f]) => `<td${t === "Espèce" ? ' class="nom"' : ["Origine", "Substrat", "Réf.", "Producteur", "N° collecte", "Bourse"].includes(t) ? "" : ' class="court"'}>${t === "Espèce" ? nomHtml(f(p)) : echXml(f(p))}</td>`).join("")}</tr>`).join("")}</tbody></table>`).join("")}</section>`
+    }).join("")
+    return `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>${echXml(sections.map((s) => s.titre).join(", "))} · ${echXml(o.auteur)}</title>
+<style>
+@page { size: A4 landscape; margin: 12mm 11mm 14mm }
+* { box-sizing: border-box }
+body { margin: 0; font: 9pt/1.35 "Helvetica Neue", Arial, sans-serif; color: #1a1a1a; background: #e9e5df }
+.page { max-width: 277mm; margin: 0 auto; background: #fff; padding: 12mm 11mm; box-shadow: 0 2px 12px rgba(0,0,0,.15) }
+header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 1.2pt solid #1a1a1a; padding-bottom: 4pt; margin-bottom: 10pt }
+header h1 { font: 600 16pt/1.1 Georgia, "Times New Roman", serif; margin: 0 }
+header p { margin: 2pt 0 0; color: #555; font-size: 8pt }
+header .club { text-align: right; font-size: 7.5pt; letter-spacing: .04em; color: #555 }
+h2 { font: 600 13pt Georgia, serif; margin: 14pt 0 4pt } h2 span, h3 span { font: 400 8pt Arial, sans-serif; color: #777; margin-left: 4pt }
+h3 { font: 600 10pt Georgia, serif; margin: 8pt 0 3pt } h2.seul { font-size: 0; margin: 0 } h2.seul span { font-size: 8pt; margin: 0 }
+.liste + .liste { break-before: page; page-break-before: always }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4pt }
+th { text-align: left; font-size: 7pt; text-transform: uppercase; letter-spacing: .05em; color: #555; border-bottom: .8pt solid #1a1a1a; padding: 3pt 4pt }
+td { padding: 2.6pt 4pt; border-bottom: .4pt solid #d6d0c8; vertical-align: top; overflow-wrap: anywhere }
+tr { break-inside: avoid; page-break-inside: avoid } thead { display: table-header-group }
+td.nom { font-size: 9.2pt } td.court { white-space: nowrap; overflow-wrap: normal }
+.barre { position: sticky; top: 0; z-index: 2; display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 10px; background: #1d1612; color: #f6f0e6; font: 14px Poppins, Arial, sans-serif }
+.barre button { background: #9bbd8a; color: #1d1612; border: 0; padding: 9px 16px; font: 600 14px Poppins, Arial, sans-serif; cursor: pointer }
+@media print { body { background: #fff } .barre { display: none } .page { box-shadow: none; padding: 0; max-width: none } }
+</style></head><body>
+<div class="barre"><span>Dans la fenêtre d’impression, choisissez « Enregistrer au format PDF ».</span><button id="imprimer">Enregistrer en PDF</button></div>
+<div class="page"><header><div><h1>${echXml(sections.length === 1 ? sections[0].titre : "Ma collection")}</h1><p>${echXml(o.auteur)} · ${date}${o.filtre ? ` · ${echXml(o.filtre)}` : ""}</p></div><div class="club">A.C.S. ARMORIQUE CACTUS SUCCULENTES</div></header>
+${corps}</div></body></html>`
+}
+export function ouvrirListes(sections: SectionPdf[], o: { auteur: string; filtre: string }) {
+    const w = window.open("", "_blank")
+    if (!w) return false
+    w.document.write(htmlListes(sections, o))
+    w.document.close()
+    const bt = w.document.getElementById("imprimer"); if (bt) bt.addEventListener("click", () => w.print())
+    setTimeout(() => { try { w.focus(); w.print() } catch {} }, 400)
     return true
 }
 
