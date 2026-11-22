@@ -6,6 +6,18 @@ import { sb } from "./AcsBase.tsx"
 const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Événements", "#evenements"], ["Collection", "#collection"], ["Sondages", "#sondages"], ["Discussion", "#discussion"], ["Galerie", "#galerie"], ["Annuaire", "#annuaire"]]
 const POLICE = "Poppins, sans-serif"
 
+// Barre de défilement aux couleurs du site (injectée une fois : ce composant est dans la barre de navigation de toutes les pages)
+if (typeof document !== "undefined" && !document.getElementById("acs-defilement")) {
+    const st = document.createElement("style")
+    st.id = "acs-defilement"
+    st.textContent = `html{scrollbar-width:thin;scrollbar-color:#9bbd8a #16120f}
+html::-webkit-scrollbar{width:9px;height:9px}
+html::-webkit-scrollbar-track{background:#16120f}
+html::-webkit-scrollbar-thumb{background:#9bbd8a;border-radius:9px;border:2px solid #16120f}
+html::-webkit-scrollbar-thumb:hover{background:#b5d1a6}`
+    document.head.appendChild(st)
+}
+
 function Deroulant({ titre, href, liens, compact, style, deconnexion, admin }: { titre: string; href: string; liens: [string, string][]; compact: boolean; style: React.CSSProperties; deconnexion?: boolean; admin?: string }) {
     const [ouvert, setOuvert] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
