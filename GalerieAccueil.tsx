@@ -101,10 +101,15 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
         <div style={{ width: "100%" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
                 {tuiles.map((t) => <Vignette key={t.cat} p={{ ...t.liste[0], legende: t.cat }} hauteur={210} onClick={() => setOuverte({ liste: t.liste.map((p) => ({ ...p, album: t.cat })), i: 0 })} />)}
+                {lien && (
+                    // 6e case : accès à la galerie complète, même aspect que le bouton « Connexion »
+                    <a href={lien} style={{ height: 210, boxSizing: "border-box", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, border: "1px solid rgba(246,240,230,0.55)", color: "#f6f0e6", textDecoration: "none", fontFamily: sans, textAlign: "center", padding: 20, transition: "background .2s" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(246,240,230,0.06)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                        <span style={{ fontWeight: 600, fontSize: 18 }}>Toutes les photos →</span>
+                        <span style={{ fontSize: 13, opacity: 0.7 }}>réservé aux adhérents</span>
+                    </a>
+                )}
             </div>
-            {lien && (
-                <a href={lien} style={{ display: "inline-block", marginTop: 22, fontFamily: sans, fontSize: 14, color: "rgba(246,240,230,0.75)", textDecoration: "underline", textUnderlineOffset: 4 }}>Toutes les photos (réservé aux adhérents) →</a>
-            )}
             {ouverte && <Diaporama photos={ouverte.liste} index={ouverte.i} fermer={() => setOuverte(null)} />}
         </div>
     )
