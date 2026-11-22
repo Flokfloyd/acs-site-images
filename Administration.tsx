@@ -6,7 +6,7 @@ import * as XLSX from "https://esm.sh/xlsx@0.18.5"
 import {
     sb, box, input, label, btn, small, h2, muted, euros, dateFr, STATUTS, exporter, UI,
     localiserAdherent, preparerEvenement, JOURS_MOIS,
-    CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR, CHAMPS_PHOTO,
+    CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR, CHAMPS_PHOTO, FichierForm,
 } from "./EspaceMembre.tsx"
 import { GALERIE } from "./GalerieAccueil.tsx"
 import { ZONES_SALON, ouvrirFormulairePapier } from "./InscriptionSalon.tsx"
@@ -1190,6 +1190,18 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
                 </div>
                 <label style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 14, cursor: "pointer" }}><input type="checkbox" checked={!!reg.ouvert} onChange={(e) => majReg("ouvert", e.target.checked)} style={{ width: 18, height: 18, accentColor: C.accent }} />Demandes en ligne ouvertes sur la page Salon</label>
                 <div style={{ marginTop: 12 }}><span style={label}>Message au-dessus du formulaire (facultatif)</span><input style={input} value={reg.message || ""} onChange={(e) => setReg((x: any) => ({ ...x, message: e.target.value }))} onBlur={(e) => majReg("message", e.target.value || null)} placeholder="Ex. : la grande salle est presque complète" /></div>
+                <div style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr)" : "repeat(2, minmax(0,1fr))", gap: 16, marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.line}` }}>
+                    <div>
+                        <span style={label}>Page Salon · liste des exposants</span>
+                        <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", fontSize: 14 }}><input type="checkbox" checked={!!reg.liste_publiee} onChange={(e) => majReg("liste_publiee", e.target.checked)} style={{ width: 18, height: 18, flex: "none", marginTop: 2, accentColor: C.accent }} />
+                            <span>Publier la liste des exposants acceptés {reg.edition} ({acceptees.length}). Seuls le stand, la zone, le nom (prénom et initiale pour les amateurs), le département et la catégorie s’affichent. Tant que la case n’est pas cochée, la page montre la dernière liste publiée.</span></label>
+                    </div>
+                    <div>
+                        <span style={label}>Page Salon · dépliant (PDF de 2 pages : recto puis verso)</span>
+                        <FichierForm v={reg.depliant_url || ""} set={(u: string) => majReg("depliant_url", u || null)} dossier="depliant" accept="application/pdf" />
+                        <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer", fontSize: 14, marginTop: 8 }}><input type="checkbox" checked={!!reg.depliant_publie} disabled={!reg.depliant_url} onChange={(e) => majReg("depliant_publie", e.target.checked)} style={{ width: 18, height: 18, flex: "none", accentColor: C.accent }} />Afficher ce dépliant sur la page Salon</label>
+                    </div>
+                </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: etroit ? "repeat(2, minmax(0,1fr))" : "repeat(4, minmax(0,1fr))", gap: 10 }}>

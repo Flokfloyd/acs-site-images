@@ -52,7 +52,7 @@ export default function GuideAdmin() {
                     <li style={li}><b>Adhésions et paiements</b> : on importe l’export AssoConnect (une fois par mois suffit) et on note à la main les chèques et espèces. En bas, les <b>campagnes d’adhésion</b> : une ligne par année, avec la date à partir de laquelle elle s’affiche sur la page Adhésion, le tarif et le lien de paiement AssoConnect. Penser à créer l’année suivante chaque automne.</li>
                     <li style={li}><b>Adhérents</b> : la liste des membres, leur code de connexion personnel, leur statut. Un membre qui ne reçoit pas son code : vérifier qu’il est bien « actif » et que son e-mail est juste, puis lui renvoyer.</li>
                     <li style={li}><b>Comptabilité</b> : recettes et dépenses, avec la photo ou le PDF du justificatif.</li>
-                    <li style={li}><b>Salon</b> : les demandes des exposants (en ligne ou papier). On accepte, on attribue la zone, les mètres et le stand, on ajuste la contribution, on coche « payé ». Les réglages du haut ouvrent ou ferment les demandes et fixent les tarifs au mètre. Deux exports : le tableau complet et la liste pour le dépliant.</li>
+                    <li style={li}><b>Salon</b> : les demandes des exposants (en ligne ou papier). On accepte, on attribue la zone, les mètres et le stand, on ajuste la contribution, on coche « payé ». Les réglages du haut ouvrent ou ferment les demandes et fixent les tarifs au mètre. Deux exports : le tableau complet et la liste pour le dépliant. Quand les stands sont attribués, cocher « Publier la liste des exposants acceptés » : la page Salon affiche alors la nouvelle liste. Le dépliant se charge au même endroit, en PDF de 2 pages (recto puis verso, trois volets par page), puis on coche « Afficher ce dépliant ».</li>
                     <li style={li}><b>Boutique</b> : les articles de la page Boutique. Sans prix ou avec un stock à 0, l’article s’affiche « Rupture ».</li>
                     <li style={li}><b>Campagnes e-mail</b> : écrire aux adhérents. Toujours s’envoyer un test d’abord, et vérifier la liste des destinataires avant d’envoyer à tout le monde.</li>
                     <li style={li}><b>Sondages</b> : questions posées aux membres dans leur espace.</li>
@@ -78,8 +78,8 @@ export default function GuideAdmin() {
                     <li style={li}><b>Chaque mois</b> : import AssoConnect, sauvegarde.</li>
                     <li style={li}><b>Automne</b> : créer la campagne d’adhésion de l’année suivante sur AssoConnect, puis l’ajouter ici avec son lien. Elle s’affiche le 1er décembre (date modifiable).</li>
                     <li style={li}><b>Février</b> : assemblée générale. Mettre à jour la composition du bureau sur la page L’association (Framer) si elle change.</li>
-                    <li style={li}><b>Hiver – printemps</b> : ouvrir les demandes d’exposants (onglet Salon), traiter les demandes au fil de l’eau, fixer les dates dans l’agenda.</li>
-                    <li style={li}><b>Après le salon</b> : fermer les demandes, mettre à jour les chiffres de l’accueil (exposants, visiteurs) dans Framer. La liste des exposants et le dépliant de la page Salon sont encore ceux de 2026 : leur mise à jour demande pour l’instant un coup de main technique.</li>
+                    <li style={li}><b>Hiver – printemps</b> : ouvrir les demandes d’exposants (onglet Salon), traiter les demandes au fil de l’eau, fixer les dates dans l’agenda. Quand le dépliant est prêt : charger le PDF et publier la liste des exposants.</li>
+                    <li style={li}><b>Après le salon</b> : fermer les demandes, mettre à jour les chiffres de l’accueil (exposants, visiteurs) dans Framer.</li>
                     <li style={li}><b>Deux fois par an</b> : publier le nouveau semestriel.</li>
                 </ul>
             </Partie>

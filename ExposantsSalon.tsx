@@ -1,7 +1,11 @@
-// ExposantsSalon.tsx — liste des exposants du salon (édition 2026, d'après le dépliant)
+// ExposantsSalon.tsx — liste des exposants du salon
+// Quand la liste d'une édition est publiée dans l'administration (onglet Salon), elle est construite
+// à partir des demandes acceptées. Sinon, on garde la liste du dépliant 2026 ci-dessous.
 // Les numéros sont ceux des stands sur le plan du dépliant.
 import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
+import { sb } from "./AcsBase.tsx"
+const ORDRE_ZONES = ["Petite salle", "Entre les salles", "Grande salle", "Terrain de sport"]
 
 type Exp = { n: string; nom: string; dep?: string; spe: string; type?: "asso" | "amateur" }
 // Liste du dépliant 2026, par zone. Les amateurs sont nommés comme dans le dépliant (prénom et initiale).
@@ -54,18 +58,37 @@ const ZONES: { titre: string; liste: Exp[] }[] = [
     ] },
 ]
 
+function useListe(): { edition: number; zones: typeof ZONES } {
+    const [v, setV] = React.useState({ edition: 2026, zones: ZONES })
+    React.useEffect(() => {
+        const client = sb()
+        if (!client) return
+        client.rpc("exposants_salon").then(({ data, error }: any) => {
+            if (error || !data?.length) return
+            const zones = [...ORDRE_ZONES, ...new Set<string>(data.map((d: any) => d.zone).filter((z: string) => !ORDRE_ZONES.includes(z)))]
+                .map((z) => ({ titre: z, liste: data.filter((d: any) => d.zone === z).map((d: any, i: number) => ({ n: d.stand || "", nom: d.nom, dep: d.profil === "Professionnel" ? d.dep || undefined : undefined, spe: d.categorie, type: d.profil === "Amateur" ? ("amateur" as const) : undefined, cle: z + i })) }))
+                .filter((z) => z.liste.length)
+            setV({ edition: data[0].edition, zones })
+        })
+    }, [])
+    return v
+}
+
 export default function ExposantsSalon(props: { clair: boolean }) {
+    const { edition, zones } = useListe()
+    const total = zones.reduce((a, z) => a + z.liste.length, 0)
     const c = props.clair
         ? { bg: "#fbf7f0", line: "rgba(29,22,18,0.14)", txt: "#1d1612", mut: "#5e5247", badge: "#3f6b2c", badgeTxt: "#fbf7f0" }
         : { bg: "#241c17", line: "rgba(246,240,230,0.16)", txt: "#f6f0e6", mut: "#b9ab98", badge: "#9bbd8a", badgeTxt: "#1d1612" }
     return (
         <div style={{ width: "100%", fontFamily: "Poppins, sans-serif", color: c.txt }}>
-            {ZONES.map((z) => (
-                <div key={z.titre} style={{ marginTop: z.titre === "Petite salle" ? 0 : 28 }}>
+            <p style={{ margin: "0 0 22px", fontSize: 15, fontWeight: 600, color: c.badge }}>Salon {edition} · {total} exposants{edition === 2026 ? " · la liste 2027 sera publiée au printemps" : ""}</p>
+            {zones.map((z, iz) => (
+                <div key={z.titre} style={{ marginTop: iz === 0 ? 0 : 28 }}>
                     <div style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 20, fontWeight: 600, margin: "0 0 12px" }}>{z.titre}</div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12 }}>
-                        {z.liste.map((e) => (
-                            <div key={e.n} style={{ background: c.bg, border: `1px solid ${c.line}`, padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start", height: 112, boxSizing: "border-box", overflow: "hidden" }}>
+                        {z.liste.map((e: any, ie: number) => (
+                            <div key={e.cle || e.n || ie} style={{ background: c.bg, border: `1px solid ${c.line}`, padding: "16px 18px", display: "flex", gap: 14, alignItems: "flex-start", height: 112, boxSizing: "border-box", overflow: "hidden" }}>
                                 <span style={{ flex: "0 0 auto", minWidth: 34, height: 34, background: e.type === "amateur" ? "transparent" : c.badge, border: `1.5px solid ${c.badge}`, boxSizing: "border-box", color: e.type === "amateur" ? c.badge : c.badgeTxt, fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", justifyContent: "center" }} title={"Stand n°" + e.n}>{e.n}</span>
                                 <div style={{ minWidth: 0 }}>
                                     <div style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.nom}{e.dep ? <span style={{ fontWeight: 400, color: c.mut }}> ({e.dep})</span> : null}</div>

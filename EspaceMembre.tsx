@@ -851,7 +851,7 @@ function SommaireForm({ v, set }: { v: any; set: (v: any) => void }) {
     }} placeholder={"Édito ; 2\nEcheveria ; 6"} />
 }
 
-function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
+export function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
     const client = sb()!
     const [etat, setEtat] = React.useState("")
     const envoyer = async (f: File) => {

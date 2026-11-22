@@ -4,11 +4,42 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import { addPropertyControls, ControlType } from "framer"
 
+import { sb } from "./AcsBase.tsx"
+
+// Dépliant par défaut : celui de 2026. Si un PDF est publié dans l'administration (onglet Salon),
+// il le remplace : page 1 = recto (volets A, B, C de gauche à droite), page 2 = verso (D, E, F).
 const BASE = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@main/5-depliant-2026/"
-const img = (k: string) => BASE + k + ".jpg"
+const IMG_2026: Record<string, string> = Object.fromEntries([..."ABCDEF"].map((k) => [k, BASE + k + ".jpg"]))
+const PDFJS = "https://esm.sh/pdfjs-dist@4.4.168/build/pdf.min.mjs"
+const PDFJS_WORKER = "https://esm.sh/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs"
+async function voletsDuPdf(url: string): Promise<{ img: Record<string, string>; ratio: number }> {
+    const lib: any = await import(/* @vite-ignore */ PDFJS)
+    lib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER
+    const doc = await lib.getDocument({ url }).promise
+    if (doc.numPages < 2) throw new Error("Le dépliant doit avoir 2 pages (recto et verso)")
+    const out: Record<string, string> = {}
+    let ratio = 0
+    for (const [p, cles] of [[1, "ABC"], [2, "DEF"]] as const) {
+        const page = await doc.getPage(p)
+        const v1 = page.getViewport({ scale: 1 })
+        const vp = page.getViewport({ scale: 3600 / v1.width })
+        const cv = document.createElement("canvas")
+        cv.width = Math.round(vp.width); cv.height = Math.round(vp.height)
+        await page.render({ canvasContext: cv.getContext("2d"), viewport: vp }).promise
+        const w = cv.width / 3
+        ratio = w / cv.height
+        ;[...cles].forEach((k, i) => {
+            const c = document.createElement("canvas")
+            c.width = Math.round(w); c.height = cv.height
+            c.getContext("2d")!.drawImage(cv, i * w, 0, w, cv.height, 0, 0, c.width, c.height)
+            out[k] = c.toDataURL("image/jpeg", 0.86)
+        })
+    }
+    return { img: out, ratio }
+}
 // Recto (page 1, de gauche à droite) : A volet rabattu, B dos, C couverture
 // Verso (page 2) : D, E, F — l'intérieur ; C est derrière D, B derrière E, A derrière F
-const RATIO = 280.63 / 595.28
+const RATIO_2026 = 280.63 / 595.28
 const ETAPES = [
     { titre: "La couverture", vus: ["C"] },
     { titre: "Le salon en chiffres", vus: ["D", "A"] },
@@ -27,6 +58,17 @@ export default function Depliant(props: { hauteurMax: number; fondClair: boolean
     const [pret, setPret] = React.useState(false)
     const [vw, setVw] = React.useState(1200)
     const overlay = React.useRef<HTMLDivElement>(null)
+    const [img, setImg] = React.useState<Record<string, string>>(IMG_2026)
+    const [RATIO, setRatio] = React.useState(RATIO_2026)
+    React.useEffect(() => {
+        const client = sb()
+        if (!client) return
+        client.from("salon_reglages").select("depliant_url").eq("depliant_publie", true).not("depliant_url", "is", null).order("edition", { ascending: false }).limit(1)
+            .then(({ data }: any) => {
+                const url = data?.[0]?.depliant_url
+                if (url) voletsDuPdf(url).then((r) => { setImg(r.img); setRatio(r.ratio) }).catch(() => {})
+            })
+    }, [])
     React.useEffect(() => {
         const el = ref.current
         if (!el) return
@@ -38,7 +80,7 @@ export default function Depliant(props: { hauteurMax: number; fondClair: boolean
         document.addEventListener("fullscreenchange", fs)
         return () => { ro.disconnect(); window.removeEventListener("resize", maj); document.removeEventListener("fullscreenchange", fs) }
     }, [])
-    React.useEffect(() => { [..."ABCDEF"].forEach((k) => { const i = new Image(); i.src = img(k) }) }, [])
+    React.useEffect(() => { [..."ABCDEF"].forEach((k) => { const i = new Image(); i.src = img[k] }) }, [img])
     React.useEffect(() => {
         if (!plein) return
         const h = (e: KeyboardEvent) => { if (e.key === "Escape") fermer(); else if (e.key === "ArrowRight") suivant(); else if (e.key === "ArrowLeft") precedent() }
@@ -57,7 +99,7 @@ export default function Depliant(props: { hauteurMax: number; fondClair: boolean
     const anim = "transform 950ms cubic-bezier(.62,.04,.24,1)"
     // au dos, les volets repliés passent derrière : on les masque une fois retournés (évite un liseré)
     const cache: React.CSSProperties = { opacity: retourne ? 0 : 1, transition: retourne ? `${anim}, opacity 0s linear 950ms` : anim }
-    const face = (k: string, dos = false): React.CSSProperties => ({ position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: dos ? "rotateY(180deg)" : "none", backgroundImage: `url(${img(k)})`, backgroundSize: "cover", backgroundPosition: "center", backgroundColor: "#3c4a3a" })
+    const face = (k: string, dos = false): React.CSSProperties => ({ position: "absolute", inset: 0, backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: dos ? "rotateY(180deg)" : "none", backgroundImage: `url(${img[k]})`, backgroundSize: "cover", backgroundPosition: "center", backgroundColor: "#3c4a3a" })
     const ombre = (actif: boolean, sens: "g" | "d"): React.CSSProperties => ({ position: "absolute", inset: 0, pointerEvents: "none", background: `linear-gradient(${sens === "g" ? "90deg" : "270deg"}, rgba(0,0,0,0) 70%, rgba(0,0,0,0.22))`, opacity: actif ? 1 : 0, transition: "opacity 950ms" })
 
     const suivant = () => setEtape((e) => (e + 1) % 4)

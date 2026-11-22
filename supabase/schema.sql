@@ -777,3 +777,27 @@ insert into public.campagnes_adhesion (annee, ouverture, tarif, lien) values
   (2026, '2025-12-01', 20, 'https://www.armorique-cactus-succulentes.com/collect/choice/649064-n-campagne-d-adhesion-2026'),
   (2027, '2026-12-01', 20, null)
 on conflict (annee) do nothing;
+
+-- ---------------------------------------------------------------------
+-- 18. Salon : liste publique des exposants acceptés et dépliant en PDF
+-- ---------------------------------------------------------------------
+alter table public.salon_reglages add column if not exists liste_publiee boolean not null default false;
+alter table public.salon_reglages add column if not exists depliant_url text check (depliant_url is null or depliant_url ~ '^https://');
+alter table public.salon_reglages add column if not exists depliant_publie boolean not null default false;
+
+-- Exposants acceptés de la dernière édition dont la liste est publiée.
+-- Seuls les champs du dépliant sortent : jamais d'e-mail, de téléphone ni de SIRET.
+-- Les amateurs sont nommés par leur prénom et l'initiale du nom, comme dans le dépliant.
+create or replace function public.exposants_salon() returns table (
+  edition int, stand text, zone text, nom text, dep text, categorie text, profil text)
+language sql stable security definer set search_path = public as $$
+  with r as (select s.edition from salon_reglages s where s.liste_publiee order by s.edition desc limit 1)
+  select d.edition, d.stand, d.zone_attribuee,
+         case when d.profil = 'Amateur' then regexp_replace(trim(d.nom), '^(\S+)\s+(\S).*$', '\1 \2.') else trim(d.nom) end,
+         d.departement, d.categorie, d.profil
+  from demandes_salon d join r on r.edition = d.edition
+  where d.statut = 'acceptee' and d.zone_attribuee is not null
+  order by d.zone_attribuee, nullif(regexp_replace(coalesce(d.stand, ''), '\D', '', 'g'), '')::int nulls last, d.nom
+$$;
+revoke all on function public.exposants_salon() from public;
+grant execute on function public.exposants_salon() to anon, authenticated;
