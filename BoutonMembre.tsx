@@ -20,7 +20,7 @@ html::-webkit-scrollbar-thumb:hover{background:#b5d1a6}`
 if (typeof document !== "undefined" && !document.getElementById("acs-menu-visiteur")) {
     const st = document.createElement("style")
     st.id = "acs-menu-visiteur"
-    const lien = (p: string) => `[data-framer-name="Liens"] a[href$="${p}"]`
+    const lien = (p: string) => `[data-framer-name="Liens"] > *:has(a[href$="${p}"])`
     st.textContent = `html:not(.acs-membre) ${lien("agenda")}, html:not(.acs-membre) ${lien("galerie")}, html:not(.acs-membre):not(.acs-pub-boutique) ${lien("boutique")}, html:not(.acs-membre):not(.acs-pub-semestriels) ${lien("semestriels")} { display: none !important; }`
     document.head.appendChild(st)
 }
