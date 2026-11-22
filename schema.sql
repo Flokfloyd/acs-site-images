@@ -513,3 +513,462 @@ begin
   return jsonb_build_object('participants', (select count(*) from reponses where sondage_id = s), 'questions', res);
 end $$;
 grant execute on function public.resultats_sondage(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 12. Galerie photo (gérée par les administrateurs)
+--     accueil = true : photo visible de tous, sur la page d'accueil (aucune personne reconnaissable)
+--     accueil = false : photo réservée aux adhérents (onglet Galerie de l'espace membre)
+-- ---------------------------------------------------------------------
+create table if not exists public.photos (
+  id uuid primary key default gen_random_uuid(),
+  image_url text not null,
+  legende text,
+  album text,
+  accueil boolean not null default false,
+  ordre int not null default 100,
+  cree_le timestamptz not null default now()
+);
+alter table public.photos enable row level security;
+drop policy if exists photo_lecture on public.photos;
+create policy photo_lecture on public.photos for select using (accueil or est_membre() or est_admin());
+drop policy if exists photo_gestion on public.photos;
+create policy photo_gestion on public.photos for all using (est_admin()) with check (est_admin());
+grant select on public.photos to anon, authenticated;
+grant insert, update, delete on public.photos to authenticated;
+
+insert into public.photos (image_url, legende, album, accueil, ordre)
+select * from (values
+  ('https://framerusercontent.com/images/u24jE1XFwpIS1ZTudAPbwhz8.jpg', 'Jardin Majorelle', 'Voyages', true, 1),
+  ('https://framerusercontent.com/images/Hhr8UCPbAO7x1jNY8RVDG6gGq5s.jpg', 'Madère', 'Voyages', true, 2),
+  ('https://framerusercontent.com/images/iIVUFH0jRRuu4b6rtMNVIpdowu8.jpg', 'Agave', 'Collections', true, 3),
+  ('https://framerusercontent.com/images/nNFsqvAFZ62Gc4uVcCCjZdkaQ.jpg', 'Cierge', 'Collections', true, 4),
+  ('https://framerusercontent.com/images/3IFb9YLmwND3KZxWa42klDHQxF4.jpg', 'Epiphyllum', 'Collections', true, 5),
+  ('https://framerusercontent.com/images/EiFCYebHOmQ4xh2kTo7DoCMPVY.jpg', 'Cactus', 'Voyages', true, 6)
+) v(image_url, legende, album, accueil, ordre)
+where not exists (select 1 from public.photos);
+
+-- ---------------------------------------------------------------------
+-- 13. Salon de discussion des adhérents (messages en direct)
+-- ---------------------------------------------------------------------
+create table if not exists public.discussion (
+  id uuid primary key default gen_random_uuid(),
+  email text not null default mon_email(),
+  auteur text not null,
+  texte text not null check (char_length(texte) between 1 and 1000),
+  cree_le timestamptz not null default now()
+);
+create index if not exists discussion_date on public.discussion (cree_le desc);
+alter table public.discussion enable row level security;
+drop policy if exists discussion_lecture on public.discussion;
+create policy discussion_lecture on public.discussion for select using (est_membre() or est_admin());
+drop policy if exists discussion_ecriture on public.discussion;
+create policy discussion_ecriture on public.discussion for insert with check ((est_membre() or est_admin()) and email = mon_email());
+drop policy if exists discussion_suppression on public.discussion;
+create policy discussion_suppression on public.discussion for delete using (email = mon_email() or est_admin());
+grant select, insert, delete on public.discussion to authenticated;
+alter table public.discussion replica identity full;
+do $$ begin
+  alter publication supabase_realtime add table public.discussion;
+exception when duplicate_object then null; end $$;
+
+-- ---------------------------------------------------------------------
+-- 14. Billets : chaque inscription à un événement reçoit un numéro (QR code), contrôlé à l'entrée
+-- ---------------------------------------------------------------------
+alter table public.inscriptions add column if not exists billet text;
+alter table public.inscriptions add column if not exists scanne_le timestamptz;
+create unique index if not exists inscriptions_billet on public.inscriptions (billet) where billet is not null;
+
+create or replace function public.code_billet() returns text
+language plpgsql volatile as $$
+declare a text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; c text := ''; i int;
+begin
+  for i in 1..8 loop c := c || substr(a, 1 + floor(random() * 32)::int, 1); end loop;
+  return 'ACS-' || substr(c, 1, 4) || '-' || substr(c, 5, 4);
+end $$;
+
+create or replace function public.avant_inscription() returns trigger
+language plpgsql as $$
+begin
+  if new.evenement_id is not null and new.billet is null then
+    loop
+      new.billet := code_billet();
+      exit when not exists (select 1 from inscriptions where billet = new.billet);
+    end loop;
+  end if;
+  return new;
+end $$;
+drop trigger if exists inscription_billet on public.inscriptions;
+create trigger inscription_billet before insert on public.inscriptions for each row execute function public.avant_inscription();
+
+update public.inscriptions set billet = code_billet() where evenement_id is not null and billet is null;
+
+-- Contrôle à l'entrée (administrateurs) : renvoie l'état du billet, et le marque « entré » si valider = true
+create or replace function public.controler_billet(code text, valider boolean default false) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare r record; e record; n text; etat text;
+begin
+  if not est_admin() then return jsonb_build_object('etat', 'refuse'); end if;
+  select * into r from inscriptions where billet = upper(trim(code));
+  if not found then return jsonb_build_object('etat', 'inconnu'); end if;
+  select titre, date_label into e from evenements where id = r.evenement_id;
+  select nullif(trim(coalesce(prenom, '') || ' ' || coalesce(nom, '')), '') into n from adherents where lower(email) = lower(r.email) limit 1;
+  etat := case when r.statut in ('abandonne', 'rembourse') then 'annule' when r.scanne_le is not null then 'deja' else 'ok' end;
+  if valider and etat = 'ok' then update inscriptions set scanne_le = now() where id = r.id; end if;
+  return jsonb_build_object('etat', etat, 'id', r.id, 'nom', coalesce(n, r.email), 'email', r.email, 'personnes', r.nb_personnes,
+    'statut', r.statut, 'montant', r.montant, 'evenement', e.titre, 'date', e.date_label, 'billet', r.billet, 'scanne_le', r.scanne_le);
+end $$;
+revoke all on function public.controler_billet(text, boolean) from public, anon;
+grant execute on function public.controler_billet(text, boolean) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 15. Collection personnelle des adhérents (plantes, semis, rusticité, échanges)
+-- ---------------------------------------------------------------------
+create table if not exists public.plantes (
+  id uuid primary key default gen_random_uuid(),
+  email text not null default mon_email(),
+  auteur text,
+  espece text not null check (char_length(espece) between 1 and 200),
+  genre text,
+  type text,
+  statut text not null default 'collection' check (statut in ('collection', 'semis')),
+  code text,                -- n° d'inventaire personnel
+  origine text,             -- pays, localité
+  n_collecte text,          -- numéro de terrain (SB 127, L 1016…)
+  reference text,           -- référence du lot de graines
+  fournisseur text,         -- vendeur, producteur, donateur
+  semis text,               -- date ou année du semis
+  methode text,             -- sachet, terrine…
+  nb_graines int check (nb_graines >= 0),
+  nb_leves int check (nb_leves >= 0),
+  nb_vivants int check (nb_vivants >= 0),
+  acquis text,              -- date ou année d'acquisition
+  rempotage text,
+  exposition text,
+  substrat int check (substrat between 1 and 6),
+  t_min numeric(4,1),
+  arrosage text,
+  exemplaires int not null default 1 check (exemplaires >= 0),
+  notes text check (char_length(notes) <= 2000),
+  a_echanger boolean not null default false,
+  graines_a_donner boolean not null default false,
+  cree_le timestamptz not null default now(),
+  modifie_le timestamptz not null default now()
+);
+create index if not exists plantes_email on public.plantes (email);
+create index if not exists plantes_echange on public.plantes (a_echanger, graines_a_donner) where a_echanger or graines_a_donner;
+alter table public.plantes enable row level security;
+drop policy if exists plante_lecture on public.plantes;
+create policy plante_lecture on public.plantes for select using (email = mon_email() or est_admin());
+drop policy if exists plante_ajout on public.plantes;
+create policy plante_ajout on public.plantes for insert with check (email = mon_email() and (est_membre() or est_admin()));
+drop policy if exists plante_modif on public.plantes;
+create policy plante_modif on public.plantes for update using (email = mon_email()) with check (email = mon_email());
+drop policy if exists plante_suppression on public.plantes;
+create policy plante_suppression on public.plantes for delete using (email = mon_email());
+grant select, insert, update, delete on public.plantes to authenticated;
+
+create or replace function public.plante_maj() returns trigger language plpgsql as $$
+begin new.modifie_le := now(); return new; end $$;
+drop trigger if exists plante_maj on public.plantes;
+create trigger plante_maj before update on public.plantes for each row execute function public.plante_maj();
+
+-- Bourse d'échange : les plantes proposées par les autres adhérents.
+-- L'adresse e-mail n'est donnée que si l'adhérent apparaît dans l'annuaire.
+create or replace function public.echanges() returns table (
+  id uuid, espece text, type text, statut text, origine text, n_collecte text, exemplaires int,
+  a_echanger boolean, graines_a_donner boolean, auteur text, contact text, modifie_le timestamptz)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.espece, p.type, p.statut, p.origine, p.n_collecte, p.exemplaires, p.a_echanger, p.graines_a_donner,
+         coalesce(nullif(trim(concat_ws(' ', a.prenom, left(a.nom, 1) || '.')), '.'), p.auteur),
+         case when a.annuaire then a.email end, p.modifie_le
+  from plantes p join adherents a on a.email = p.email and a.actif
+  where (p.a_echanger or p.graines_a_donner) and (est_membre() or est_admin())
+  order by p.modifie_le desc
+  limit 500
+$$;
+revoke all on function public.echanges() from public, anon;
+grant execute on function public.echanges() to authenticated;
+
+-- =====================================================================================
+-- 16. Salon : demandes d'emplacement des exposants (formulaire public) et réglages
+-- =====================================================================================
+create table if not exists public.salon_reglages (
+    edition int primary key,
+    ouvert boolean not null default true,
+    date_limite date,
+    tarif_pro numeric(8,2),          -- contribution indicative par mètre linéaire
+    tarif_amateur numeric(8,2),
+    message text,                    -- texte affiché au-dessus du formulaire
+    maj_le timestamptz not null default now()
+);
+alter table public.salon_reglages enable row level security;
+drop policy if exists salon_reglages_lecture on public.salon_reglages;
+create policy salon_reglages_lecture on public.salon_reglages for select using (true);
+drop policy if exists salon_reglages_gestion on public.salon_reglages;
+create policy salon_reglages_gestion on public.salon_reglages for all using (est_admin()) with check (est_admin());
+insert into public.salon_reglages (edition, ouvert) values (2027, true) on conflict (edition) do nothing;
+
+create table if not exists public.demandes_salon (
+    id uuid primary key default gen_random_uuid(),
+    cree_le timestamptz not null default now(),
+    edition int not null,
+    source text not null default 'en ligne' check (source in ('en ligne', 'papier')),
+    profil text not null check (profil in ('Amateur', 'Professionnel')),
+    nom text not null check (char_length(nom) between 2 and 120),
+    contact text check (char_length(contact) <= 120),
+    email text not null check (char_length(email) <= 160 and email like '%@%'),
+    telephone text check (char_length(telephone) <= 40),
+    ville text check (char_length(ville) <= 120),
+    departement text check (char_length(departement) <= 3),
+    siret text check (char_length(siret) <= 20),
+    categorie text not null check (char_length(categorie) between 2 and 60),
+    zone_1 text not null check (zone_1 in ('Petite salle', 'Entre les salles', 'Grande salle', 'Terrain de sport')),
+    zone_2 text check (zone_2 in ('Petite salle', 'Entre les salles', 'Grande salle', 'Terrain de sport')),
+    metres numeric(5,1) not null check (metres > 0 and metres <= 40),
+    commentaire text check (char_length(commentaire) <= 1500),
+    -- réservé au bureau
+    statut text not null default 'nouvelle' check (statut in ('nouvelle', 'acceptee', 'attente', 'refusee', 'annulee')),
+    zone_attribuee text check (zone_attribuee in ('Petite salle', 'Entre les salles', 'Grande salle', 'Terrain de sport')),
+    metres_attribues numeric(5,1),
+    stand text check (char_length(stand) <= 10),
+    contribution numeric(8,2),
+    paye boolean not null default false,
+    note text check (char_length(note) <= 1500),
+    maj_le timestamptz not null default now()
+);
+create index if not exists demandes_salon_edition on public.demandes_salon (edition, cree_le);
+alter table public.demandes_salon enable row level security;
+-- n'importe qui peut déposer une demande, sans toucher aux champs du bureau ; seuls les admins lisent et gèrent
+drop policy if exists demande_depot on public.demandes_salon;
+create policy demande_depot on public.demandes_salon for insert to anon, authenticated
+    with check (statut = 'nouvelle' and source = 'en ligne' and zone_attribuee is null and metres_attribues is null and stand is null and contribution is null and paye = false and note is null
+                and edition in (select edition from public.salon_reglages where ouvert));
+drop policy if exists demande_gestion on public.demandes_salon;
+create policy demande_gestion on public.demandes_salon for all using (est_admin()) with check (est_admin());
+grant insert on public.demandes_salon to anon, authenticated;
+grant select, update, delete on public.demandes_salon to authenticated;
+grant select on public.salon_reglages to anon, authenticated;
+grant insert, update, delete on public.salon_reglages to authenticated;
+drop trigger if exists demandes_salon_maj on public.demandes_salon;
+create or replace function public.demande_salon_maj() returns trigger language plpgsql as $$ begin new.maj_le := now(); return new; end $$;
+create trigger demandes_salon_maj before update on public.demandes_salon for each row execute function public.demande_salon_maj();
+
+-- ---------------------------------------------------------------------
+-- 17. Campagnes d'adhésion : une ligne par année, affichée sur la page Adhésion
+--     à partir de la date « ouverture » (1er décembre de l'année précédente par défaut)
+-- ---------------------------------------------------------------------
+create table if not exists public.campagnes_adhesion (
+  id         uuid primary key default gen_random_uuid(),
+  annee      int  not null unique check (annee between 2020 and 2100),
+  ouverture  date not null,
+  tarif      int  not null default 20 check (tarif between 0 and 1000),
+  lien       text check (lien is null or lien ~ '^https://'),
+  message    text check (message is null or length(message) <= 500),
+  maj_le     timestamptz not null default now()
+);
+alter table public.campagnes_adhesion enable row level security;
+drop policy if exists campagne_adh_lecture on public.campagnes_adhesion;
+create policy campagne_adh_lecture on public.campagnes_adhesion for select using (true);
+drop policy if exists campagne_adh_admin on public.campagnes_adhesion;
+create policy campagne_adh_admin on public.campagnes_adhesion for all using (est_admin()) with check (est_admin());
+grant select on public.campagnes_adhesion to anon, authenticated;
+grant insert, update, delete on public.campagnes_adhesion to authenticated;
+insert into public.campagnes_adhesion (annee, ouverture, tarif, lien) values
+  (2026, '2025-12-01', 20, 'https://www.armorique-cactus-succulentes.com/collect/choice/649064-n-campagne-d-adhesion-2026'),
+  (2027, '2026-12-01', 20, null)
+on conflict (annee) do nothing;
+
+-- ---------------------------------------------------------------------
+-- 18. Salon : liste publique des exposants acceptés et dépliant en PDF
+-- ---------------------------------------------------------------------
+alter table public.salon_reglages add column if not exists liste_publiee boolean not null default false;
+alter table public.salon_reglages add column if not exists depliant_url text check (depliant_url is null or depliant_url ~ '^https://');
+alter table public.salon_reglages add column if not exists depliant_publie boolean not null default false;
+
+-- Exposants acceptés de la dernière édition dont la liste est publiée.
+-- Seuls les champs du dépliant sortent : jamais d'e-mail, de téléphone ni de SIRET.
+-- Les amateurs sont nommés par leur prénom et l'initiale du nom, comme dans le dépliant.
+create or replace function public.exposants_salon() returns table (
+  edition int, stand text, zone text, nom text, dep text, categorie text, profil text)
+language sql stable security definer set search_path = public as $$
+  with r as (select s.edition from salon_reglages s where s.liste_publiee order by s.edition desc limit 1)
+  select d.edition, d.stand, d.zone_attribuee,
+         case when d.profil = 'Amateur' then regexp_replace(trim(d.nom), '^(\S+)\s+(\S).*$', '\1 \2.') else trim(d.nom) end,
+         d.departement, d.categorie, d.profil
+  from demandes_salon d join r on r.edition = d.edition
+  where d.statut = 'acceptee' and d.zone_attribuee is not null
+  order by d.zone_attribuee, nullif(regexp_replace(coalesce(d.stand, ''), '\D', '', 'g'), '')::int nulls last, d.nom
+$$;
+revoke all on function public.exposants_salon() from public;
+grant execute on function public.exposants_salon() to anon, authenticated;
+
+-- 19. Boutique : formats ou tailles d'un article (un par ligne : nom ; prix)
+alter table public.produits add column if not exists variantes text;
+
+-- 20. Galerie : petite version (800 px) de chaque photo pour les vignettes
+alter table public.photos add column if not exists vignette_url text;
+
+-- 21. Rappels de l'administration : bandeau en haut de l'admin, visible tant que ce n'est pas fait
+create table if not exists public.rappels_admin (
+  id           uuid primary key default gen_random_uuid(),
+  titre        text not null check (length(titre) <= 200),
+  details      text check (details is null or length(details) <= 2000),
+  echeance     date,
+  a_partir_du  date not null,
+  chaque_annee boolean not null default false,
+  fait         boolean not null default false,
+  fait_le      timestamptz,
+  cree_le      timestamptz not null default now()
+);
+alter table public.rappels_admin enable row level security;
+drop policy if exists rappels_admin_gestion on public.rappels_admin;
+create policy rappels_admin_gestion on public.rappels_admin for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.rappels_admin to authenticated;
+insert into public.rappels_admin (titre, details, echeance, a_partir_du, chaque_annee)
+select 'Renouveler la remise association de Framer (formule Basic)',
+       'L''année gratuite de la formule Basic se termine le 22 novembre 2027. Répondre au fil d''e-mail avec Sam (support@framer.com) pour redemander une année gratuite, avec le justificatif de l''association (loi 1901). En attendant leur réponse, couper le renouvellement automatique dans Framer › Settings › Plans pour ne pas être prélevé.',
+       '2027-11-22', '2027-10-22', true
+where not exists (select 1 from public.rappels_admin where titre like 'Renouveler la remise association de Framer%');
+
+-- =====================================================================================
+-- 22. Salon : dates, planning des bénévoles (postes, créneaux, inscriptions) et rétroplanning
+-- =====================================================================================
+alter table public.salon_reglages add column if not exists date_debut date;
+alter table public.salon_reglages add column if not exists date_fin date;
+alter table public.salon_reglages add column if not exists planning_ouvert boolean not null default true;
+update public.salon_reglages set date_debut = '2027-06-12', date_fin = '2027-06-13' where edition = 2027 and date_debut is null;
+
+create or replace function public.mon_adherent_id() returns uuid
+language sql stable security definer set search_path = public as $$
+  select id from adherents where email = mon_email() and actif limit 1
+$$;
+grant execute on function public.mon_adherent_id() to authenticated;
+
+-- Liste des postes, gardée d'une année sur l'autre
+create table if not exists public.salon_postes (
+  id          uuid primary key default gen_random_uuid(),
+  nom         text not null check (length(nom) between 2 and 80),
+  description text check (description is null or length(description) <= 500),
+  ordre       int not null default 0,
+  actif       boolean not null default true
+);
+-- Créneaux d'une édition : un poste, un jour, une plage horaire, un nombre de places
+create table if not exists public.salon_creneaux (
+  id       uuid primary key default gen_random_uuid(),
+  edition  int not null,
+  poste_id uuid not null references public.salon_postes(id) on delete cascade,
+  jour     date not null,
+  debut    time not null,
+  fin      time not null,
+  places   int not null default 2 check (places between 1 and 50),
+  note     text check (note is null or length(note) <= 300),
+  cree_le  timestamptz not null default now()
+);
+create index if not exists salon_creneaux_edition on public.salon_creneaux (edition, jour, debut);
+-- Inscriptions : un adhérent, ou le conjoint enregistré dans sa fiche (conjoint = true)
+create table if not exists public.salon_benevoles (
+  id          uuid primary key default gen_random_uuid(),
+  creneau_id  uuid not null references public.salon_creneaux(id) on delete cascade,
+  adherent_id uuid not null references public.adherents(id) on delete cascade,
+  conjoint    boolean not null default false,
+  cree_le     timestamptz not null default now(),
+  unique (creneau_id, adherent_id, conjoint)
+);
+alter table public.salon_postes enable row level security;
+alter table public.salon_creneaux enable row level security;
+alter table public.salon_benevoles enable row level security;
+drop policy if exists salon_postes_lecture on public.salon_postes;
+create policy salon_postes_lecture on public.salon_postes for select using (est_membre());
+drop policy if exists salon_postes_gestion on public.salon_postes;
+create policy salon_postes_gestion on public.salon_postes for all using (est_admin()) with check (est_admin());
+drop policy if exists salon_creneaux_lecture on public.salon_creneaux;
+create policy salon_creneaux_lecture on public.salon_creneaux for select using (est_membre());
+drop policy if exists salon_creneaux_gestion on public.salon_creneaux;
+create policy salon_creneaux_gestion on public.salon_creneaux for all using (est_admin()) with check (est_admin());
+drop policy if exists salon_benevoles_lecture on public.salon_benevoles;
+create policy salon_benevoles_lecture on public.salon_benevoles for select using (est_membre());
+-- un adhérent s'inscrit lui-même ou inscrit son conjoint (s'il est renseigné dans sa fiche) ; un admin inscrit qui il veut
+drop policy if exists salon_benevoles_ajout on public.salon_benevoles;
+create policy salon_benevoles_ajout on public.salon_benevoles for insert with check (
+  est_admin() or (adherent_id = mon_adherent_id()
+    and (not conjoint or exists (select 1 from adherents a where a.id = adherent_id and coalesce(trim(a.conjoint), '') <> ''))
+    and exists (select 1 from salon_creneaux c join salon_reglages r on r.edition = c.edition where c.id = creneau_id and r.planning_ouvert)));
+drop policy if exists salon_benevoles_retrait on public.salon_benevoles;
+create policy salon_benevoles_retrait on public.salon_benevoles for delete using (est_admin() or adherent_id = mon_adherent_id());
+grant select on public.salon_postes, public.salon_creneaux, public.salon_benevoles to authenticated;
+grant insert, update, delete on public.salon_postes, public.salon_creneaux to authenticated;
+grant insert, delete on public.salon_benevoles to authenticated;
+
+-- créneau complet : refusé
+create or replace function public.salon_benevole_places() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform 1 from salon_creneaux where id = new.creneau_id for update;
+  if (select count(*) from salon_benevoles where creneau_id = new.creneau_id) >= (select places from salon_creneaux where id = new.creneau_id) then
+    raise exception 'Ce créneau est complet.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists salon_benevoles_places on public.salon_benevoles;
+create trigger salon_benevoles_places before insert on public.salon_benevoles for each row execute function public.salon_benevole_places();
+
+-- noms des inscrits, visibles des adhérents (prénom nom, ou nom du conjoint)
+create or replace function public.planning_salon(ed int)
+returns table (id uuid, creneau_id uuid, adherent_id uuid, conjoint boolean, nom text)
+language sql stable security definer set search_path = public as $$
+  select b.id, b.creneau_id, b.adherent_id, b.conjoint,
+         case when b.conjoint then trim(a.conjoint) else trim(coalesce(a.prenom, '') || ' ' || coalesce(a.nom, '')) end
+  from salon_benevoles b
+  join salon_creneaux c on c.id = b.creneau_id
+  join adherents a on a.id = b.adherent_id
+  where c.edition = ed and est_membre()
+  order by b.cree_le
+$$;
+revoke all on function public.planning_salon(int) from public, anon;
+grant execute on function public.planning_salon(int) to authenticated;
+
+-- Postes de départ (modifiables dans l'admin)
+insert into public.salon_postes (nom, ordre)
+select v.nom, v.ordre from (values
+  ('Montage', 10), ('Implantation', 20), ('Manutention', 30), ('Accueil et caisse d''entrée', 40),
+  ('Stand boutique ACS', 50), ('Buvette', 60), ('Distribution des repas', 70),
+  ('Tombola : présentation et distribution', 80), ('Démontage', 90)) as v(nom, ordre)
+where not exists (select 1 from public.salon_postes);
+
+-- Rétroplanning de préparation (bureau) : chaque tâche est fixée « X semaines avant le salon »
+create table if not exists public.salon_taches (
+  id            uuid primary key default gen_random_uuid(),
+  edition       int not null,
+  titre         text not null check (length(titre) between 2 and 200),
+  details       text check (details is null or length(details) <= 1000),
+  semaines_avant int not null default 4 check (semaines_avant between -12 and 104),
+  responsable   text check (responsable is null or length(responsable) <= 80),
+  cle           boolean not null default false,
+  fait          boolean not null default false,
+  fait_le       timestamptz,
+  cree_le       timestamptz not null default now()
+);
+alter table public.salon_taches enable row level security;
+drop policy if exists salon_taches_gestion on public.salon_taches;
+create policy salon_taches_gestion on public.salon_taches for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.salon_taches to authenticated;
+
+-- Liste de départ pour 2027 (à adapter dans l'admin)
+insert into public.salon_taches (edition, titre, semaines_avant, cle)
+select 2027, v.titre, v.sem, v.cle from (values
+  ('Confirmer la réservation de la salle avec la mairie', 36, true),
+  ('Ouvrir les demandes des exposants sur le site', 26, true),
+  ('Demander l''autorisation de buvette', 20, true),
+  ('Vérifier l''assurance de l''association pour le salon', 16, false),
+  ('Rassembler les lots de la tombola', 12, false),
+  ('Relancer les exposants des années précédentes', 12, false),
+  ('Préparer l''affiche et les flyers', 10, false),
+  ('Ouvrir le planning des bénévoles aux adhérents', 8, true),
+  ('Faire le plan d''implantation des stands', 6, true),
+  ('Diffuser l''annonce (presse, réseaux, affichage)', 5, false),
+  ('Clore les demandes et confirmer les emplacements', 4, true),
+  ('Publier la liste des exposants et le dépliant', 3, false),
+  ('Commander les repas et faire les courses de la buvette', 2, false),
+  ('Imprimer le planning des bénévoles, préparer la caisse', 1, true),
+  ('Bilan, remerciements et comptes du salon', -2, false)) as v(titre, sem, cle)
+where not exists (select 1 from public.salon_taches where edition = 2027);

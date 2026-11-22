@@ -6,6 +6,7 @@ import { demoClient } from "./AcsDemo.tsx"
 import { COTE, pt } from "./CarteBretagne.tsx"
 import { GALERIE, type Photo } from "./GalerieAccueil.tsx"
 import Collection from "./Collection.tsx"
+import { BenevolatSalon } from "./PlanningSalon.tsx"
 
 // En mode démo (aperçu dans l’éditeur), toutes les fonctions utilisent un faux client en mémoire
 let clientDemo: any = null
@@ -154,7 +155,7 @@ function Connexion({ email, setEmail }: { email: string; setEmail: (s: string) =
 }
 
 // ---------- Tableau de bord ----------
-const ONGLETS = ["accueil", "profil", "evenements", "collection", "sondages", "discussion", "galerie", "annuaire"] as const
+const ONGLETS = ["accueil", "profil", "evenements", "salon", "collection", "sondages", "discussion", "galerie", "annuaire"] as const
 type O = typeof ONGLETS[number]
 const lireHash = (): O => { const h = (typeof window !== "undefined" ? window.location.hash.slice(1) : "") as O; return ONGLETS.includes(h) ? h : "accueil" }
 
@@ -173,7 +174,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
         client.from("discussion").select("id", { count: "exact", head: true }).gt("cree_le", vu).neq("email", moi.email.toLowerCase())
             .then(({ count, error }: any) => setNonLus(error ? 0 : count || 0))
     }, [onglet])
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["collection", "Collection"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["galerie", "Galerie"], ["annuaire", "Annuaire"]]
+    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["evenements", "Événements"], ["salon", "Bénévolat salon"], ["collection", "Collection"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["galerie", "Galerie"], ["annuaire", "Annuaire"]]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -194,6 +195,7 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
             {onglet === "accueil" && <VueEnsemble moi={moi} aller={setOnglet} />}
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
             {onglet === "evenements" && <Evenements />}
+            {onglet === "salon" && <BenevolatSalon client={client} moi={moi} />}
             {onglet === "sondages" && <Sondages moi={moi} />}
             {onglet === "discussion" && <Discussion moi={moi} />}
             {onglet === "galerie" && <GalerieMembres />}

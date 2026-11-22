@@ -829,3 +829,146 @@ select 'Renouveler la remise association de Framer (formule Basic)',
        'L''année gratuite de la formule Basic se termine le 22 novembre 2027. Répondre au fil d''e-mail avec Sam (support@framer.com) pour redemander une année gratuite, avec le justificatif de l''association (loi 1901). En attendant leur réponse, couper le renouvellement automatique dans Framer › Settings › Plans pour ne pas être prélevé.',
        '2027-11-22', '2027-10-22', true
 where not exists (select 1 from public.rappels_admin where titre like 'Renouveler la remise association de Framer%');
+
+-- =====================================================================================
+-- 22. Salon : dates, planning des bénévoles (postes, créneaux, inscriptions) et rétroplanning
+-- =====================================================================================
+alter table public.salon_reglages add column if not exists date_debut date;
+alter table public.salon_reglages add column if not exists date_fin date;
+alter table public.salon_reglages add column if not exists planning_ouvert boolean not null default true;
+update public.salon_reglages set date_debut = '2027-06-12', date_fin = '2027-06-13' where edition = 2027 and date_debut is null;
+
+create or replace function public.mon_adherent_id() returns uuid
+language sql stable security definer set search_path = public as $$
+  select id from adherents where email = mon_email() and actif limit 1
+$$;
+grant execute on function public.mon_adherent_id() to authenticated;
+
+-- Liste des postes, gardée d'une année sur l'autre
+create table if not exists public.salon_postes (
+  id          uuid primary key default gen_random_uuid(),
+  nom         text not null check (length(nom) between 2 and 80),
+  description text check (description is null or length(description) <= 500),
+  ordre       int not null default 0,
+  actif       boolean not null default true
+);
+-- Créneaux d'une édition : un poste, un jour, une plage horaire, un nombre de places
+create table if not exists public.salon_creneaux (
+  id       uuid primary key default gen_random_uuid(),
+  edition  int not null,
+  poste_id uuid not null references public.salon_postes(id) on delete cascade,
+  jour     date not null,
+  debut    time not null,
+  fin      time not null,
+  places   int not null default 2 check (places between 1 and 50),
+  note     text check (note is null or length(note) <= 300),
+  cree_le  timestamptz not null default now()
+);
+create index if not exists salon_creneaux_edition on public.salon_creneaux (edition, jour, debut);
+-- Inscriptions : un adhérent, ou le conjoint enregistré dans sa fiche (conjoint = true)
+create table if not exists public.salon_benevoles (
+  id          uuid primary key default gen_random_uuid(),
+  creneau_id  uuid not null references public.salon_creneaux(id) on delete cascade,
+  adherent_id uuid not null references public.adherents(id) on delete cascade,
+  conjoint    boolean not null default false,
+  cree_le     timestamptz not null default now(),
+  unique (creneau_id, adherent_id, conjoint)
+);
+alter table public.salon_postes enable row level security;
+alter table public.salon_creneaux enable row level security;
+alter table public.salon_benevoles enable row level security;
+drop policy if exists salon_postes_lecture on public.salon_postes;
+create policy salon_postes_lecture on public.salon_postes for select using (est_membre());
+drop policy if exists salon_postes_gestion on public.salon_postes;
+create policy salon_postes_gestion on public.salon_postes for all using (est_admin()) with check (est_admin());
+drop policy if exists salon_creneaux_lecture on public.salon_creneaux;
+create policy salon_creneaux_lecture on public.salon_creneaux for select using (est_membre());
+drop policy if exists salon_creneaux_gestion on public.salon_creneaux;
+create policy salon_creneaux_gestion on public.salon_creneaux for all using (est_admin()) with check (est_admin());
+drop policy if exists salon_benevoles_lecture on public.salon_benevoles;
+create policy salon_benevoles_lecture on public.salon_benevoles for select using (est_membre());
+-- un adhérent s'inscrit lui-même ou inscrit son conjoint (s'il est renseigné dans sa fiche) ; un admin inscrit qui il veut
+drop policy if exists salon_benevoles_ajout on public.salon_benevoles;
+create policy salon_benevoles_ajout on public.salon_benevoles for insert with check (
+  est_admin() or (adherent_id = mon_adherent_id()
+    and (not conjoint or exists (select 1 from adherents a where a.id = adherent_id and coalesce(trim(a.conjoint), '') <> ''))
+    and exists (select 1 from salon_creneaux c join salon_reglages r on r.edition = c.edition where c.id = creneau_id and r.planning_ouvert)));
+drop policy if exists salon_benevoles_retrait on public.salon_benevoles;
+create policy salon_benevoles_retrait on public.salon_benevoles for delete using (est_admin() or adherent_id = mon_adherent_id());
+grant select on public.salon_postes, public.salon_creneaux, public.salon_benevoles to authenticated;
+grant insert, update, delete on public.salon_postes, public.salon_creneaux to authenticated;
+grant insert, delete on public.salon_benevoles to authenticated;
+
+-- créneau complet : refusé
+create or replace function public.salon_benevole_places() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  perform 1 from salon_creneaux where id = new.creneau_id for update;
+  if (select count(*) from salon_benevoles where creneau_id = new.creneau_id) >= (select places from salon_creneaux where id = new.creneau_id) then
+    raise exception 'Ce créneau est complet.';
+  end if;
+  return new;
+end $$;
+drop trigger if exists salon_benevoles_places on public.salon_benevoles;
+create trigger salon_benevoles_places before insert on public.salon_benevoles for each row execute function public.salon_benevole_places();
+
+-- noms des inscrits, visibles des adhérents (prénom nom, ou nom du conjoint)
+create or replace function public.planning_salon(ed int)
+returns table (id uuid, creneau_id uuid, adherent_id uuid, conjoint boolean, nom text)
+language sql stable security definer set search_path = public as $$
+  select b.id, b.creneau_id, b.adherent_id, b.conjoint,
+         case when b.conjoint then trim(a.conjoint) else trim(coalesce(a.prenom, '') || ' ' || coalesce(a.nom, '')) end
+  from salon_benevoles b
+  join salon_creneaux c on c.id = b.creneau_id
+  join adherents a on a.id = b.adherent_id
+  where c.edition = ed and est_membre()
+  order by b.cree_le
+$$;
+revoke all on function public.planning_salon(int) from public, anon;
+grant execute on function public.planning_salon(int) to authenticated;
+
+-- Postes de départ (modifiables dans l'admin)
+insert into public.salon_postes (nom, ordre)
+select v.nom, v.ordre from (values
+  ('Montage', 10), ('Implantation', 20), ('Manutention', 30), ('Accueil et caisse d''entrée', 40),
+  ('Stand boutique ACS', 50), ('Buvette', 60), ('Distribution des repas', 70),
+  ('Tombola : présentation et distribution', 80), ('Démontage', 90)) as v(nom, ordre)
+where not exists (select 1 from public.salon_postes);
+
+-- Rétroplanning de préparation (bureau) : chaque tâche est fixée « X semaines avant le salon »
+create table if not exists public.salon_taches (
+  id            uuid primary key default gen_random_uuid(),
+  edition       int not null,
+  titre         text not null check (length(titre) between 2 and 200),
+  details       text check (details is null or length(details) <= 1000),
+  semaines_avant int not null default 4 check (semaines_avant between -12 and 104),
+  responsable   text check (responsable is null or length(responsable) <= 80),
+  cle           boolean not null default false,
+  fait          boolean not null default false,
+  fait_le       timestamptz,
+  cree_le       timestamptz not null default now()
+);
+alter table public.salon_taches enable row level security;
+drop policy if exists salon_taches_gestion on public.salon_taches;
+create policy salon_taches_gestion on public.salon_taches for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.salon_taches to authenticated;
+
+-- Liste de départ pour 2027 (à adapter dans l'admin)
+insert into public.salon_taches (edition, titre, semaines_avant, cle)
+select 2027, v.titre, v.sem, v.cle from (values
+  ('Confirmer la réservation de la salle avec la mairie', 36, true),
+  ('Ouvrir les demandes des exposants sur le site', 26, true),
+  ('Demander l''autorisation de buvette', 20, true),
+  ('Vérifier l''assurance de l''association pour le salon', 16, false),
+  ('Rassembler les lots de la tombola', 12, false),
+  ('Relancer les exposants des années précédentes', 12, false),
+  ('Préparer l''affiche et les flyers', 10, false),
+  ('Ouvrir le planning des bénévoles aux adhérents', 8, true),
+  ('Faire le plan d''implantation des stands', 6, true),
+  ('Diffuser l''annonce (presse, réseaux, affichage)', 5, false),
+  ('Clore les demandes et confirmer les emplacements', 4, true),
+  ('Publier la liste des exposants et le dépliant', 3, false),
+  ('Commander les repas et faire les courses de la buvette', 2, false),
+  ('Imprimer le planning des bénévoles, préparer la caisse', 1, true),
+  ('Bilan, remerciements et comptes du salon', -2, false)) as v(titre, sem, cle)
+where not exists (select 1 from public.salon_taches where edition = 2027);
