@@ -99,7 +99,7 @@ export default function GalerieAccueil(props: { nombre?: number; lien?: string }
     })
     return (
         <div style={{ width: "100%" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 200px), 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 16 }}>
                 {tuiles.map((t) => <Vignette key={t.cat} p={{ ...t.liste[0], legende: t.cat }} hauteur={210} onClick={() => setOuverte({ liste: t.liste.map((p) => ({ ...p, album: t.cat })), i: 0 })} />)}
             </div>
             {lien && (
