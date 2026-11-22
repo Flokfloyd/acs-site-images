@@ -505,6 +505,8 @@ function Synthese({ plantes, genres, etroit }: { plantes: Plante[]; genres: Genr
 }
 
 const SEUIL_SYNTHESE = 10
+// une ligne sur deux légèrement éclaircie (opaque, pour la colonne Espèce figée)
+const ZEBRE = "#2c231d"
 const COLS_CACHEES: Record<string, string[]> = { collection: ["rempotage", "fournisseur", "exemplaires"], semis: ["origine", "code"], rusticite: [] }
 
 // ---------- menu déroulant (Importer, Exporter, Colonnes) ----------
@@ -584,7 +586,7 @@ function Tableau({ l, cols, tri, setTri, onOuvrir, basculer, vue }: { l: Plante[
     const fixe = (k: string, entete = false): React.CSSProperties => (k === "espece" ? { position: "sticky", left: 0, zIndex: entete ? 3 : 1, background: C.panel, boxShadow: `1px 0 0 ${C.line}` } : {})
     return (
         <div style={{ overflow: "auto", maxHeight: "min(72vh, 760px)", border: `1px solid ${C.line}` }}>
-            <style>{`.acs-ligne:hover td{background:${C.panel2}!important}`}</style>
+            <style>{`.acs-paire td{background:${ZEBRE}!important}.acs-ligne:hover td{background:${C.panel2}!important}`}</style>
             <table style={{ borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed", width: Math.max(largeur, 0), minWidth: "100%" }}>
                 <colgroup>{cols.map((c) => <col key={c.k} style={{ width: c.w || 100 }} />)}{cases && <><col style={{ width: 88 }} /><col style={{ width: 88 }} /></>}</colgroup>
                 <thead><tr>
@@ -592,8 +594,8 @@ function Tableau({ l, cols, tri, setTri, onOuvrir, basculer, vue }: { l: Plante[
                     {cases && <><th title="Proposer la plante à l’échange" style={{ ...th, cursor: "default", textAlign: "center", whiteSpace: "normal" }}>Échange</th><th title="Proposer des graines" style={{ ...th, cursor: "default", textAlign: "center", whiteSpace: "normal" }}>Graines</th></>}
                 </tr></thead>
                 <tbody>
-                    {l.map((p) => (
-                        <tr key={p.id} onClick={() => onOuvrir(p)} style={{ cursor: "pointer" }} className="acs-ligne">
+                    {l.map((p, i) => (
+                        <tr key={p.id} onClick={() => onOuvrir(p)} style={{ cursor: "pointer" }} className={i % 2 ? "acs-ligne acs-paire" : "acs-ligne"}>
                             {cols.map((c) => <td key={c.k} style={{ ...td, ...fixe(c.k), whiteSpace: c.k === "espece" || c.k === "origine" ? "normal" : "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: c.k === "espece" ? C.txt : "rgba(246,240,230,0.86)" }}>{c.v(p)}</td>)}
                             {cases && <>
                                 <td style={{ ...td, textAlign: "center" }} onClick={(e) => e.stopPropagation()}><input type="checkbox" style={coche} checked={!!p.a_echanger} onChange={() => basculer(p, "a_echanger")} aria-label="À échanger" /></td>
@@ -619,7 +621,7 @@ function Cartes({ l, vue, onOuvrir }: { l: Plante[]; vue: Vue; onOuvrir: (p: Pla
                         : [p.code, p.origine, p.n_collecte]
                 const droite = vue === "semis" ? (taux(p) != null ? `${taux(p)} %` : "") : p.t_min != null ? `${p.t_min} °C` : ""
                 return (
-                    <button key={p.id} onClick={() => onOuvrir(p)} style={{ display: "flex", gap: 10, alignItems: "center", width: "100%", textAlign: "left", background: "none", border: "none", borderTop: i ? `1px solid ${C.line}` : "none", color: C.txt, padding: "10px 12px", font: "inherit", cursor: "pointer" }}>
+                    <button key={p.id} onClick={() => onOuvrir(p)} style={{ display: "flex", gap: 10, alignItems: "center", width: "100%", textAlign: "left", background: i % 2 ? ZEBRE : "none", border: "none", borderTop: i ? `1px solid ${C.line}` : "none", color: C.txt, padding: "10px 12px", font: "inherit", cursor: "pointer" }}>
                         <span style={{ flex: 1, minWidth: 0 }}>
                             <span style={{ display: "block", fontSize: 15, lineHeight: 1.3 }}><NomEspece p={p} /></span>
                             <span style={{ display: "flex", flexWrap: "wrap", gap: "2px 8px", alignItems: "center", fontSize: 12.5, color: C.mute, marginTop: 2 }}>
@@ -860,8 +862,8 @@ function PanneauVerif({ plantes, genres, client, email, onFermer }: { plantes: P
                 <div style={{ marginTop: 12, border: `1px solid ${C.line}`, maxHeight: 460, overflow: "auto" }}>
                     <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 860 }}>
                         <thead><tr>{["", "Nom actuel", "Constat", "Proposition", "Explication"].map((t) => <th key={t} style={{ ...th, cursor: "default" }}>{t}</th>)}</tr></thead>
-                        <tbody>{vis.map((v) => (
-                            <tr key={v.nom}>
+                        <tbody>{vis.map((v, i) => (
+                            <tr key={v.nom} style={{ background: i % 2 ? ZEBRE : undefined }}>
                                 <td style={td}><input type="checkbox" style={coche} disabled={!proposition(v).trim()} checked={sel.has(v.nom)} onChange={() => setCoches(() => { const x = new Set(sel); x.has(v.nom) ? x.delete(v.nom) : x.add(v.nom); return x })} /></td>
                                 <td style={{ ...td, whiteSpace: "normal", minWidth: 200 }}><NomEspece p={{ espece: v.nom }} />{v.n > 1 && <span style={{ color: C.mute, fontSize: 12 }}> ×{v.n}</span>}</td>
                                 <td style={{ ...td, color: COUL[v.statut], fontWeight: 600, fontSize: 13 }}>{v.libelle}</td>
@@ -933,7 +935,7 @@ function PanneauCommande({ plantes, genres, client, email, auteur, onFermer }: {
                             <tbody>{res.articles.map((a, i) => {
                                 const pris = !exclus.has(i), n = pris ? prochain + res.articles.slice(0, i).filter((_, j) => !exclus.has(j)).length : null
                                 return (
-                                    <tr key={i} style={{ opacity: pris ? 1 : 0.45 }}>
+                                    <tr key={i} style={{ opacity: pris ? 1 : 0.45, background: i % 2 ? ZEBRE : undefined }}>
                                         <td style={td}><input type="checkbox" style={coche} checked={pris} onChange={() => setExclus((x) => { const s = new Set(x); s.has(i) ? s.delete(i) : s.add(i); return s })} /></td>
                                         <td style={td}>{n ?? ""}</td>
                                         <td style={{ ...td, whiteSpace: "normal" }}><NomEspece p={{ espece: a.nom }} /></td>
@@ -1067,7 +1069,7 @@ function ApercuImport({ imp, onAnnuler, onValider }: { imp: { lignes: Plante[]; 
                     <table style={{ borderCollapse: "collapse", width: "100%" }}>
                         <thead><tr>{["Espèce", "Liste", "Type", "Origine", "T min", "Semis", "Acquis", "Levées"].map((t) => <th key={t} style={{ ...th, cursor: "default" }}>{t}</th>)}</tr></thead>
                         <tbody>{imp.lignes.slice(0, 50).map((p, i) => (
-                            <tr key={i}>
+                            <tr key={i} style={{ background: i % 2 ? ZEBRE : undefined }}>
                                 <td style={{ ...td, whiteSpace: "normal" }}><NomEspece p={p} /></td><td style={td}>{p.statut === "semis" ? "Semis" : "Collection"}</td><td style={td}>{p.type}</td><td style={td}>{p.origine}</td>
                                 <td style={td}>{p.t_min != null ? `${p.t_min} °C` : ""}</td><td style={td}>{p.semis}</td><td style={td}>{p.acquis}</td><td style={td}>{p.nb_graines ? `${p.nb_leves ?? 0}/${p.nb_graines}` : ""}</td>
                             </tr>))}</tbody>
@@ -1486,9 +1488,9 @@ h3 { font: 600 10pt Georgia, serif; margin: 8pt 0 3pt } h2.seul { font-size: 0; 
 .liste + .liste { break-before: page; page-break-before: always }
 table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4pt }
 th { text-align: left; font-size: 7pt; text-transform: uppercase; letter-spacing: .05em; color: #555; border-bottom: .8pt solid #1a1a1a; padding: 3pt 4pt }
-td { padding: 2.6pt 4pt; border-bottom: .4pt solid #d6d0c8; vertical-align: top; overflow-wrap: anywhere }
+td { padding: 2.6pt 4pt; border-bottom: .4pt solid #d6d0c8; vertical-align: top; overflow-wrap: break-word }
 tr { break-inside: avoid; page-break-inside: avoid } thead { display: table-header-group }
-td.nom { font-size: 9.2pt } td.court { white-space: nowrap; overflow-wrap: normal }
+tbody tr:nth-child(even) td { background: #f3efe9 } td.nom { font-size: 9.2pt } td.court { white-space: nowrap; overflow-wrap: normal }
 .barre { position: sticky; top: 0; z-index: 2; display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 10px; background: #1d1612; color: #f6f0e6; font: 14px Poppins, Arial, sans-serif }
 .barre button { background: #9bbd8a; color: #1d1612; border: 0; padding: 9px 16px; font: 600 14px Poppins, Arial, sans-serif; cursor: pointer }
 @media print { body { background: #fff } .barre { display: none } .page { box-shadow: none; padding: 0; max-width: none } }
