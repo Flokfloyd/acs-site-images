@@ -975,3 +975,17 @@ where not exists (select 1 from public.salon_taches where edition = 2027);
 
 -- 23. Galerie : album (sous-dossier) dans chaque catégorie
 alter table public.photos add column if not exists serie text check (serie is null or length(serie) <= 120);
+
+-- 24. Accès aux pages du site : réservée aux adhérents ou ouverte à tous (réglé dans l'administration)
+create table if not exists public.pages_acces (
+  page    text primary key check (length(page) between 2 and 40),
+  reserve boolean not null default true
+);
+alter table public.pages_acces enable row level security;
+drop policy if exists pages_acces_lecture on public.pages_acces;
+create policy pages_acces_lecture on public.pages_acces for select using (true);
+drop policy if exists pages_acces_gestion on public.pages_acces;
+create policy pages_acces_gestion on public.pages_acces for all using (est_admin()) with check (est_admin());
+grant select on public.pages_acces to anon, authenticated;
+grant insert, update, delete on public.pages_acces to authenticated;
+insert into public.pages_acces (page, reserve) values ('boutique', true), ('semestriels', true) on conflict (page) do nothing;

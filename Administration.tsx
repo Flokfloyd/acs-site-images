@@ -103,13 +103,13 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "salon" && sousSalon === "retro" && <RetroplanningAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "exposants" && <><Aide>Les exposants déposent leur demande sur la page Salon (ou sur le formulaire papier). Acceptez, attribuez la zone, les mètres et le n° de stand, puis fixez la contribution : elle se calcule d’après les tarifs par mètre, et reste modifiable. Rien n’est envoyé aux exposants automatiquement.</Aide>
                 <GestionSalon etroit={etroit} /></>}
-            {onglet === "boutique" && <><Aide>Les articles cochés « En vente » apparaissent sur la page Boutique du site, dans l’ordre indiqué. Laissez le stock vide si vous ne le suivez pas.</Aide>
+            {onglet === "boutique" && <><AccesPage page="boutique" nom="Boutique" /><Aide>Les articles cochés « En vente » apparaissent sur la page Boutique du site, dans l’ordre indiqué. Laissez le stock vide si vous ne le suivez pas.</Aide>
                 <Editeur table="produits" ordre="ordre" titre="Articles" champs={CHAMPS_PROD} nouveau={(l) => ({ actif: true, ordre: (l.length + 1) * 10 })} resume={(r) => `${r.categorie ? r.categorie + " · " : ""}${r.nom} · ${euros(r.prix)}${r.stock != null ? ` · stock ${r.stock}` : ""}${r.actif ? "" : " (retiré)"}`} /></>}
             {onglet === "campagnes" && <Campagnes moi={email} ouverte={campagneOuverte} setOuverte={setCampagneOuverte} />}
             {onglet === "sondages" && <SondagesAdmin moi={email} ouvrirCampagne={ouvrirCampagne} />}
             {onglet === "galerie" && <GalerieAdmin />}
             {onglet === "guide" && <><GuideAdmin /><Editeur table="rappels_admin" ordre="a_partir_du" titre="Rappels de l’administration" champs={CHAMPS_RAPPEL} nouveau={() => ({ chaque_annee: false, fait: false })} resume={(r) => `${r.titre} · affiché dès le ${dateFr(r.a_partir_du)}${r.fait ? " · fait" : ""}`} /></>}
-            {onglet === "semestriels" && <><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
+            {onglet === "semestriels" && <><AccesPage page="semestriels" nom="Semestriels" /><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
             <Sauvegarde />
         </div>
@@ -307,6 +307,25 @@ function GestionPhotos({ rev, changer }: { rev: number; changer: () => void }) {
                 </div>
             )}
             {voir != null && <GALERIE.Diaporama photos={liste.map((p) => ({ ...p, album: [GALERIE.categorie(p.album), p.serie].filter(Boolean).join(" · ") }))} index={voir} fermer={() => setVoir(null)} />}
+        </div>
+    )
+}
+
+// Réglage d'accès d'une page du site : réservée aux adhérents ou ouverte à tous
+function AccesPage({ page, nom }: { page: string; nom: string }) {
+    const client = sb()!
+    const [reserve, setReserve] = React.useState<boolean | null>(null)
+    const [msg, setMsg] = React.useState("")
+    React.useEffect(() => { client.from("pages_acces").select("reserve").eq("page", page).maybeSingle().then(({ data, error }: any) => { if (error) setMsg(/pages_acces|schema cache|exist/i.test(error.message) ? "Réglage disponible après la mise à jour de la base." : error.message); setReserve(data ? data.reserve !== false : true) }) }, [])
+    const changer = async (v: boolean) => { setReserve(v); const { error } = await client.from("pages_acces").upsert({ page, reserve: v }); setMsg(error ? error.message : v ? `La page ${nom} est réservée aux adhérents.` : `La page ${nom} est ouverte à tous.`) }
+    if (reserve === null) return null
+    return (
+        <div style={{ ...box, display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", padding: "14px 18px" }}>
+            <b style={{ fontWeight: 600 }}>Page {nom} du site :</b>
+            <span style={{ display: "inline-flex", border: `1px solid ${C.line}` }}>
+                {([[true, "Réservée aux adhérents"], [false, "Ouverte à tous"]] as const).map(([v, t]) => <button key={t} onClick={() => changer(v)} style={{ ...small(), border: "none", padding: "8px 14px", fontWeight: 600, background: reserve === v ? C.accent : "transparent", color: reserve === v ? C.accentDark : C.txt }}>{t}</button>)}
+            </span>
+            {msg && <span style={{ fontSize: 13, color: C.mute }}>{msg}</span>}
         </div>
     )
 }

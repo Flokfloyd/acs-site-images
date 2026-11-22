@@ -8,12 +8,17 @@ import { sb, C, font, serif } from "./AcsBase.tsx"
  * @framerSupportedLayoutWidth any-prefer-fixed
  * @framerSupportedLayoutHeight auto
  */
-export default function PorteAdherents(props: { titre: string; texte: string; pageConnexion: string }) {
+export default function PorteAdherents(props: { page: string; titre: string; texte: string; pageConnexion: string }) {
     const [etat, setEtat] = React.useState<"chargement" | "deconnecte" | "refuse" | "ok">("chargement")
     React.useEffect(() => {
         const c = sb()
         if (!c) return
         const verifier = async (s: any) => {
+            // la page peut être rendue publique dans l'administration
+            if (props.page) {
+                const { data: a } = await c.from("pages_acces").select("reserve").eq("page", props.page).maybeSingle()
+                if (a && a.reserve === false) return setEtat("ok")
+            }
             if (!s) return setEtat("deconnecte")
             const { data } = await c.rpc("est_membre")
             setEtat(data === true ? "ok" : "refuse")
@@ -48,8 +53,9 @@ export default function PorteAdherents(props: { titre: string; texte: string; pa
     )
 }
 
-PorteAdherents.defaultProps = { titre: "Page réservée", texte: "Cette page est réservée aux adhérents de l’association.", pageConnexion: "/espace-membre" }
+PorteAdherents.defaultProps = { page: "", titre: "Page réservée", texte: "Cette page est réservée aux adhérents de l’association.", pageConnexion: "/espace-membre" }
 addPropertyControls(PorteAdherents, {
+    page: { type: ControlType.String, title: "Nom (réglage admin)", defaultValue: "" },
     titre: { type: ControlType.String, title: "Titre", defaultValue: "Page réservée" },
     texte: { type: ControlType.String, title: "Texte", displayTextArea: true, defaultValue: "Cette page est réservée aux adhérents de l’association." },
     pageConnexion: { type: ControlType.String, title: "Page de connexion", defaultValue: "/espace-membre" },
