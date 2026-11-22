@@ -1928,8 +1928,15 @@ function decomposer(nom: string) {
 // le nom d’achat est toujours gardé : le nom accepté s’ajoute entre parenthèses, comme dans les tableaux du club
 // (thionanthum) = même genre, autre épithète · (=Neoporteria) = même épithète, autre genre · (=Lepidocoryphantha macromeris) = les deux
 export function verifierNom(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
-    const v = verifierNomBrut(nom, ix)
+    const v = verifierNomBrut(nom, ix) as Omit<Verif, "n"> & { corrige?: string }
     if (!["SYNONYME", "GENRE", "RANG", "PROCHE", "DOUTE"].includes(v.statut) || !v.proposition) return v
+    // faute de frappe probable : on corrige directement, sans parenthèse ; si le nom corrigé est un synonyme, le nom accepté s’ajoute entre parenthèses
+    if (v.statut === "PROCHE") {
+        const nettoie = (x: string) => x.replace(/\([^)]*\)?/g, " ").replace(/\s+/g, " ").trim()
+        if (!v.corrige) return { ...v, libelle: v.libelle + " : à corriger", proposition: nettoie(v.proposition) }
+        const w = verifierNom(v.corrige, ix)
+        return { ...v, libelle: "Faute probable, puis synonyme", proposition: w.proposition || v.corrige, corrige: undefined } as any
+    }
     const sansPar = (x: string) => x.replace(/\([^)]*\)?/g, " ").replace(/\s+/g, " ").trim()
     const A = sansPar(v.proposition), P = sansPar(nom)
     const [ag, ...ar] = A.split(" "), [pg, ...pr] = P.split(" ")
@@ -2061,6 +2068,7 @@ function verifierNomBrut(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
         }
         if (best && d <= 1 && best !== cle) {
             const autre = best.split(" ")[0] !== g
+            if (autre) return { ...base, statut: "GENRE", libelle: "Autre genre chez Lodé", proposition: recompose(avecInfra(best), maj1(genre)), note: `${maj1(genre)} ${espece} ≈ ${affiche(ix, best)}` }
             return { ...base, statut: "PROCHE", libelle: d < 1 ? "Terminaison latine différente" : "Orthographe proche", proposition: recompose(avecInfra(best), autre ? maj1(genre) : undefined), note: `vouliez-vous dire ${affiche(ix, best)} ?` }
         }
     }
@@ -2075,7 +2083,8 @@ function verifierNomBrut(nom: string, ix: IndexTaxo): Omit<Verif, "n"> {
             if (!kr && ke && ke[0] === e[0] && (radical(ke) === radical(e) || lev(ke, e) <= 1)) { if (!proche || kg === g) proche = [k, t] }
             if (kr && ki === e && RANGS[kr]) commeVar.push([k, t])
         }
-        if (proche) { const v = parSyn(proche[1], affiche(ix, proche[0]), true); return { ...v, statut: "PROCHE", libelle: "Orthographe proche d’un synonyme", note: `${maj1(genre)} ${espece} ≈ ${v.note}` } }
+        if (proche && proche[0].split(" ")[0] !== g) { const v = parSyn(proche[1], affiche(ix, proche[0]), true); return { ...v, libelle: "Synonyme (graphie voisine)", note: `${maj1(genre)} ${espece} ≈ ${v.note}` } }
+        if (proche) { const v = parSyn(proche[1], affiche(ix, proche[0]), true); return { ...v, statut: "PROCHE", libelle: "Orthographe proche d’un synonyme", note: `${maj1(genre)} ${espece} ≈ ${v.note}`, corrige: [ix.orig.get(proche[0]) ?? affiche(ix, proche[0]), ...infra.map(([r, x]) => `${r} ${x}`)].join(" ") } as any }
         const cibles = [...new Set(commeVar.map(([, t]) => t))]
         if (cibles.length === 1) { const v = parSyn(cibles[0], commeVar[0][0], true); return { ...v, libelle: "Cité comme variété", note: `Lodé cite ${commeVar[0][0]} : ${v.note}` } }
     }
