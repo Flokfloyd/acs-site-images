@@ -1010,3 +1010,54 @@ alter table public.campagne_suivi enable row level security;
 drop policy if exists campagne_suivi_admin on public.campagne_suivi;
 create policy campagne_suivi_admin on public.campagne_suivi for all using (est_admin()) with check (est_admin());
 grant select, insert, update, delete on public.campagne_suivi to authenticated;
+
+-- 27. Groupes de destinataires des campagnes : bénévoles et exposants du salon, choix à la main
+alter table public.campagnes add column if not exists edition int;         -- salon visé (groupes bénévoles / exposants)
+alter table public.campagnes add column if not exists emails  text[];      -- cible « choix » : adresses cochées une à une
+alter table public.campagnes drop constraint if exists campagnes_cible_check;
+alter table public.campagnes add constraint campagnes_cible_check check (cible in
+  ('tous', 'a_jour', 'retard', 'bureau', 'evenement', 'test', 'benevoles', 'non_benevoles', 'exposants', 'exposants_tous', 'choix'));
+
+-- Logique commune : qui reçoit pour une cible donnée (sert aussi à afficher le nombre avant d'enregistrer)
+create or replace function public.destinataires_cible(p_cible text, p_evenement uuid default null, p_edition int default null, p_emails text[] default null)
+returns table (email text, prenom text)
+language plpgsql stable security definer set search_path = public as $$
+declare an int := extract(year from now())::int; ed int;
+begin
+  if not est_admin() then raise exception 'réservé aux administrateurs'; end if;
+  ed := coalesce(p_edition, (select max(edition) from salon_reglages));
+  if p_cible = 'test' then
+    return query select a.email, a.prenom from adherents a where a.email = mon_email();
+  elsif p_cible = 'evenement' then
+    return query select distinct i.email, a.prenom from inscriptions i left join adherents a on a.email = i.email
+      where i.evenement_id = p_evenement and i.statut in ('valide', 'en_attente');
+  elsif p_cible in ('exposants', 'exposants_tous') then
+    -- exposants (souvent non adhérents) : une adresse par demande, sans doublon
+    return query select distinct on (lower(d.email)) d.email, null::text from demandes_salon d
+      where d.edition = ed
+        and (case when p_cible = 'exposants' then d.statut = 'acceptee' else d.statut not in ('refusee', 'annulee') end)
+      order by lower(d.email);
+  else
+    return query select a.email, a.prenom from adherents a
+      where a.actif and a.recoit_emails is not false
+        and (p_cible = 'tous'
+          or (p_cible = 'a_jour' and coalesce(a.cotisation_annee, 0) >= an)
+          or (p_cible = 'retard' and coalesce(a.cotisation_annee, 0) < an)
+          or (p_cible = 'bureau' and a.fonction_bureau is not null)
+          or (p_cible = 'choix' and lower(a.email) = any (select lower(x) from unnest(coalesce(p_emails, '{}'::text[])) x))
+          or (p_cible in ('benevoles', 'non_benevoles') and (p_cible = 'benevoles') = exists (
+                select 1 from salon_benevoles b join salon_creneaux cr on cr.id = b.creneau_id
+                where b.adherent_id = a.id and cr.edition = ed)));
+  end if;
+end $$;
+grant execute on function public.destinataires_cible(text, uuid, int, text[]) to authenticated;
+
+create or replace function public.destinataires(c uuid) returns table (email text, prenom text)
+language plpgsql stable security definer set search_path = public as $$
+declare k record;
+begin
+  if not est_admin() then raise exception 'réservé aux administrateurs'; end if;
+  select * into k from campagnes where id = c;
+  return query select * from destinataires_cible(k.cible, k.evenement_id, k.edition, k.emails);
+end $$;
+grant execute on function public.destinataires(uuid) to authenticated;

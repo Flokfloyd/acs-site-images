@@ -11,7 +11,7 @@ const cors = {
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } })
 
 const echapper = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-function enHtml(texte: string, site: string) {
+function enHtml(texte: string, site: string, exposant = false) {
   const corps = echapper(texte)
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#4f7a3c">$1</a>')
     .split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${p.replace(/\n/g, "<br>")}</p>`).join("")
@@ -19,7 +19,7 @@ function enHtml(texte: string, site: string) {
 <p style="margin:0 0 18px;font-family:Georgia,serif;font-size:18px;font-weight:bold">A.C.S. · Armorique Cactus Succulentes</p>
 ${corps}
 <hr style="border:none;border-top:1px solid #ddd;margin:26px 0 12px">
-<p style="color:#888;font-size:12px;margin:0">Vous recevez cet e-mail en tant qu’adhérent de l’association. Pour ne plus recevoir ces e-mails, décochez l’option dans votre profil : <a href="${site}/espace-membre#profil" style="color:#888">${site.replace(/^https?:\/\//, "")}/espace-membre</a>.</p>
+${exposant ? `<p style="color:#888;font-size:12px;margin:0">Vous recevez cet e-mail car vous avez demandé un emplacement au Salon des Plantes de l’ACS. Pour ne plus en recevoir, répondez simplement à ce message.</p>` : `<p style="color:#888;font-size:12px;margin:0">Vous recevez cet e-mail en tant qu’adhérent de l’association. Pour ne plus recevoir ces e-mails, décochez l’option dans votre profil : <a href="${site}/espace-membre#profil" style="color:#888">${site.replace(/^https?:\/\//, "")}/espace-membre</a>.</p>`}
 </div>`
 }
 
@@ -76,9 +76,9 @@ Deno.serve(async (req) => {
     if (e2) return json({ erreur: e2.message }, 400)
     if (!dest?.length) return json({ erreur: "Aucun destinataire pour cette cible." }, 400)
     try {
-      const n = await brevo(cle, expediteur, c.sujet, enHtml(c.contenu, site), dest, c.cible === "test" ? "acs-test" : `acs-campagne-${c.id}`)
+      const n = await brevo(cle, expediteur, c.sujet, enHtml(c.contenu, site, String(c.cible).startsWith("exposants")), dest, c.cible === "test" ? "acs-test" : `acs-campagne-${c.id}`)
       await db.from("campagnes").update({ statut: c.cible === "test" ? "brouillon" : "envoyee", envoyee_le: new Date().toISOString(), nb_envois: n, erreur: null }).eq("id", c.id)
-      if (c.dans_espace && c.cible !== "test" && c.cible !== "evenement") await db.from("messages").insert({ sujet: c.sujet, contenu: c.contenu, auteur: u?.user?.email ?? null })
+      if (c.dans_espace && ["tous", "a_jour", "retard"].includes(c.cible)) await db.from("messages").insert({ sujet: c.sujet, contenu: c.contenu, auteur: u?.user?.email ?? null })
       return json({ ok: true, envois: n })
     } catch (err) {
       await db.from("campagnes").update({ statut: "erreur", erreur: String(err) }).eq("id", c.id)

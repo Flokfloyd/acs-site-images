@@ -147,7 +147,9 @@ const CHAMPS_ECR: Champ[] = [
     { k: "piece_url", t: "Justificatif (photo ou PDF)", type: "fichier", dossier: "compta", accept: "image/*,application/pdf" },
     { k: "note", t: "Note", type: "textarea" },
 ]
-const CIBLES: [string, string][] = [["tous", "Tous les adhérents"], ["a_jour", "Adhérents à jour de cotisation"], ["retard", "Cotisation à renouveler"], ["bureau", "Membres du bureau"], ["evenement", "Inscrits à un événement"]]
+const CIBLES: [string, string][] = [["tous", "Tous les adhérents"], ["a_jour", "Adhérents à jour de cotisation"], ["retard", "Cotisation à renouveler"], ["bureau", "Membres du bureau"], ["benevoles", "Salon : bénévoles inscrits aux tâches"], ["non_benevoles", "Salon : adhérents pas encore inscrits aux tâches"], ["exposants", "Salon : exposants acceptés"], ["exposants_tous", "Salon : tous les exposants (sauf refusés et annulés)"], ["evenement", "Inscrits à un événement"], ["choix", "Choisir les personnes une à une"]]
+const CIBLES_SALON = ["benevoles", "non_benevoles", "exposants", "exposants_tous"]
+const CIBLES_ESPACE = ["tous", "a_jour", "retard"]   // seules ces campagnes peuvent être copiées dans « Messages »
 
 // ---------- Rappels : bandeau en haut de l’administration, visible tant que ce n’est pas fait ----------
 const CHAMPS_RAPPEL: Champ[] = [
@@ -1299,6 +1301,8 @@ const MODELES_EMAIL: { nom: string; cible: string; sujet: string; contenu: strin
       contenu: "Bonjour,\n\nSauf erreur de notre part, votre cotisation pour [année] n’est pas encore réglée.\n\nElle permet à l’association de continuer ses sorties, le salon et les semestriels. Vous pouvez la régler [moyen de paiement].\n\nSi c’est déjà fait, merci et ne tenez pas compte de ce message.\n\nLe bureau de l’ACS" },
     { nom: "Annonce d’une sortie", cible: "tous", sujet: "Sortie du [date] : [lieu]",
       contenu: "Bonjour,\n\nNous organisons une sortie le [date] à [lieu].\n\nRendez-vous à [heure] à [point de rendez-vous]. [Covoiturage, repas, prix éventuel.]\n\nInscriptions dans l’agenda de l’espace membre : [SITE]/agenda\n\nÀ bientôt,\n\nLe bureau de l’ACS" },
+    { nom: "Informations aux exposants du salon", cible: "exposants", sujet: "Salon des Plantes : informations pratiques",
+      contenu: "Bonjour,\n\nVotre emplacement au Salon des Plantes ([dates]) est confirmé. Voici les informations pratiques :\n\n- installation : [jour et heure]\n- adresse : [lieu]\n- emplacement : [zone]\n- [repas, contribution, autres précisions]\n\nPour toute question, répondez simplement à ce message.\n\nÀ bientôt,\n\nLe bureau de l’ACS" },
     { nom: "Remerciements après le salon", cible: "tous", sujet: "Merci pour le Salon des Plantes",
       contenu: "Bonjour,\n\nUn grand merci à toutes celles et ceux qui ont participé au Salon des Plantes : montage, accueil, tombola, démontage… Sans vous, rien ne serait possible.\n\n[Quelques chiffres ou anecdotes.]\n\nLes photos sont dans la galerie de l’espace membre : [SITE]/galerie\n\nLe bureau de l’ACS" },
     { nom: "Appel aux bénévoles pour le salon", cible: "tous", sujet: "Salon des Plantes : on a besoin de vous",
@@ -1311,6 +1315,9 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
     const [evts, setEvts] = React.useState<any[]>([])
     const [c, setC] = React.useState<any | null>(null)
     const [nb, setNb] = React.useState<number | null>(null)
+    const [editions, setEditions] = React.useState<number[]>([])
+    const [gens, setGens] = React.useState<any[]>([])
+    const [cherche, setCherche] = React.useState("")
     const [msg, setMsg] = React.useState({ t: "", err: false })
     const [occupe, setOccupe] = React.useState(false)
     const charger = React.useCallback(async () => {
@@ -1321,16 +1328,23 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
     React.useEffect(() => {
         charger().then((l: any[]) => { if (ouverte) { const x = l.find((r) => r.id === ouverte); if (x) setC(x); setOuverte(null) } })
         client.from("evenements").select("id,titre,date_label,date_debut").order("date_debut", { ascending: false }).then(({ data }: any) => setEvts(data ?? []))
+        client.from("salon_reglages").select("edition").order("edition", { ascending: false }).then(({ data }: any) => setEditions((data ?? []).map((r: any) => r.edition)))
+        client.from("adherents").select("email,prenom,nom,actif,recoit_emails").order("nom").then(({ data }: any) => setGens((data ?? []).filter((a: any) => a.actif && a.recoit_emails !== false && a.email)))
     }, [])
     React.useEffect(() => {
         setNb(null)
-        if (!c?.id) return
-        client.rpc("destinataires", { c: c.id }).then(({ data }: any) => setNb(data ? data.length : null))
-    }, [c?.id, c?.cible, c?.evenement_id, c?.__enr])
+        if (!c || c.statut === "envoyee") return
+        const t = setTimeout(() => {
+            client.rpc("destinataires_cible", { p_cible: c.cible, p_evenement: c.evenement_id || null, p_edition: c.edition || null, p_emails: c.emails || [] })
+                .then(({ data, error }: any) => { if (!error) setNb(data ? data.length : 0); else if (c.id) client.rpc("destinataires", { c: c.id }).then(({ data }: any) => setNb(data ? data.length : null)) })
+        }, 250)
+        return () => clearTimeout(t)
+    }, [c?.id, c?.cible, c?.evenement_id, c?.edition, (c?.emails || []).join(","), c?.__enr])
 
     const sauver = async (silencieux = false) => {
         if (!c.sujet || !c.contenu) { setMsg({ t: "Objet et message sont obligatoires.", err: true }); return null }
-        const row = { sujet: c.sujet, contenu: c.contenu, cible: c.cible, evenement_id: c.cible === "evenement" ? c.evenement_id || null : null, dans_espace: !!c.dans_espace, auteur: moi }
+        if (c.cible === "choix" && !(c.emails || []).length) { setMsg({ t: "Cochez au moins une personne.", err: true }); return null }
+        const row = { sujet: c.sujet, contenu: c.contenu, cible: c.cible, evenement_id: c.cible === "evenement" ? c.evenement_id || null : null, edition: CIBLES_SALON.includes(c.cible) ? c.edition || editions[0] || null : null, emails: c.cible === "choix" ? c.emails : null, dans_espace: CIBLES_ESPACE.includes(c.cible) && !!c.dans_espace, auteur: moi }
         const { data, error } = c.id ? await client.from("campagnes").update(row).eq("id", c.id).select().single() : await client.from("campagnes").insert(row).select().single()
         if (error) { setMsg({ t: error.message, err: true }); return null }
         setC({ ...data, __enr: Date.now() }); charger()
@@ -1373,13 +1387,35 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                 <fieldset disabled={envoyee || occupe} style={{ border: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
                     <div><span style={label}>Destinataires</span>
                         <select style={input} value={c.cible} onChange={(e) => setC({ ...c, cible: e.target.value })}>{CIBLES.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
-                        <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Seuls les adhérents qui acceptent les e-mails (option du profil) sont concernés.{nb != null ? ` ${nb} destinataire(s).` : c.id ? "" : " Enregistrez le brouillon pour voir le nombre de destinataires."}</span></div>
+                        <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>{nb != null && <b style={{ color: C.txt, fontWeight: 600 }}>{nb} destinataire{nb > 1 ? "s" : ""}. </b>}{c.cible.startsWith("exposants") || c.cible === "evenement" ? "" : "Seuls les adhérents qui acceptent les e-mails (option du profil) sont concernés."}</span></div>
+                    {CIBLES_SALON.includes(c.cible) && <div><span style={label}>Salon</span>
+                        <select style={input} value={c.edition || editions[0] || ""} onChange={(e) => setC({ ...c, edition: Number(e.target.value) })}>{editions.map((ed) => <option key={ed} value={ed}>Salon {ed}</option>)}</select>
+                        {c.cible.startsWith("exposants") && <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Les exposants ne sont pas forcément adhérents : le bas de l’e-mail leur explique pourquoi ils le reçoivent.</span>}</div>}
+                    {c.cible === "choix" && (() => {
+                        const choisis: string[] = c.emails || []
+                        const estChoisi = (e: string) => choisis.some((x) => x.toLowerCase() === e.toLowerCase())
+                        const basculer = (e: string) => setC({ ...c, emails: estChoisi(e) ? choisis.filter((x) => x.toLowerCase() !== e.toLowerCase()) : [...choisis, e] })
+                        const q = cherche.trim().toLowerCase()
+                        const vus = gens.filter((a) => !q || `${a.prenom || ""} ${a.nom || ""} ${a.email}`.toLowerCase().includes(q))
+                        return <div><span style={label}>Personnes ({choisis.length} cochée{choisis.length > 1 ? "s" : ""})</span>
+                            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                                <input style={{ ...input, flex: "1 1 200px" }} value={cherche} onChange={(e) => setCherche(e.target.value)} placeholder="Rechercher un nom…" />
+                                {choisis.length > 0 && <button type="button" style={small()} onClick={() => setC({ ...c, emails: [] })}>Tout décocher</button>}
+                            </div>
+                            <div style={{ maxHeight: 260, overflowY: "auto", border: `1px solid ${C.line}` }}>
+                                {vus.map((a) => <label key={a.email} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 10px", borderBottom: `1px solid ${C.line}`, cursor: "pointer", fontSize: 14, background: estChoisi(a.email) ? "rgba(155,189,138,0.10)" : "transparent" }}>
+                                    <input type="checkbox" checked={estChoisi(a.email)} onChange={() => basculer(a.email)} style={{ width: 16, height: 16, accentColor: C.accent, flex: "0 0 auto" }} />
+                                    <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{[a.prenom, a.nom].filter(Boolean).join(" ") || a.email}<span style={{ color: C.mute }}> · {a.email}</span></span>
+                                </label>)}
+                                {vus.length === 0 && <p style={{ ...muted, fontSize: 14, padding: 10, margin: 0 }}>Personne ne correspond.</p>}
+                            </div></div>
+                    })()}
                     {c.cible === "evenement" && <div><span style={label}>Événement</span>
                         <select style={input} value={c.evenement_id || ""} onChange={(e) => setC({ ...c, evenement_id: e.target.value })}><option value="">— choisir —</option>{evts.map((e) => <option key={e.id} value={e.id}>{e.date_label} — {e.titre}</option>)}</select></div>}
                     <div><span style={label}>Objet *</span><input style={input} value={c.sujet} onChange={(e) => setC({ ...c, sujet: e.target.value })} placeholder="Sortie du printemps, assemblée générale…" /></div>
                     <div><span style={label}>Message *</span><textarea style={{ ...input, minHeight: 260, resize: "vertical", lineHeight: 1.6 }} value={c.contenu} onChange={(e) => setC({ ...c, contenu: e.target.value })} placeholder={"Bonjour,\n\n…\n\nLe bureau de l’ACS"} />
                         <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Texte simple : laissez une ligne vide entre les paragraphes. Les liens (https://…) deviennent cliquables. Un pied de page pour se désabonner est ajouté automatiquement.</span></div>
-                    {c.cible !== "evenement" && <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}><input type="checkbox" checked={!!c.dans_espace} onChange={(e) => setC({ ...c, dans_espace: e.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent }} />Afficher aussi ce message dans l’espace membre (rubrique Messages)</label>}
+                    {CIBLES_ESPACE.includes(c.cible) && <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}><input type="checkbox" checked={!!c.dans_espace} onChange={(e) => setC({ ...c, dans_espace: e.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent }} />Afficher aussi ce message dans l’espace membre (rubrique Messages)</label>}
                 </fieldset>
                 {!envoyee && <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
                     <button style={btn()} disabled={occupe} onClick={envoyerTout}>{occupe ? "Envoi…" : "Envoyer"}</button>
