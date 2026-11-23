@@ -377,9 +377,8 @@ export function TachesAdmin({ client, etroit }: { client: any; etroit: boolean }
         if (!window.confirm(`Supprimer cette tâche${n ? ` et ses ${n} inscrit${n > 1 ? "s" : ""}` : ""} ?`)) return
         const { error } = await client.from("salon_creneaux").delete().eq("id", c.id); setFiche(null); err(error, "Tâche supprimée.")
     }
-    const inscrire = async (c: Creneau) => {
-        if (!ajout) return
-        const [id, cj] = ajout.split("|")
+    const inscrire = async (c: Creneau, choix: string) => {
+        const [id, cj] = choix.split("|")
         const { error } = await client.from("salon_benevoles").insert({ creneau_id: c.id, adherent_id: id, conjoint: cj === "1" })
         setAjout(""); err(error)
     }
@@ -396,7 +395,10 @@ export function TachesAdmin({ client, etroit }: { client: any; etroit: boolean }
     const besoinTot = creneaux.reduce((a, c) => a + c.places, 0)
     const manqueTot = creneaux.reduce((a, c) => a + Math.max(0, c.places - inscrits.filter((i) => i.creneau_id === c.id).length), 0)
     const nbBenevoles = new Set(inscrits.map((i) => i.adherent_id + (i.conjoint ? "c" : ""))).size
+    // personnes proposées : adhérents et conjoints renseignés, par ordre alphabétique du nom affiché
     const choixPersonnes = adh.flatMap((a) => { const n = [a.prenom, a.nom].filter(Boolean).join(" ") || "(sans nom)"; const l: [string, string][] = [[`${a.id}|0`, n]]; if (String(a.conjoint || "").trim()) l.push([`${a.id}|1`, `${a.conjoint.trim()} (conjoint de ${n})`]); return l })
+        .sort((x, y) => x[1].localeCompare(y[1], "fr", { sensitivity: "base" }))
+    const sansAccent = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
     const ficheIci = fiche ? inscrits.filter((i) => i.creneau_id === fiche.id) : []
     const deja = new Set(ficheIci.map((i) => `${i.adherent_id}|${i.conjoint ? 1 : 0}`))
 
@@ -459,13 +461,25 @@ export function TachesAdmin({ client, etroit }: { client: any; etroit: boolean }
             {fiche && (
                 <Fiche fermer={() => setFiche(null)}>
                     <EnteteFiche c={fiche} postes={postes} ici={ficheIci} />
-                    <div key={fiche.id} style={{ display: "grid", gap: 10, marginTop: 14 }}>
+                    <div key={fiche.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 10, marginTop: 14 }}>
                         {ficheIci.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{ficheIci.map((i) => <button key={i.id} onClick={() => retirer(i)} style={{ ...petit(true) }}>Retirer {i.nom}</button>)}</div>}
                         {ficheIci.length < fiche.places && <div style={{ display: "flex", gap: 6 }}>
-                            <select style={champ} value={ajout} onChange={(e) => setAjout(e.target.value)}><option value="">Inscrire quelqu’un…</option>{choixPersonnes.filter(([v]) => !deja.has(v)).map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>
-                            <button style={{ ...bouton(), whiteSpace: "nowrap" }} disabled={!ajout} onClick={() => inscrire(fiche)}>Inscrire</button>
+                            {(() => {
+                                const q = sansAccent(ajout.trim())
+                                const mots = q.split(/\s+/).filter(Boolean)
+                                const libres = choixPersonnes.filter(([v]) => !deja.has(v))
+                                const trouves = mots.length ? libres.filter(([, t]) => mots.every((m) => sansAccent(t).includes(m))) : libres
+                                return <div style={{ flex: 1, minWidth: 0 }}>
+                                    <input style={{ ...champ, width: "100%", boxSizing: "border-box" }} value={ajout} onChange={(e) => setAjout(e.target.value)} placeholder="Inscrire quelqu’un : tapez un nom…" autoComplete="off" />
+                                    <div style={{ maxHeight: 220, overflowY: "auto", border: `1px solid ${C.line}`, borderTop: "none" }}>
+                                        {trouves.map(([v, t]) => <button key={v} onClick={() => inscrire(fiche, v)} style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, color: C.txt, font: "inherit", fontSize: 14, padding: "8px 10px", cursor: "pointer" }}
+                                            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(155,189,138,0.12)")} onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>+ {t}</button>)}
+                                        {trouves.length === 0 && <p style={{ ...discret, fontSize: 14, padding: "8px 10px", margin: 0 }}>Personne ne correspond.</p>}
+                                    </div>
+                                </div>
+                            })()}
                         </div>}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px", gap: 8, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) 76px", gap: 8, paddingTop: 10, borderTop: `1px solid ${C.line}` }}>
                             <div><span style={etiquette}>De</span><input style={champ} type="time" step={900} defaultValue={fiche.debut.slice(0, 5)} onBlur={(e) => e.target.value && e.target.value !== fiche.debut.slice(0, 5) && e.target.value < fiche.fin.slice(0, 5) && majCreneau(fiche, { debut: e.target.value })} /></div>
                             <div><span style={etiquette}>À</span><input style={champ} type="time" step={900} defaultValue={fiche.fin.slice(0, 5)} onBlur={(e) => e.target.value && e.target.value !== fiche.fin.slice(0, 5) && e.target.value > fiche.debut.slice(0, 5) && majCreneau(fiche, { fin: e.target.value })} /></div>
                             <div><span style={etiquette}>Personnes</span><input style={champ} type="number" min={1} max={50} defaultValue={fiche.places} onBlur={(e) => Number(e.target.value) > 0 && Number(e.target.value) !== fiche.places && majCreneau(fiche, { places: Number(e.target.value) })} /></div>
