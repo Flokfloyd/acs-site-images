@@ -1062,24 +1062,6 @@ begin
 end $$;
 grant execute on function public.destinataires(uuid) to authenticated;
 
--- 28. Actualités (blog) : rédigées dans l'administration, affichées sur la page d'accueil et la page /actualites
-create table if not exists public.actualites (
-  id         uuid primary key default gen_random_uuid(),
-  titre      text not null check (char_length(titre) between 2 and 160),
-  resume     text check (char_length(resume) <= 400),
-  contenu    text not null default '' check (char_length(contenu) <= 20000),
-  photo_url  text,
-  publie_le  date not null default current_date,
-  publie     boolean not null default false,    -- brouillon tant que non publié
-  public     boolean not null default true,     -- faux = visible seulement des adhérents connectés
-  auteur     text,
-  cree_le    timestamptz not null default now()
-);
-alter table public.actualites enable row level security;
-drop policy if exists actualites_lecture on public.actualites;
-create policy actualites_lecture on public.actualites for select
-  using (est_admin() or (publie and publie_le <= current_date and (public or est_membre())));
-drop policy if exists actualites_admin on public.actualites;
-create policy actualites_admin on public.actualites for all using (est_admin()) with check (est_admin());
-grant select on public.actualites to anon, authenticated;
-grant insert, update, delete on public.actualites to authenticated;
+
+-- 28. (retiré le 23/11/2026 : les Actualités font doublon avec l'Agenda)
+drop table if exists public.actualites;
