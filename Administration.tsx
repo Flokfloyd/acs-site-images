@@ -1329,7 +1329,8 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
         charger().then((l: any[]) => { if (ouverte) { const x = l.find((r) => r.id === ouverte); if (x) setC(x); setOuverte(null) } })
         client.from("evenements").select("id,titre,date_label,date_debut").order("date_debut", { ascending: false }).then(({ data }: any) => setEvts(data ?? []))
         client.from("salon_reglages").select("edition").order("edition", { ascending: false }).then(({ data }: any) => setEditions((data ?? []).map((r: any) => r.edition)))
-        client.from("adherents").select("email,prenom,nom,actif,recoit_emails").order("nom").then(({ data }: any) => setGens((data ?? []).filter((a: any) => a.actif && a.recoit_emails !== false && a.email)))
+        client.from("adherents").select("email,prenom,nom,actif,recoit_emails").order("nom").then(({ data }: any) => setGens((data ?? []).filter((a: any) => a.actif && a.recoit_emails !== false && a.email)
+            .sort((x: any, y: any) => ([x.prenom, x.nom].filter(Boolean).join(" ") || x.email).localeCompare([y.prenom, y.nom].filter(Boolean).join(" ") || y.email, "fr", { sensitivity: "base" }))))
     }, [])
     React.useEffect(() => {
         setNb(null)
@@ -1396,7 +1397,8 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                         const estChoisi = (e: string) => choisis.some((x) => x.toLowerCase() === e.toLowerCase())
                         const basculer = (e: string) => setC({ ...c, emails: estChoisi(e) ? choisis.filter((x) => x.toLowerCase() !== e.toLowerCase()) : [...choisis, e] })
                         const q = cherche.trim().toLowerCase()
-                        const vus = gens.filter((a) => !q || `${a.prenom || ""} ${a.nom || ""} ${a.email}`.toLowerCase().includes(q))
+                        const sa = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+                        const vus = gens.filter((a) => !q || sa(q).split(/\s+/).every((m) => sa(`${a.prenom || ""} ${a.nom || ""} ${a.email}`).includes(m)))
                         return <div><span style={label}>Personnes ({choisis.length} cochée{choisis.length > 1 ? "s" : ""})</span>
                             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
                                 <input style={{ ...input, flex: "1 1 200px" }} value={cherche} onChange={(e) => setCherche(e.target.value)} placeholder="Rechercher un nom…" />
