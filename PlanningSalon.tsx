@@ -440,17 +440,17 @@ export function TachesAdmin({ client, etroit }: { client: any; etroit: boolean }
                     <h4 style={{ ...titre2, fontSize: 18 }}>Liste des tâches proposées</h4>
                     <p style={{ ...discret, fontSize: 13, marginBottom: 8 }}>Gardée d’une année sur l’autre. Décochez « proposée » pour la masquer sans rien perdre.</p>
                     {postes.map((p) => (
-                        <div key={p.id} style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr)" : "minmax(0,1.2fr) minmax(0,2fr) 70px auto auto", gap: 8, alignItems: "center", padding: "8px 0", borderTop: `1px solid ${C.line}` }}>
+                        <div key={p.id} style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr) 64px" : "minmax(0,1.2fr) minmax(0,2fr) 70px auto auto", gap: 8, alignItems: "center", padding: "8px 0", borderTop: `1px solid ${C.line}` }}>
                             <input style={champ} defaultValue={p.nom} onBlur={(e) => e.target.value.trim() !== p.nom && e.target.value.trim().length > 1 && majPoste(p, { nom: e.target.value.trim() })} />
-                            <input style={champ} defaultValue={p.description || ""} placeholder="Consignes (facultatif)" onBlur={(e) => (e.target.value || null) !== (p.description || null) && majPoste(p, { description: e.target.value || null })} />
+                            <input style={{ ...champ, ...(etroit ? { gridColumn: "1 / -1", order: 3 } : {}) }} defaultValue={p.description || ""} placeholder="Consignes (facultatif)" onBlur={(e) => (e.target.value || null) !== (p.description || null) && majPoste(p, { description: e.target.value || null })} />
                             <input style={champ} type="number" title="Ordre d’affichage" defaultValue={p.ordre} onBlur={(e) => Number(e.target.value) !== p.ordre && majPoste(p, { ordre: Number(e.target.value) || 0 })} />
-                            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, cursor: "pointer" }}><input type="checkbox" checked={p.actif} onChange={(e) => majPoste(p, { actif: e.target.checked })} style={{ accentColor: C.accent }} />proposée</label>
-                            <button style={petit(true)} onClick={() => supprimerPoste(p)}>Supprimer</button>
+                            <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, cursor: "pointer", ...(etroit ? { order: 4 } : {}) }}><input type="checkbox" checked={p.actif} onChange={(e) => majPoste(p, { actif: e.target.checked })} style={{ accentColor: C.accent }} />proposée</label>
+                            <button style={{ ...petit(true), whiteSpace: "nowrap", ...(etroit ? { order: 5, justifySelf: "end" } : {}) }} onClick={() => supprimerPoste(p)}>Supprimer</button>
                         </div>
                     ))}
-                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                        <input style={champ} value={nouveauPoste} onChange={(e) => setNouveauPoste(e.target.value)} placeholder="Nouvelle tâche, ex. Parking" onKeyDown={(e) => e.key === "Enter" && ajouterPoste()} />
-                        <button style={bouton()} onClick={ajouterPoste}>Ajouter</button>
+                    <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                        <input style={{ ...champ, flex: "1 1 220px", width: "auto", minWidth: 0 }} value={nouveauPoste} onChange={(e) => setNouveauPoste(e.target.value)} placeholder="Nouvelle tâche, ex. Parking" onKeyDown={(e) => e.key === "Enter" && ajouterPoste()} />
+                        <button style={{ ...bouton(), flex: "0 0 auto", whiteSpace: "nowrap", minWidth: 120 }} onClick={ajouterPoste}>Ajouter</button>
                     </div>
                 </div>
             )}
@@ -468,7 +468,7 @@ export function TachesAdmin({ client, etroit }: { client: any; etroit: boolean }
                 </div>
                 <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                     <input style={{ ...champ, flex: "1 1 240px", width: "auto" }} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder="Précision (facultatif), ex. prévoir des gants" />
-                    <button style={bouton()} onClick={ajouterTache}>Ajouter</button>
+                    <button style={{ ...bouton(), flex: "0 0 auto", whiteSpace: "nowrap", minWidth: 120 }} onClick={ajouterTache}>Ajouter</button>
                 </div>
             </div>
 
