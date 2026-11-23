@@ -992,3 +992,21 @@ insert into public.pages_acces (page, reserve) values ('boutique', true), ('seme
 
 -- 25. Agenda : les événements sont réservés aux adhérents par défaut (seuls les salons restent publics)
 alter table public.evenements alter column reserve_membres set default true;
+
+-- 26. Statistiques des campagnes e-mail (remontées de Brevo par la fonction « stats-emails »)
+alter table public.campagnes add column if not exists stats jsonb;
+create table if not exists public.campagne_suivi (
+  campagne_id uuid not null references public.campagnes(id) on delete cascade,
+  email       text not null,
+  delivre     boolean not null default false,
+  ouvert      boolean not null default false,
+  clic        boolean not null default false,
+  erreur      text,
+  dernier     text,
+  maj_le      timestamptz not null default now(),
+  primary key (campagne_id, email)
+);
+alter table public.campagne_suivi enable row level security;
+drop policy if exists campagne_suivi_admin on public.campagne_suivi;
+create policy campagne_suivi_admin on public.campagne_suivi for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.campagne_suivi to authenticated;

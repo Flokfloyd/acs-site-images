@@ -23,7 +23,8 @@ ${corps}
 </div>`
 }
 
-async function brevo(cle: string, expediteur: string, sujet: string, html: string, dest: { email: string; prenom?: string | null }[]) {
+// tag : permet de retrouver ensuite les statistiques de l'envoi (reçus, ouverts, cliqués, erreurs)
+async function brevo(cle: string, expediteur: string, sujet: string, html: string, dest: { email: string; prenom?: string | null }[], tag: string) {
   let envoyes = 0
   for (let i = 0; i < dest.length; i += 90) {
     const lot = dest.slice(i, i + 90)
@@ -34,6 +35,7 @@ async function brevo(cle: string, expediteur: string, sujet: string, html: strin
         sender: { name: "ACS Armorique Cactus Succulentes", email: expediteur },
         subject: sujet,
         htmlContent: html,
+        tags: [tag],
         messageVersions: lot.map((d) => ({ to: [{ email: d.email, ...(d.prenom ? { name: d.prenom } : {}) }] })),
       }),
     })
@@ -62,7 +64,7 @@ Deno.serve(async (req) => {
     // E-mail ponctuel (confirmation d'inscription, message à quelques personnes)
     if (corps.a) {
       const dest = (corps.a as string[]).map((email) => ({ email }))
-      const n = await brevo(cle, expediteur, corps.sujet, enHtml(corps.contenu, site), dest)
+      const n = await brevo(cle, expediteur, corps.sujet, enHtml(corps.contenu, site), dest, "acs-ponctuel")
       return json({ ok: true, envois: n })
     }
 
@@ -74,7 +76,7 @@ Deno.serve(async (req) => {
     if (e2) return json({ erreur: e2.message }, 400)
     if (!dest?.length) return json({ erreur: "Aucun destinataire pour cette cible." }, 400)
     try {
-      const n = await brevo(cle, expediteur, c.sujet, enHtml(c.contenu, site), dest)
+      const n = await brevo(cle, expediteur, c.sujet, enHtml(c.contenu, site), dest, c.cible === "test" ? "acs-test" : `acs-campagne-${c.id}`)
       await db.from("campagnes").update({ statut: c.cible === "test" ? "brouillon" : "envoyee", envoyee_le: new Date().toISOString(), nb_envois: n, erreur: null }).eq("id", c.id)
       if (c.dans_espace && c.cible !== "test" && c.cible !== "evenement") await db.from("messages").insert({ sujet: c.sujet, contenu: c.contenu, auteur: u?.user?.email ?? null })
       return json({ ok: true, envois: n })

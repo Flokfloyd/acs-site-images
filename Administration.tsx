@@ -1222,6 +1222,89 @@ function ResultatsAdmin({ so, retour, editer, moi, ouvrirCampagne }: { so: any; 
 }
 
 // ---------- Campagnes e-mail ----------
+// Statistiques d'une campagne envoyée : reçus, ouverts, cliqués, erreurs (données de Brevo)
+function StatsCampagne({ c, majListe }: { c: any; majListe: () => void }) {
+    const client = sb()!
+    const [stats, setStats] = React.useState<any>(c.stats || null)
+    const [suivi, setSuivi] = React.useState<any[]>([])
+    const [noms, setNoms] = React.useState<Record<string, string>>({})
+    const [occupe, setOccupe] = React.useState(false)
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const [voir, setVoir] = React.useState<"" | "erreurs" | "nonouverts" | "ouverts">("")
+    const lireSuivi = React.useCallback(async () => {
+        const { data } = await client.from("campagne_suivi").select("*").eq("campagne_id", c.id)
+        setSuivi(data ?? [])
+    }, [c.id])
+    const actualiser = async () => {
+        setOccupe(true); setMsg({ t: "", err: false })
+        const { data, error } = await client.functions.invoke("stats-emails", { body: { campagne_id: c.id } })
+        setOccupe(false)
+        if (error || !data?.ok) {
+            let t = error?.message || data?.erreur || "Erreur"
+            try { const j = await error.context.json(); t = j.erreur || t } catch (e) {}
+            if (/Failed to send|not found|404/i.test(t)) t = "Les statistiques ne sont pas encore branchées (fonction « stats-emails » à installer)."
+            return setMsg({ t, err: true })
+        }
+        setStats(data.stats); lireSuivi(); majListe()
+        if (!data.stats.evenements) setMsg({ t: "Aucune donnée chez Brevo pour cet envoi. Les campagnes envoyées avant la mise en place des statistiques ne peuvent pas être suivies ; pour une campagne récente, réessayez dans quelques minutes.", err: false })
+    }
+    React.useEffect(() => {
+        lireSuivi()
+        client.from("adherents").select("email,prenom,nom").then(({ data }: any) => { const m: Record<string, string> = {}; for (const a of data ?? []) m[String(a.email).toLowerCase()] = [a.prenom, a.nom].filter(Boolean).join(" "); setNoms(m) })
+        // actualisation automatique si les chiffres datent de plus d'une heure
+        if (!c.stats || Date.now() - new Date(c.stats.maj_le).getTime() > 3600000) actualiser()
+    }, [c.id])
+    const pct = (n: number) => (stats?.envoyes ? Math.round((100 * n) / stats.envoyes) : 0)
+    const tuile = (titre: string, n: number, couleur: string, cle?: typeof voir, aide?: string) => (
+        <button onClick={() => cle && setVoir(voir === cle ? "" : cle)} disabled={!cle} title={aide} style={{ flex: "1 1 130px", textAlign: "left", background: voir && voir === cle ? "rgba(155,189,138,0.12)" : C.bg, border: `1px solid ${voir && voir === cle ? C.accent : C.line}`, padding: "12px 14px", color: C.txt, font: "inherit", cursor: cle ? "pointer" : "default" }}>
+            <div style={{ fontSize: 12, letterSpacing: "0.06em", textTransform: "uppercase", color: C.mute }}>{titre}</div>
+            <div style={{ fontSize: 26, fontWeight: 600, color: couleur, lineHeight: 1.2 }}>{n}<span style={{ fontSize: 14, color: C.mute, fontWeight: 400 }}>{stats?.envoyes ? ` · ${pct(n)} %` : ""}</span></div>
+        </button>
+    )
+    const nom = (e: string) => noms[e.toLowerCase()] || e
+    const liste = voir === "erreurs" ? suivi.filter((s) => s.erreur && !s.delivre) : voir === "nonouverts" ? suivi.filter((s) => s.delivre && !s.ouvert) : voir === "ouverts" ? suivi.filter((s) => s.ouvert) : []
+    return (
+        <div style={{ border: `1px solid ${C.line}`, padding: "14px 16px", marginBottom: 18 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+                <b style={{ fontWeight: 600 }}>Ce que sont devenus les e-mails</b>
+                <span style={{ display: "flex", gap: 10, alignItems: "center", fontSize: 13, color: C.mute }}>{stats?.maj_le ? `à jour le ${dateFr(stats.maj_le, true)}` : ""}<button style={{ ...small(), whiteSpace: "nowrap" }} disabled={occupe} onClick={actualiser}>{occupe ? "Mise à jour…" : "Actualiser"}</button></span>
+            </div>
+            {stats ? <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {tuile("Reçus", stats.delivres, C.txt)}
+                {tuile("Ouverts", stats.ouverts, C.accent, "ouverts", "Voir qui a ouvert")}
+                {tuile("Cliqués", stats.cliques, C.accent, undefined, "Ont cliqué sur un lien")}
+                {tuile("Pas ouverts", Math.max(0, stats.delivres - stats.ouverts), C.txt, "nonouverts", "Voir qui n’a pas ouvert")}
+                {tuile("Erreurs", stats.erreurs, stats.erreurs ? C.danger : C.txt, "erreurs", "Voir les adresses en erreur")}
+            </div> : <p style={{ ...muted, fontSize: 14 }}>{occupe ? "Récupération des chiffres auprès de Brevo…" : "Pas encore de chiffres."}</p>}
+            {voir && <div style={{ marginTop: 12 }}>
+                {liste.length === 0 ? <p style={{ ...muted, fontSize: 14 }}>Personne.</p> : liste.map((s) => (
+                    <div key={s.email} style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", padding: "6px 0", borderTop: `1px solid ${C.line}`, fontSize: 14 }}>
+                        <span>{nom(s.email)}{noms[s.email.toLowerCase()] ? <span style={{ color: C.mute }}> · {s.email}</span> : null}</span>
+                        {s.erreur && <span style={{ color: C.danger, fontSize: 13 }}>{s.erreur}</span>}
+                    </div>
+                ))}
+                {voir === "erreurs" && liste.length > 0 && <p style={{ ...muted, fontSize: 13, marginTop: 8 }}>Corrigez ces adresses dans l’onglet Adhérents : sinon ces personnes ne reçoivent rien, ni campagnes ni codes de connexion.</p>}
+            </div>}
+            <p style={{ ...muted, fontSize: 12.5, marginTop: 10 }}>Les « ouverts » sont une estimation : certains logiciels de messagerie (Apple Mail notamment) comptent un e-mail comme ouvert sans qu’il soit lu, d’autres bloquent ce suivi.</p>
+            <Msg text={msg.t} err={msg.err} />
+        </div>
+    )
+}
+
+// Modèles d'e-mails prêts à adapter (les [crochets] sont à remplacer avant l'envoi)
+const MODELES_EMAIL: { nom: string; cible: string; sujet: string; contenu: string }[] = [
+    { nom: "Convocation à l’assemblée générale", cible: "tous", sujet: "Convocation à l’assemblée générale de l’ACS",
+      contenu: "Bonjour,\n\nVous êtes convié(e) à l’assemblée générale de l’ACS, le [date] à [heure], à [lieu].\n\nOrdre du jour :\n- rapport moral et rapport d’activité\n- rapport financier et vote des comptes\n- montant de la cotisation\n- renouvellement du bureau\n- questions diverses\n\nSi vous ne pouvez pas venir, vous pouvez donner votre pouvoir à un autre adhérent.\n\nÀ bientôt,\n\nLe bureau de l’ACS" },
+    { nom: "Rappel de cotisation", cible: "retard", sujet: "Votre cotisation à l’ACS",
+      contenu: "Bonjour,\n\nSauf erreur de notre part, votre cotisation pour [année] n’est pas encore réglée.\n\nElle permet à l’association de continuer ses sorties, le salon et les semestriels. Vous pouvez la régler [moyen de paiement].\n\nSi c’est déjà fait, merci et ne tenez pas compte de ce message.\n\nLe bureau de l’ACS" },
+    { nom: "Annonce d’une sortie", cible: "tous", sujet: "Sortie du [date] : [lieu]",
+      contenu: "Bonjour,\n\nNous organisons une sortie le [date] à [lieu].\n\nRendez-vous à [heure] à [point de rendez-vous]. [Covoiturage, repas, prix éventuel.]\n\nInscriptions dans l’agenda de l’espace membre : [SITE]/agenda\n\nÀ bientôt,\n\nLe bureau de l’ACS" },
+    { nom: "Remerciements après le salon", cible: "tous", sujet: "Merci pour le Salon des Plantes",
+      contenu: "Bonjour,\n\nUn grand merci à toutes celles et ceux qui ont participé au Salon des Plantes : montage, accueil, tombola, démontage… Sans vous, rien ne serait possible.\n\n[Quelques chiffres ou anecdotes.]\n\nLes photos sont dans la galerie de l’espace membre : [SITE]/galerie\n\nLe bureau de l’ACS" },
+    { nom: "Appel aux bénévoles pour le salon", cible: "tous", sujet: "Salon des Plantes : on a besoin de vous",
+      contenu: "Bonjour,\n\nLe Salon des Plantes approche ([dates]). Les tâches des bénévoles sont ouvertes : montage le vendredi, accueil, caisse, tombola, démontage le lundi…\n\nInscrivez-vous en quelques clics depuis l’événement du salon dans l’agenda : [SITE]/agenda\n\nMerci d’avance,\n\nLe bureau de l’ACS" },
+]
+
 function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string | null; setOuverte: (id: string | null) => void }) {
     const client = sb()
     const [liste, setListe] = React.useState<any[]>([])
@@ -1261,6 +1344,7 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
     }
     const envoyerTout = async () => {
         const d = await sauver(true); if (!d) return
+        if (/\[[^\]]{2,40}\]/.test(d.sujet + d.contenu) && !window.confirm("Le message contient encore des passages entre [crochets] à remplacer. Envoyer quand même ?")) return
         const { data: dest } = await client.rpc("destinataires", { c: d.id })
         const n = dest?.length ?? 0
         if (!n) return setMsg({ t: "Aucun destinataire pour cette cible.", err: true })
@@ -1281,6 +1365,11 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                     <button style={small()} onClick={() => { setC(null); setMsg({ t: "", err: false }) }}>Retour à la liste</button>
                 </div>
                 {envoyee && <p style={{ ...muted, marginBottom: 16 }}>Envoyée le {dateFr(c.envoyee_le, true)} à {c.nb_envois} personne(s).</p>}
+                {envoyee && c.cible !== "test" && <StatsCampagne c={c} majListe={charger} />}
+                {!c.id && !envoyee && <div style={{ marginBottom: 16 }}><span style={label}>Partir d’un modèle</span>
+                    <select style={input} value="" onChange={(e) => { const m = MODELES_EMAIL[Number(e.target.value)]; if (!m) return; const site = typeof window !== "undefined" ? window.location.origin : ""; setC({ ...c, cible: m.cible, sujet: m.sujet, contenu: m.contenu.replace(/\[SITE\]/g, site) }) }}>
+                        <option value="">— Message vierge ou choisir un modèle —</option>{MODELES_EMAIL.map((m, i) => <option key={i} value={i}>{m.nom}</option>)}</select>
+                    <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Remplacez ensuite les passages entre [crochets].</span></div>}
                 <fieldset disabled={envoyee || occupe} style={{ border: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
                     <div><span style={label}>Destinataires</span>
                         <select style={input} value={c.cible} onChange={(e) => setC({ ...c, cible: e.target.value })}>{CIBLES.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
@@ -1316,7 +1405,7 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                 {liste.map((r) => (
                     <button key={r.id} onClick={() => { setMsg({ t: "", err: false }); setC(r) }} style={{ display: "flex", width: "100%", justifyContent: "space-between", gap: "4px 12px", flexWrap: "wrap", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, borderRadius: 0, padding: "12px 0", color: C.txt, font: "inherit", cursor: "pointer" }}>
                         <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.sujet}<span style={{ color: C.mute, fontSize: 13 }}> · {CIBLES.find(([k]) => k === r.cible)?.[1]}</span></span>
-                        <span style={{ flex: "0 0 auto", fontSize: 13, color: r.statut === "envoyee" ? C.accent : r.statut === "erreur" ? C.danger : C.mute }}>{STAT[r.statut]}{r.statut === "envoyee" ? ` · ${dateFr(r.envoyee_le)} · ${r.nb_envois}` : ""}</span>
+                        <span style={{ flex: "0 0 auto", fontSize: 13, color: r.statut === "envoyee" ? C.accent : r.statut === "erreur" ? C.danger : C.mute }}>{STAT[r.statut]}{r.statut === "envoyee" ? ` · ${dateFr(r.envoyee_le)} · ${r.nb_envois}${r.stats?.envoyes ? ` · ${Math.round((100 * r.stats.ouverts) / r.stats.envoyes)} % ouverts` : ""}` : ""}</span>
                     </button>
                 ))}
                 <Msg text={msg.t} err={msg.err} />
