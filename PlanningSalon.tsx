@@ -247,7 +247,17 @@ const joursDuSalon = (reg: Reglage, creneaux: Creneau[]) => {
 // Espace membre : bloc « Tâches des bénévoles » dans la fiche du salon (onglet Événements)
 // ======================================================================
 let cacheReglage: Promise<any> | null = null
-export function TachesBenevoles({ client, moi, evenement }: { client: any; moi: any; evenement: any }) {
+// l'événement de l'agenda qui correspond au salon : dates qui se recoupent, ou à défaut « salon » + l'année dans le titre
+export function estEvenementSalon(reg: Reglage | null, e: any): boolean {
+    if (!reg || !e) return false
+    if (reg.date_debut && e.date_debut && e.date_debut <= (reg.date_fin || reg.date_debut) && (e.date_fin || e.date_debut) >= reg.date_debut) return true
+    const txt = `${e.titre || ""} ${e.date_label || ""} ${e.date_debut || ""}`
+    return /salon/i.test(e.titre || "") && txt.includes(String(reg.edition))
+}
+
+// evenement : affiché sous cet événement s'il s'agit du salon.
+// seul + evenements : bloc autonome en haut de l'agenda, seulement si aucun événement de la liste n'est le salon.
+export function TachesBenevoles({ client, moi, evenement, seul, evenements }: { client: any; moi: any; evenement?: any; seul?: boolean; evenements?: any[] }) {
     const [reg, setReg] = React.useState<Reglage | null>(null)
     const [d, setD] = React.useState<any>(null)
     const [ouvert, setOuvert] = React.useState(false)
@@ -260,17 +270,25 @@ export function TachesBenevoles({ client, moi, evenement }: { client: any; moi: 
     }, [])
     const recharger = React.useCallback(async () => setD(await chargerPlanning(client)), [client])
     // ce bloc ne s'affiche que sous l'événement du salon (dates qui se recoupent)
-    const estSalon = !!reg?.date_debut && !!evenement?.date_debut && evenement.date_debut <= (reg.date_fin || reg.date_debut) && (evenement.date_fin || evenement.date_debut) >= reg.date_debut
+    const estSalon = seul ? !!reg && !(evenements || []).some((e) => estEvenementSalon(reg, e)) : estEvenementSalon(reg, evenement)
     React.useEffect(() => { if (estSalon) recharger() }, [estSalon])
     if (!estSalon || !d || d.err) return null
     const { postes, creneaux, inscrits } = d as { postes: Poste[]; creneaux: Creneau[]; inscrits: Inscrit[] }
     const r = d.reg as Reglage
-    if (!creneaux.length) return <p style={{ ...discret, fontSize: 14, marginTop: 14, gridColumn: "1 / -1" }}>Tâches des bénévoles : le bureau prépare la liste, elle apparaîtra ici.</p>
+    // bloc autonome : présenté comme une carte de l'agenda, au nom du salon
+    const cadre = (x: React.ReactNode) => !seul ? x : (
+        <div style={{ background: C.panel, border: `1px solid ${C.line}`, padding: "clamp(18px, 3vw, 28px)" }}>
+            <span style={{ display: "block", fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent }}>Salon des Plantes {r.edition}{r.date_debut ? ` · ${jourFr(r.date_debut)}${r.date_fin && r.date_fin !== r.date_debut ? " – " + jourFr(r.date_fin) : ""}` : ""}</span>
+            <h3 style={{ fontFamily: "Fraunces, Georgia, serif", fontSize: 22, margin: "2px 0 12px", fontWeight: 600 }}>Devenir bénévole au salon</h3>
+            {x}
+        </div>
+    )
+    if (!creneaux.length) return cadre(<p style={{ ...discret, fontSize: 14, marginTop: 14, gridColumn: "1 / -1" }}>Tâches des bénévoles : le bureau prépare la liste, elle apparaîtra ici.</p>)
     const conjoint = String(moi?.conjoint || "").trim()
     const besoin = creneaux.reduce((a, c) => a + Math.max(0, c.places - inscrits.filter((i) => i.creneau_id === c.id).length), 0)
     const mes = creneaux.filter((c) => inscrits.some((i) => i.creneau_id === c.id && i.adherent_id === moi.id)).sort((a, b) => (a.jour + a.debut).localeCompare(b.jour + b.debut))
     const ouvertes = r.planning_ouvert !== false
-    const versAgenda = (c: Creneau): EvtAgenda => ({ titre: titreCreneau(c, postes), jour: c.jour, debut: c.debut, fin: c.fin, lieu: evenement.lieu || LIEU_SALON, details: `Bénévole au salon ${r.edition}${c.note ? " · " + c.note : ""}` })
+    const versAgenda = (c: Creneau): EvtAgenda => ({ titre: titreCreneau(c, postes), jour: c.jour, debut: c.debut, fin: c.fin, lieu: evenement?.lieu || LIEU_SALON, details: `Bénévole au salon ${r.edition}${c.note ? " · " + c.note : ""}` })
     const agir = async (c: Creneau, pourConjoint: boolean, retirer: boolean) => {
         setOccupe(true); setMsg(null)
         const { error } = retirer
@@ -285,8 +303,8 @@ export function TachesBenevoles({ client, moi, evenement }: { client: any; moi: 
     const moiIci = ficheIci.some((i) => i.adherent_id === moi.id && !i.conjoint)
     const luiIci = ficheIci.some((i) => i.adherent_id === moi.id && i.conjoint)
     const complet = fiche ? ficheIci.length >= fiche.places : false
-    return (
-        <div style={{ gridColumn: "1 / -1", borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 4 }}>
+    return cadre(
+        <div style={seul ? {} : { gridColumn: "1 / -1", borderTop: `1px solid ${C.line}`, paddingTop: 16, marginTop: 4 }}>
             <button onClick={() => setOuvert(!ouvert)} style={{ ...bouton(!ouvert), width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, textAlign: "left" }}>
                 <span>Tâches des bénévoles <span style={{ fontWeight: 400 }}>· {besoin ? `${besoin} place${besoin > 1 ? "s" : ""} à prendre` : "tout est pourvu"}{mes.length ? ` · vous : ${mes.length}` : ""}</span></span>
                 <span aria-hidden>{ouvert ? "▲" : "▼"}</span>
