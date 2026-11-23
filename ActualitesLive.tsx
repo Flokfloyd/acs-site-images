@@ -100,7 +100,7 @@ export default function ActualitesLive(props: { mode?: "accueil" | "page"; nombr
     if (liste === null) return <div style={{ width: "100%", minHeight: 120 }} />
     if (!liste.length) return mode === "page"
         ? <p style={{ fontFamily: sans, color: txt, opacity: 0.7, width: "100%" }}>Pas encore d’actualité publiée.</p>
-        : <div style={{ width: "100%" }} />
+        : <div style={{ width: "100%" }}><style>{`[data-framer-name="s-actu"]{display:none!important}`}</style></div>   // aucune actualité : la section de l'accueil se masque
     return (
         <div style={{ width: "100%", fontFamily: sans, color: txt }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 300px), 1fr))", gap: 18 }}>
