@@ -432,6 +432,7 @@ export function Evenements({ moi }: { moi: any }) {
     if (!evts) return <div style={box}><p style={muted}>Chargement…</p></div>
     return (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
+            <TachesBenevoles client={client} moi={moi} seul evenements={evts} />
             {evts.length === 0 && <div style={box}><p style={muted}>Aucune sortie annoncée pour le moment.</p></div>}
             {evts.map((e) => {
                 const moiInscrit = mes.find((r) => r.evenement_id === e.id)
