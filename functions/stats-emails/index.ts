@@ -31,16 +31,22 @@ Deno.serve(async (req) => {
     // événements Brevo de cette campagne, depuis le jour de l'envoi (90 jours au plus)
     const debut = new Date(c.envoyee_le)
     const fin = new Date(Math.min(Date.now(), debut.getTime() + 89 * 86400000))
-    const tags = encodeURIComponent(JSON.stringify([`acs-campagne-${c.id}`]))
-    const evts: any[] = []
-    for (let offset = 0; offset < 20000; offset += 2500) {
-      const url = `https://api.brevo.com/v3/smtp/statistics/events?limit=2500&offset=${offset}&startDate=${jour(debut)}&endDate=${jour(fin)}&tags=${tags}&sort=asc`
+    // On lit tous les événements de la période puis on garde ceux de cette campagne (repérée par son étiquette,
+    // ou à défaut par son sujet) : plus fiable que le filtre « tags » de Brevo.
+    const tag = `acs-campagne-${c.id}`
+    const { data: sujetRow } = await db.from("campagnes").select("sujet").eq("id", c.id).single()
+    const sujet = sujetRow?.sujet ?? ""
+    const tous: any[] = []
+    for (let offset = 0; offset < 50000; offset += 2500) {
+      const url = `https://api.brevo.com/v3/smtp/statistics/events?limit=2500&offset=${offset}&startDate=${jour(debut)}&endDate=${jour(fin)}&sort=asc`
       const r = await fetch(url, { headers: { "api-key": cle, accept: "application/json" } })
       if (!r.ok) return json({ erreur: `Brevo ${r.status} : ${await r.text()}` }, 502)
       const lot = (await r.json()).events ?? []
-      evts.push(...lot)
+      tous.push(...lot)
       if (lot.length < 2500) break
     }
+    const etiquettes = (e: any) => `${typeof e.tag === "string" ? e.tag : JSON.stringify(e.tag ?? "")} ${JSON.stringify(e.tags ?? [])}`
+    const evts = tous.filter((e) => etiquettes(e).includes(tag) || (sujet && e.subject === sujet && !etiquettes(e).includes("acs-test")))
 
     // une ligne par adresse
     const parEmail = new Map<string, Suivi>()
@@ -73,6 +79,7 @@ Deno.serve(async (req) => {
       cliques: lignes.filter((l) => l.clic).length,
       erreurs: lignes.filter((l) => l.erreur && !l.delivre).length,
       evenements: evts.length,
+      evenements_periode: tous.length,
       maj_le: new Date().toISOString(),
     }
     await db.from("campagnes").update({ stats }).eq("id", c.id)
