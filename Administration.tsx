@@ -9,7 +9,6 @@ import {
     CHAMPS_AGENDA, CHAMPS_SEM, CHAMPS_ADH, CHAMPS_ADHESION, CHAMPS_INSCR, CHAMPS_PHOTO, FichierForm,
 } from "./EspaceMembre.tsx"
 import { GALERIE } from "./GalerieAccueil.tsx"
-import { TexteActu, dateActu } from "./ActualitesLive.tsx"
 import { ZONES_SALON, ouvrirFormulairePapier } from "./InscriptionSalon.tsx"
 import GuideAdmin from "./GuideAdmin.tsx"
 import { TachesAdmin, RetroplanningAdmin, AlertesRetroplanning } from "./PlanningSalon.tsx"
@@ -29,7 +28,7 @@ function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
     return [setEl, etroit]
 }
 
-const ONGLETS = [["agenda", "Agenda"], ["actualites", "Actualités"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["salon", "Salon"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"], ["guide", "Guide"]] as const
+const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["salon", "Salon"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"], ["guide", "Guide"]] as const
 type O = (typeof ONGLETS)[number][0]
 const lireHash = (): O => {
     if (typeof window === "undefined") return "agenda"
@@ -89,7 +88,6 @@ export default function Administration(props: { pageMembre: string }) {
                 </div>
             )}
             {onglet === "agenda" && <Agenda moi={email} ouvrirCampagne={ouvrirCampagne} etroit={etroit} />}
-            {onglet === "actualites" && <GestionActualites moi={email} ouvrirCampagne={ouvrirCampagne} />}
             {onglet === "billets" && <ControleBillets />}
             {onglet === "paiements" && <><Aide>Les paiements encaissés sur AssoConnect (en ligne ou au salon avec l’appli) s’ajoutent ici en important un export AssoConnect, par exemple une fois par mois. Notez à la main les adhésions réglées par chèque ou en espèces hors AssoConnect.</Aide>
                 <ImportAssoConnect />
@@ -1226,130 +1224,6 @@ function ResultatsAdmin({ so, retour, editer, moi, ouvrirCampagne }: { so: any; 
 }
 
 // ---------- Campagnes e-mail ----------
-// ---------- Actualités (page /actualites et page d'accueil) ----------
-function GestionActualites({ moi, ouvrirCampagne }: { moi: string; ouvrirCampagne: (id: string) => void }) {
-    const client = sb()!
-    const [liste, setListe] = React.useState<any[]>([])
-    const [a, setA] = React.useState<any | null>(null)
-    const [apercu, setApercu] = React.useState(false)
-    const [occupe, setOccupe] = React.useState(false)
-    const [msg, setMsg] = React.useState({ t: "", err: false })
-    const aujourdhui = () => new Date().toISOString().slice(0, 10)
-    const charger = React.useCallback(async () => {
-        const { data, error } = await client.from("actualites").select("*").order("publie_le", { ascending: false }).order("cree_le", { ascending: false })
-        if (error) setMsg({ t: /actualites/.test(error.message) ? "La table des actualités n’est pas encore installée." : error.message, err: true })
-        setListe(data ?? [])
-    }, [])
-    React.useEffect(() => { charger() }, [])
-    const sauver = async (champs: any = {}) => {
-        const x = { ...a, ...champs }
-        if (!x.titre?.trim()) { setMsg({ t: "Le titre est obligatoire.", err: true }); return null }
-        const row = { titre: x.titre.trim(), resume: x.resume?.trim() || null, contenu: x.contenu || "", photo_url: x.photo_url || null, publie_le: x.publie_le || aujourdhui(), publie: !!x.publie, public: x.public !== false, auteur: x.auteur || moi }
-        setOccupe(true)
-        const { data, error } = x.id ? await client.from("actualites").update(row).eq("id", x.id).select().single() : await client.from("actualites").insert(row).select().single()
-        setOccupe(false)
-        if (error) { setMsg({ t: error.message, err: true }); return null }
-        setA(data); charger()
-        setMsg({ t: data.publie ? (data.publie_le > aujourdhui() ? `Programmée : visible à partir du ${dateActu(data.publie_le)}.` : "Publiée sur le site.") : "Brouillon enregistré (non visible sur le site).", err: false })
-        return data
-    }
-    const photo = async (f?: File | null) => {
-        if (!f || !f.type.startsWith("image/")) return
-        setOccupe(true); setMsg({ t: "Envoi de la photo…", err: false })
-        try {
-            const nom = `actualites/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`
-            const up = await client.storage.from("semestriels").upload(nom, await GALERIE.reduireImage(f, 1600, 0.82), { contentType: "image/jpeg", upsert: false })
-            if (up.error) throw up.error
-            setA({ ...a, photo_url: client.storage.from("semestriels").getPublicUrl(nom).data.publicUrl }); setMsg({ t: "Photo ajoutée. Pensez à enregistrer.", err: false })
-        } catch (e: any) { setMsg({ t: e.message || String(e), err: true }) }
-        setOccupe(false)
-    }
-    const supprimer = async () => {
-        if (!window.confirm(`Supprimer l’actualité « ${a.titre} » ? Elle disparaîtra du site.`)) return
-        await client.from("actualites").delete().eq("id", a.id); setA(null); charger()
-    }
-    const prevenir = async () => {
-        const d = await sauver(); if (!d) return
-        const site = typeof window !== "undefined" ? window.location.origin : ""
-        const contenu = `Bonjour,\n\nUne nouvelle actualité est en ligne sur le site de l’association : « ${d.titre} ».\n\n${d.resume ? d.resume + "\n\n" : ""}À lire ici : ${site}/actualites#${d.id}\n\nLe bureau de l’ACS`
-        const { data, error } = await client.from("campagnes").insert({ sujet: d.titre, contenu, cible: "tous", dans_espace: false, auteur: moi }).select().single()
-        if (error) return setMsg({ t: error.message, err: true })
-        ouvrirCampagne(data.id)
-    }
-    const etat = (r: any) => !r.publie ? ["Brouillon", C.mute] : r.publie_le > aujourdhui() ? [`Programmée · ${dateActu(r.publie_le)}`, "#d7b56d"] : [`En ligne · ${dateActu(r.publie_le)}`, C.accent]
-
-    if (a) return (
-        <div style={box}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
-                <h3 style={{ ...h2, fontSize: 22, margin: 0 }}>{a.id ? "Modifier l’actualité" : "Nouvelle actualité"}</h3>
-                <span style={{ display: "flex", gap: 8 }}>
-                    <button style={small()} onClick={() => setApercu(!apercu)}>{apercu ? "Revenir au texte" : "Aperçu"}</button>
-                    <button style={small()} onClick={() => { setA(null); setApercu(false); setMsg({ t: "", err: false }) }}>Retour à la liste</button>
-                </span>
-            </div>
-            {apercu ? (
-                <div style={{ border: `1px solid ${C.line}`, background: C.bg, marginBottom: 16 }}>
-                    {a.photo_url && <img src={a.photo_url} alt="" style={{ display: "block", width: "100%", maxHeight: 340, objectFit: "cover" }} />}
-                    <div style={{ padding: "20px 22px" }}>
-                        <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent }}>{dateActu(a.publie_le || aujourdhui())}</span>
-                        <h2 style={{ ...h2, fontSize: 28, margin: "8px 0 14px" }}>{a.titre || "Titre"}</h2>
-                        {a.resume && <p style={{ fontSize: 17, opacity: 0.85, margin: "0 0 16px" }}>{a.resume}</p>}
-                        <div style={{ lineHeight: 1.7 }}><TexteActu texte={a.contenu || ""} /></div>
-                    </div>
-                </div>
-            ) : (
-                <fieldset disabled={occupe} style={{ border: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
-                    <div><span style={label}>Titre *</span><input style={input} value={a.titre || ""} onChange={(e) => setA({ ...a, titre: e.target.value })} placeholder="Retour sur la sortie au jardin de Brest" /></div>
-                    <div><span style={label}>Résumé (une ou deux phrases, affichées sur la carte)</span><textarea style={{ ...input, minHeight: 70, resize: "vertical" }} maxLength={400} value={a.resume || ""} onChange={(e) => setA({ ...a, resume: e.target.value })} /></div>
-                    <div><span style={label}>Texte</span><textarea style={{ ...input, minHeight: 260, resize: "vertical", lineHeight: 1.6 }} value={a.contenu || ""} onChange={(e) => setA({ ...a, contenu: e.target.value })} />
-                        <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Texte simple : laissez une ligne vide entre les paragraphes. Les liens (https://…) deviennent cliquables.</span></div>
-                    <div><span style={label}>Photo</span>
-                        {a.photo_url && <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}><img src={a.photo_url} alt="" style={{ width: 160, height: 100, objectFit: "cover", border: `1px solid ${C.line}` }} /><button style={small(true)} onClick={() => setA({ ...a, photo_url: null })}>Retirer la photo</button></div>}
-                        <input type="file" accept="image/*" onChange={(e) => photo(e.target.files?.[0])} style={{ color: C.mute, fontSize: 14 }} />
-                        <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Si l’actualité est publique, évitez les visages reconnaissables sans l’accord des personnes.</span></div>
-                    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-                        <div style={{ flex: "1 1 180px" }}><span style={label}>Date de publication</span><input type="date" style={input} value={a.publie_le || aujourdhui()} onChange={(e) => setA({ ...a, publie_le: e.target.value })} />
-                            <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Une date future programme la publication.</span></div>
-                        <div style={{ flex: "1 1 220px" }}><span style={label}>Visible par</span>
-                            <select style={input} value={a.public === false ? "membres" : "tous"} onChange={(e) => setA({ ...a, public: e.target.value === "tous" })}><option value="tous">Tout le monde</option><option value="membres">Les adhérents connectés seulement</option></select></div>
-                    </div>
-                </fieldset>
-            )}
-            <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
-                {!a.publie ? <button style={btn()} disabled={occupe} onClick={() => sauver({ publie: true })}>Publier</button>
-                    : <button style={btn()} disabled={occupe} onClick={() => sauver()}>Enregistrer</button>}
-                {!a.publie && <button style={btn(false)} disabled={occupe} onClick={() => sauver({ publie: false })}>Enregistrer le brouillon</button>}
-                {a.publie && <button style={btn(false)} disabled={occupe} onClick={() => sauver({ publie: false })}>Retirer du site</button>}
-                {a.publie && a.public !== false && <a href={`/actualites#${a.id}`} target="_blank" rel="noopener" style={{ ...btn(false), textDecoration: "none" }}>Voir sur le site</a>}
-                {a.publie && <button style={btn(false)} disabled={occupe} onClick={prevenir}>Prévenir les adhérents par e-mail</button>}
-                {a.id && <button style={small(true)} onClick={supprimer}>Supprimer</button>}
-            </div>
-            <Msg text={msg.t} err={msg.err} />
-        </div>
-    )
-    return (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
-            <Aide>Les actualités apparaissent sur la page Actualités du site et les trois dernières sur la page d’accueil. Une actualité « adhérents seulement » n’est visible qu’une fois connecté. Après publication, « Prévenir les adhérents par e-mail » prépare une campagne avec le lien.</Aide>
-            <div style={box}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
-                    <h3 style={{ ...h2, fontSize: 20, margin: 0 }}>Actualités <span style={{ color: C.mute, fontWeight: 400 }}>({liste.length})</span></h3>
-                    <button style={btn()} onClick={() => { setMsg({ t: "", err: false }); setApercu(false); setA({ titre: "", contenu: "", publie: false, public: true, publie_le: aujourdhui() }) }}>Nouvelle actualité</button>
-                </div>
-                {liste.length === 0 && <p style={muted}>Aucune actualité pour l’instant.</p>}
-                {liste.map((r) => { const [t, coul] = etat(r); return (
-                    <button key={r.id} onClick={() => { setMsg({ t: "", err: false }); setApercu(false); setA(r) }} style={{ display: "flex", width: "100%", gap: 12, alignItems: "center", textAlign: "left", background: "transparent", border: "none", borderTop: `1px solid ${C.line}`, padding: "10px 0", color: C.txt, font: "inherit", cursor: "pointer" }}>
-                        {r.photo_url ? <img src={r.photo_url} alt="" style={{ width: 64, height: 44, objectFit: "cover", flex: "0 0 auto" }} /> : <span style={{ width: 64, height: 44, background: C.bg, border: `1px solid ${C.line}`, flex: "0 0 auto" }} />}
-                        <span style={{ minWidth: 0, flex: 1 }}>
-                            <span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.titre}</span>
-                            <span style={{ fontSize: 13, color: coul as string }}>{t}{r.public === false && <span style={{ color: C.mute }}> · adhérents seulement</span>}</span>
-                        </span>
-                    </button>) })}
-                <Msg text={msg.t} err={msg.err} />
-            </div>
-        </div>
-    )
-}
-
 // Statistiques d'une campagne envoyée : reçus, ouverts, cliqués, erreurs (données de Brevo)
 function StatsCampagne({ c, majListe }: { c: any; majListe: () => void }) {
     const client = sb()!
