@@ -45,7 +45,7 @@ function Bulle({ x, y, l, children }: { x: number; y: number; l: number; childre
 }
 
 // Colonnes groupées : une catégorie (mois, année) = un groupe de deux barres
-export function Colonnes({ cats, series, hauteur = 220, titreBulle }: { cats: string[]; series: { nom: string; couleur: string; valeurs: number[] }[]; hauteur?: number; titreBulle?: (i: number) => string }) {
+export function Colonnes({ cats, series, hauteur = 220, titreBulle, clic }: { cats: string[]; series: { nom: string; couleur: string; valeurs: number[] }[]; hauteur?: number; titreBulle?: (i: number) => string; clic?: (i: number) => void }) {
     const [ref, L] = useLargeur()
     const [sel, setSel] = React.useState<number | null>(null)
     const max = Math.max(1, ...series.flatMap((s) => s.valeurs))
@@ -69,7 +69,7 @@ export function Colonnes({ cats, series, hauteur = 220, titreBulle }: { cats: st
                         })}
                         {i % etiq === 0 && <text x={g + i * bande + bande / 2} y={hauteur - 6} textAnchor="middle" fontSize={11} fill={C.mute}>{c}</text>}
                         <rect x={g + i * bande} y={h} width={bande} height={H + b} fill="transparent" tabIndex={0} aria-label={`${titreBulle ? titreBulle(i) : c} : ${series.map((s) => `${s.nom} ${eur(s.valeurs[i] || 0)}`).join(", ")}`}
-                            onMouseEnter={() => setSel(i)} onFocus={() => setSel(i)} onBlur={() => setSel(null)} style={{ outline: "none", cursor: "default" }} />
+                            onMouseEnter={() => setSel(i)} onFocus={() => setSel(i)} onBlur={() => setSel(null)} onClick={() => clic && clic(i)} onKeyDown={(e) => { if (clic && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); clic(i) } }} style={{ outline: "none", cursor: clic ? "pointer" : "default" }} />
                     </g>
                 })}
                 <line x1={g} x2={L - d} y1={h + H} y2={h + H} stroke="rgba(246,240,230,0.3)" strokeWidth={1} />
@@ -114,10 +114,10 @@ export function Courbe({ points, n, mois, hauteur = 200, couleur = SERIE.treso, 
 }
 
 // Barres horizontales (une série) : répartition par poste, valeur au bout
-export function Barres({ lignes, couleur, total }: { lignes: { t: string; v: number; sous?: string }[]; couleur: string; total?: number }) {
+export function Barres({ lignes, couleur, total, clic }: { lignes: { t: string; v: number; sous?: string }[]; couleur: string; total?: number; clic?: (l: { t: string; v: number; sous?: string }) => void }) {
     const max = Math.max(1, ...lignes.map((l) => l.v)), tot = total ?? lignes.reduce((s, l) => s + l.v, 0)
     return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 9 }}>
-        {lignes.map((l) => <div key={l.t} title={`${l.t} : ${eur(l.v)}`}>
+        {lignes.map((l) => <div key={l.t} title={`${l.t} : ${eur(l.v)}${clic ? " · cliquer pour voir les écritures" : ""}`} role={clic ? "button" : undefined} tabIndex={clic ? 0 : undefined} onClick={() => clic && clic(l)} onKeyDown={(e) => { if (clic && e.key === "Enter") clic(l) }} style={{ cursor: clic ? "pointer" : "default" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13.5, marginBottom: 3 }}>
                 <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.t}{l.sous && <span style={{ color: C.mute }}> · {l.sous}</span>}</span>
                 <span style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{eur0(l.v)}<span style={{ color: C.mute, fontSize: 12, marginLeft: 6 }}>{tot ? Math.round((100 * l.v) / tot) : 0} %</span></span>

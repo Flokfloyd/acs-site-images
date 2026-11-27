@@ -14,7 +14,7 @@ import { Colonnes, Courbe, Barres, Legende, SERIE } from "./ComptaGraphes.tsx"
 type Compte = { compte: string; intitule: string; classe: number; actif: boolean }
 type Ecr = { id?: string; le: string; sens: "recette" | "depense" | "virement"; libelle: string; montant: number | string; compte?: string | null; tresorerie?: string | null; tiers?: string | null; evenement?: string | null; avance_par?: string | null; rembourse?: boolean; piece_url?: string | null; note?: string | null; categorie?: string | null; pointe?: boolean; cree_le?: string }
 
-const auj = () => new Date().toISOString().slice(0, 10)
+const auj = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}` } // date locale (pas UTC)
 const sa = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 const n2 = (x: any) => Math.round((Number(x) || 0) * 100) / 100
 const champ: React.CSSProperties = { ...input, padding: "9px 10px", fontSize: 14 }
@@ -66,6 +66,8 @@ const Var = ({ n, n1, inverse = false }: { n: number; n1: number; inverse?: bool
     const bon = inverse ? v <= 0 : v >= 0
     return <span style={{ color: C.mute }}><span aria-hidden style={{ color: v === 0 ? C.mute : bon ? C.accent : C.danger }}>{v > 0 ? "▲" : v < 0 ? "▼" : "="}</span> {v > 0 ? "+" : ""}{v} %</span>
 }
+
+const Lien = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => <button onClick={onClick} style={{ all: "unset", cursor: "pointer", textDecoration: "underline", textDecorationColor: "rgba(246,240,230,0.3)", textUnderlineOffset: 3 }}>{children}</button>
 
 // impression propre (ou PDF via « Enregistrer en PDF ») d'un état comptable
 function imprimer(titre: string, html: string) {
@@ -177,7 +179,9 @@ export default function ComptaAdmin({ moi, vue: vueExt, setVue: setVueExt }: { m
         exporter(`journal-acs-${exo}-format-assoconnect.csv`, ["#Pièce", "Type de journal", "Date", "Description", "Groupe", "Contact ou tiers", "Comptes", "Budget", "Budget", "Debit", "Credit"], lignes)
     }
 
-    const ctx = { exo, plan, ecr, tout: tout ?? [], ouverture, nom, peut, annees, recharger: charger, aller: setVue, choisir: (y: number) => { setExo(y); setVue("bord") } }
+    const [filtreJ, setFiltreJ] = React.useState<FiltreJ>({})
+    const ouvrirJournal = (f: FiltreJ) => { setFiltreJ({ ...f, n: Date.now() }); setVue("journal"); try { window.scrollTo({ top: 0, behavior: "smooth" }) } catch (e) {} }
+    const ctx = { exo, plan, ecr, tout: tout ?? [], ouverture, nom, peut, annees, recharger: charger, aller: setVue, choisir: (y: number) => { setExo(y); setVue("bord") }, ouvrirJournal, filtreJ }
     return (
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -196,13 +200,14 @@ export default function ComptaAdmin({ moi, vue: vueExt, setVue: setVueExt }: { m
                 {vue === "etats" && <Etats {...ctx} />}
                 {vue === "budget" && <Budget exo={exo} plan={plan} ecr={ecr} budgets={budgets} peut={peut} recharger={charger} />}
                 {vue === "historique" && <Historique {...ctx} />}
-                {vue === "reglages" && <Plan exo={exo} plan={plan} soldes={soldesSaisis} report={ouverture(exo)} peut={peut} recharger={charger} />}
+                {vue === "reglages" && <Plan exo={exo} plan={plan} soldes={soldesSaisis} report={ouverture(exo)} peut={peut} recharger={charger} tout={tout} />}
             </>}
         </div>
     )
 }
 
-type Ctx = { exo: number; plan: Compte[]; ecr: Ecr[]; tout: Ecr[]; ouverture: (y: number) => Record<string, number>; nom: (c?: string | null) => string; peut: boolean; annees: number[]; recharger: () => void; aller: (v: Vue) => void; choisir: (y: number) => void }
+type Ctx = { exo: number; plan: Compte[]; ecr: Ecr[]; tout: Ecr[]; ouverture: (y: number) => Record<string, number>; nom: (c?: string | null) => string; peut: boolean; annees: number[]; recharger: () => void; aller: (v: Vue) => void; choisir: (y: number) => void; ouvrirJournal: (f: FiltreJ) => void; filtreJ: FiltreJ }
+type FiltreJ = { poste?: string; act?: string; treso?: string; mois?: string; filtre?: "" | "recette" | "depense" | "virement" | "notes" | "verif"; nouveau?: boolean; n?: number }
 
 // comptes de trésorerie utiles pour un exercice : actifs, ou avec un solde, ou avec des mouvements
 function tresosDe(c: Ctx, y: number, ecr: Ecr[]) {
@@ -263,7 +268,10 @@ function Bord(c: Ctx & { auto: { adh: number; ins: number; dons: number }; expor
         </div>
     )
     return <>
-        <p style={{ ...muted, fontSize: 13.5, margin: "-6px 0 0" }}>Chiffres {periode}.</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: -6 }}>
+            <p style={{ ...muted, fontSize: 13.5 }}>Chiffres {periode}.</p>
+            {c.peut && <button style={btn()} onClick={() => c.ouvrirJournal({ nouveau: true })}>+ Nouvelle écriture</button>}
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 1, background: C.line, border: `1px solid ${C.line}` }}>
             {tuile("Recettes", rec, rec1)}{tuile("Dépenses", dep, dep1, true)}{tuile("Résultat", rec - dep, rec1 - dep1, false, true)}{tuile(enCours ? "Trésorerie aujourd’hui" : "Trésorerie au 31 décembre", tresoTot, tresoN1)}
         </div>
@@ -271,29 +279,32 @@ function Bord(c: Ctx & { auto: { adh: number; ins: number; dons: number }; expor
             <span style={{ ...label, color: "#d7b56d" }}>Points d’attention</span>
             {notes.length > 0 && <p style={{ margin: "4px 0", fontSize: 14 }}>⚠ {notes.length} note{notes.length > 1 ? "s" : ""} de frais à rembourser ({euros(notes.reduce((s, r) => s + Number(r.montant), 0))}) : {[...new Set(notes.map((r) => r.avance_par))].join(", ")}.</p>}
             {verif.length > 0 && <p style={{ margin: "4px 0", fontSize: 14 }}>⚠ {verif.length} écriture{verif.length > 1 ? "s" : ""} sans compte de trésorerie (règlement non retrouvé à l’import) : à compléter ou à laisser si la somme n’a jamais été encaissée.</p>}
-            <button style={{ ...small(), marginTop: 6 }} onClick={() => c.aller("journal")}>Ouvrir le journal</button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                {verif.length > 0 && <button style={small()} onClick={() => c.ouvrirJournal({ filtre: "verif" })}>Voir les écritures à vérifier</button>}
+                {notes.length > 0 && <button style={small()} onClick={() => c.ouvrirJournal({ filtre: "notes" })}>Voir les notes de frais</button>}
+            </div>
         </div>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 16 }}>
-            <div style={box}><Titre t="Recettes et dépenses par mois" sous={`Exercice ${exo}`} /><Legende items={[["Recettes", SERIE.recettes], ["Dépenses", SERIE.depenses]]} />
-                <Colonnes cats={MOIS} series={[{ nom: "Recettes", couleur: SERIE.recettes, valeurs: parMois("recette") }, { nom: "Dépenses", couleur: SERIE.depenses, valeurs: parMois("depense") }]} titreBulle={(i) => `${MOIS_LONG[i]} ${exo}`} /></div>
+            <div style={box}><Titre t="Recettes et dépenses par mois" sous={`Exercice ${exo} · cliquez sur un mois pour voir ses écritures`} /><Legende items={[["Recettes", SERIE.recettes], ["Dépenses", SERIE.depenses]]} />
+                <Colonnes cats={MOIS} series={[{ nom: "Recettes", couleur: SERIE.recettes, valeurs: parMois("recette") }, { nom: "Dépenses", couleur: SERIE.depenses, valeurs: parMois("depense") }]} titreBulle={(i) => `${MOIS_LONG[i]} ${exo}`} clic={(i) => c.ouvrirJournal({ mois: String(i + 1).padStart(2, "0") })} /></div>
             <div style={box}><Titre t="Trésorerie totale" sous={`Tous comptes · ${euros(ouvTot)} au 1er janvier → ${euros(cum)}`} />
                 <Courbe points={pts} n={nJours} mois={MOIS} etiquette="Trésorerie" /></div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 380px), 1fr))", gap: 16 }}>
-            <div style={box}><Titre t="D’où vient l’argent" sous={`Recettes par poste · ${euros(rec)}`} />{rec ? <Barres lignes={parPoste("recette")} couleur={SERIE.recettes} total={rec} /> : <p style={muted}>Aucune recette.</p>}</div>
-            <div style={box}><Titre t="Où va l’argent" sous={`Dépenses par poste · ${euros(dep)}`} />{dep ? <Barres lignes={parPoste("depense")} couleur={SERIE.depenses} total={dep} /> : <p style={muted}>Aucune dépense.</p>}</div>
+            <div style={box}><Titre t="D’où vient l’argent" sous={`Recettes par poste · ${euros(rec)}`} />{rec ? <Barres lignes={parPoste("recette")} couleur={SERIE.recettes} total={rec} clic={(l) => c.ouvrirJournal(l.sous ? { poste: l.sous } : { filtre: "recette" })} /> : <p style={muted}>Aucune recette.</p>}</div>
+            <div style={box}><Titre t="Où va l’argent" sous={`Dépenses par poste · ${euros(dep)}`} />{dep ? <Barres lignes={parPoste("depense")} couleur={SERIE.depenses} total={dep} clic={(l) => c.ouvrirJournal(l.sous ? { poste: l.sous } : { filtre: "depense" })} /> : <p style={muted}>Aucune dépense.</p>}</div>
         </div>
         <div style={box}>
             <Titre t="Résultat par activité" sous="Renseignez « Activité » à la saisie (Salon, Adhésions, Voyages…) pour suivre chaque activité." />
             {acts.size === 0 ? <p style={muted}>Aucune écriture.</p> : <Tableau entetes={["Activité", "Recettes", "Dépenses", "Résultat", `Résultat ${exo - 1}`]}
-                lignes={[...acts].filter(([, x]) => x.r || x.d).sort((a, b) => (b[1].r - b[1].d) - (a[1].r - a[1].d)).map(([k, x]) => [k, euros(x.r), euros(x.d), <b style={{ color: x.r - x.d < 0 ? C.danger : C.txt }}>{euros(x.r - x.d)}</b>, <span style={{ color: C.mute }}>{x.p ? euros(x.p) : "—"}</span>])}
+                lignes={[...acts].filter(([, x]) => x.r || x.d).sort((a, b) => (b[1].r - b[1].d) - (a[1].r - a[1].d)).map(([k, x]) => [<Lien onClick={() => c.ouvrirJournal({ act: k === "Non affecté" ? "" : k })}>{k}</Lien>, euros(x.r), euros(x.d), <b style={{ color: x.r - x.d < 0 ? C.danger : C.txt }}>{euros(x.r - x.d)}</b>, <span style={{ color: C.mute }}>{x.p ? euros(x.p) : "—"}</span>])}
                 total={["Total", euros(rec), euros(dep), euros(rec - dep), ""]} />}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 420px), 1fr))", gap: 16 }}>
             <div style={box}><Titre t="Comptes de trésorerie" sous={`Solde au 1er janvier, entrées, sorties et solde ${enCours ? "à ce jour" : "au 31 décembre"}`} />
                 <Tableau entetes={["Compte", "1er janv.", "Entrées", "Sorties", "Solde"]} lignes={tresos.map((t) => {
                     const e = ecr.reduce((s, r) => s + Math.max(0, mvt(r, t.compte)), 0), so = ecr.reduce((s, r) => s + Math.min(0, mvt(r, t.compte)), 0)
-                    return [nomTreso(t.intitule), euros(o[t.compte] || 0), euros(e), euros(-so), <b>{euros((o[t.compte] || 0) + e + so)}</b>]
+                    return [<Lien onClick={() => c.ouvrirJournal({ treso: t.compte })}>{nomTreso(t.intitule)}</Lien>, euros(o[t.compte] || 0), euros(e), euros(-so), <b>{euros((o[t.compte] || 0) + e + so)}</b>]
                 })} total={["Total", euros(ouvTot), "", "", euros(tresoTot)]} />
                 <p style={{ ...muted, fontSize: 12.5, marginTop: 8 }}>Le solde du 1er janvier est repris de l’exercice précédent, sauf s’il est saisi dans « Réglages ». Comparez avec vos relevés bancaires.</p>
             </div>
@@ -433,14 +444,26 @@ const vide = (): Ecr => ({ le: auj(), sens: "depense", libelle: "", montant: "",
 function Saisie(c: Ctx) {
     const { plan, ecr, peut, nom, recharger, exo } = c
     const client = sb()!
-    const [f, setF] = React.useState<Ecr | null>(null)
+    const [f, setF] = React.useState<Ecr | null>(c.filtreJ.nouveau && peut ? vide() : null)
     const [msg, setMsg] = React.useState({ t: "", err: false })
     const [q, setQ] = React.useState("")
-    const [filtre, setFiltre] = React.useState<"" | "recette" | "depense" | "virement" | "notes" | "verif">("")
-    const [mois, setMois] = React.useState("")
-    const [poste, setPoste] = React.useState("")
-    const [act, setAct] = React.useState("")
-    const [treso, setTreso] = React.useState("")
+    const fi = c.filtreJ
+    const [filtre, setFiltre] = React.useState<"" | "recette" | "depense" | "virement" | "notes" | "verif">(fi.filtre || "")
+    const [mois, setMois] = React.useState(fi.mois || "")
+    const [poste, setPoste] = React.useState(fi.poste || "")
+    const [act, setAct] = React.useState(fi.act != null ? (fi.act || "∅") : "")
+    const [treso, setTreso] = React.useState(fi.treso || "")
+    // filtre demandé depuis le tableau de bord (clic sur un poste, une activité, un mois…)
+    React.useEffect(() => {
+        if (!fi.n) return
+        setFiltre(fi.filtre || ""); setMois(fi.mois || ""); setPoste(fi.poste || ""); setAct(fi.act != null ? (fi.act || "∅") : ""); setTreso(fi.treso || ""); setQ("")
+        if (fi.nouveau && peut) setF(vide())
+    }, [fi.n])
+    // sélection multiple pour les modifications groupées
+    const [sel, setSel] = React.useState<Set<string>>(new Set())
+    const [groupe, setGroupe] = React.useState({ act: "", poste: "", treso: "" })
+    // ventilation : une même opération répartie sur plusieurs postes
+    const [vent, setVent] = React.useState<{ compte: string; montant: string; evenement: string }[] | null>(null)
     const [limite, setLimite] = React.useState(80)
     const postes = (classe: number) => plan.filter((p) => p.classe === classe && p.actif)
     const tresos = plan.filter((p) => p.classe === 5 && p.actif)
@@ -452,7 +475,20 @@ function Saisie(c: Ctx) {
         if (!f.libelle.trim() || !(Number(f.montant) > 0) || !f.le) return setMsg({ t: "Date, libellé et montant sont obligatoires.", err: true })
         if (f.sens !== "virement" && !f.compte) return setMsg({ t: "Choisissez le poste comptable.", err: true })
         if (!f.tresorerie || (f.sens === "virement" && !f.compte)) return setMsg({ t: "Choisissez le compte de trésorerie.", err: true })
-        const row = { le: f.le, sens: f.sens, libelle: f.libelle.trim(), montant: n2(f.montant), compte: f.compte || null, tresorerie: f.tresorerie, tiers: f.tiers?.trim() || null, evenement: f.evenement?.trim() || null, avance_par: f.avance_par?.trim() || null, rembourse: !!f.rembourse, piece_url: f.piece_url || null, note: (f.note || "").replace(/ · règlement non retrouvé/, "").trim() || null, categorie: f.sens === "virement" ? "Virement interne" : nom(f.compte) }
+        if (vent && !f.id && f.sens !== "virement") {
+            const lignes = vent.filter((v) => v.compte && Number(v.montant) > 0)
+            const tot = n2(lignes.reduce((x, v) => x + Number(v.montant), 0))
+            if (lignes.length < 2) return setMsg({ t: "Renseignez au moins deux lignes (poste et montant).", err: true })
+            if (Math.abs(tot - n2(f.montant)) > 0.004) return setMsg({ t: `La répartition fait ${euros(tot)} pour un montant de ${euros(f.montant)}.`, err: true })
+            if (!f.tresorerie) return setMsg({ t: "Choisissez le compte de trésorerie.", err: true })
+            const rows = lignes.map((v) => ({ le: f.le, sens: f.sens, libelle: f.libelle.trim(), montant: n2(v.montant), compte: v.compte, tresorerie: f.tresorerie, tiers: f.tiers?.trim() || null, evenement: (v.evenement || f.evenement || "").trim() || null, avance_par: f.avance_par?.trim() || null, rembourse: !!f.rembourse, piece_url: f.piece_url || null, pointe: !!f.pointe, note: [f.note?.trim(), `Ventilation d’une opération de ${euros(f.montant)}`].filter(Boolean).join(" · "), categorie: nom(v.compte) }))
+            const { error } = await client.from("ecritures").insert(rows)
+            if (error) return setMsg({ t: error.message, err: true })
+            setMsg({ t: `${rows.length} écritures enregistrées (ventilation).`, err: false }); setVent(null); recharger()
+            setF(encore ? { ...vide(), le: f.le, sens: f.sens, tresorerie: f.tresorerie, evenement: f.evenement } : null)
+            return
+        }
+        const row = { le: f.le, sens: f.sens, libelle: f.libelle.trim(), montant: n2(f.montant), compte: f.compte || null, tresorerie: f.tresorerie, tiers: f.tiers?.trim() || null, evenement: f.evenement?.trim() || null, avance_par: f.avance_par?.trim() || null, rembourse: !!f.rembourse, piece_url: f.piece_url || null, pointe: !!f.pointe, note: (f.note || "").replace(/ · règlement non retrouvé/, "").trim() || null, categorie: f.sens === "virement" ? "Virement interne" : nom(f.compte) }
         const { error } = f.id ? await client.from("ecritures").update(row).eq("id", f.id) : await client.from("ecritures").insert(row)
         if (error) return setMsg({ t: error.message, err: true })
         setMsg({ t: f.id ? "Écriture modifiée." : "Écriture enregistrée.", err: false })
@@ -466,11 +502,25 @@ function Saisie(c: Ctx) {
         if (error) return setMsg({ t: error.message, err: true })
         setF(null); setMsg({ t: "Écriture supprimée.", err: false }); recharger()
     }
+    const ids = () => [...sel]
+    const grouper = async (champs: any, quoi: string) => {
+        if (!sel.size) return
+        if (champs === "suppr") {
+            if (!window.confirm(`Supprimer définitivement ${sel.size} écriture${sel.size > 1 ? "s" : ""} ? Cette action ne peut pas être annulée.`)) return
+            const { error } = await client.from("ecritures").delete().in("id", ids())
+            if (error) return setMsg({ t: error.message, err: true })
+        } else {
+            const { error } = await client.from("ecritures").update(champs).in("id", ids())
+            if (error) return setMsg({ t: error.message, err: true })
+        }
+        setMsg({ t: `${sel.size} écriture${sel.size > 1 ? "s" : ""} : ${quoi}.`, err: false }); setSel(new Set()); recharger()
+    }
+    const basculerPointe = async (r: Ecr) => { await client.from("ecritures").update({ pointe: !r.pointe }).eq("id", r.id); recharger() }
     const basculerRembourse = async (r: Ecr) => { await client.from("ecritures").update({ rembourse: !r.rembourse }).eq("id", r.id); recharger() }
 
     const mots = sa(q).split(/\s+/).filter(Boolean)
-    const liste = ecr.filter((r) => (filtre === "notes" ? !!r.avance_par : filtre === "verif" ? aVerifier(r) : !filtre || r.sens === filtre)
-        && (!mois || r.le.slice(5, 7) === mois) && (!poste || r.compte === poste) && (!act || (r.evenement || "") === act) && (!treso || r.tresorerie === treso || (r.sens === "virement" && r.compte === treso))
+    const liste = ecr.filter((r) => (filtre === "notes" ? !!r.avance_par : filtre === "verif" ? aVerifier(r) : (filtre as any) === "nonpointe" ? !r.pointe && r.sens !== "virement" : !filtre || r.sens === filtre)
+        && (!mois || r.le.slice(5, 7) === mois) && (!poste || r.compte === poste) && (!act || (act === "∅" ? !r.evenement : r.evenement === act)) && (!treso || r.tresorerie === treso || (r.sens === "virement" && r.compte === treso))
         && mots.every((m) => sa(`${r.libelle} ${r.tiers || ""} ${r.evenement || ""} ${r.compte || ""} ${nom(r.compte)} ${r.montant} ${String(r.montant).replace(".", ",")}`).includes(m)))
     const rec = liste.filter((r) => r.sens === "recette").reduce((s, r) => s + Number(r.montant), 0), dep = liste.filter((r) => r.sens === "depense").reduce((s, r) => s + Number(r.montant), 0)
     const nVerif = ecr.filter(aVerifier).length
@@ -486,7 +536,7 @@ function Saisie(c: Ctx) {
             <div style={box}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 14, flexWrap: "wrap" }}>
                     <h3 style={{ ...h2, fontSize: 20, margin: 0 }}>{f.id ? "Modifier l’écriture" : "Nouvelle écriture"}</h3>
-                    <button style={small()} onClick={() => { setF(null); setMsg({ t: "", err: false }) }}>Fermer</button>
+                    <button style={small()} onClick={() => { setF(null); setVent(null); setMsg({ t: "", err: false }) }}>Fermer</button>
                 </div>
                 {f.note && /Import AssoConnect/.test(f.note) && <p style={{ ...muted, fontSize: 13, margin: "-6px 0 12px" }}>Écriture reprise d’AssoConnect : {f.note.replace(/^Import AssoConnect · /, "")}</p>}
                 <fieldset disabled={!peut} style={{ border: "none", padding: 0, margin: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
@@ -496,7 +546,23 @@ function Saisie(c: Ctx) {
                     <div><span style={label}>Date</span><input type="date" style={champ} value={f.le} onChange={(e) => set("le", e.target.value)} /></div>
                     <div><span style={label}>Montant (€)</span><input type="number" min={0} step={0.01} inputMode="decimal" style={champ} value={f.montant} onChange={(e) => set("montant", e.target.value)} /></div>
                     <div style={{ gridColumn: "1 / -1" }}><span style={label}>Libellé</span><input style={champ} value={f.libelle} onChange={(e) => set("libelle", e.target.value)} placeholder={f.sens === "virement" ? "Dépôt des espèces du salon" : "Achat de ponce, cotisation de…"} /></div>
-                    {f.sens !== "virement" ? <>
+                    {f.sens !== "virement" && !f.id && <div style={{ gridColumn: "1 / -1" }}>
+                        <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13.5, cursor: "pointer" }}><input type="checkbox" checked={!!vent} onChange={(e) => setVent(e.target.checked ? [{ compte: f.compte || "", montant: String(f.montant || ""), evenement: f.evenement || "" }, { compte: "", montant: "", evenement: f.evenement || "" }] : null)} style={{ accentColor: C.accent }} />Répartir sur plusieurs postes (ex. une facture qui mêle plantes et substrat)</label>
+                    </div>}
+                    {f.sens !== "virement" && vent ? <div style={{ gridColumn: "1 / -1", display: "grid", gap: 8 }}>
+                        {vent.map((v, i) => <div key={i} style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) 110px minmax(0, 1fr) auto", gap: 8, alignItems: "center" }}>
+                            <select style={champ} value={v.compte} onChange={(e) => setVent(vent.map((x, k) => (k === i ? { ...x, compte: e.target.value } : x)))} aria-label={`Poste ${i + 1}`}><option value="">— Poste —</option>{postes(f.sens === "depense" ? 6 : 7).map((p) => <option key={p.compte} value={p.compte}>{p.compte} · {p.intitule}</option>)}</select>
+                            <input style={{ ...champ, textAlign: "right" }} type="number" step={0.01} min={0} placeholder="€" value={v.montant} onChange={(e) => setVent(vent.map((x, k) => (k === i ? { ...x, montant: e.target.value } : x)))} aria-label={`Montant ${i + 1}`} />
+                            <input style={champ} list="acs-evts" placeholder="Activité" value={v.evenement} onChange={(e) => setVent(vent.map((x, k) => (k === i ? { ...x, evenement: e.target.value } : x)))} aria-label={`Activité ${i + 1}`} />
+                            <button type="button" style={small()} onClick={() => setVent(vent.length > 2 ? vent.filter((_, k) => k !== i) : vent)} aria-label="Retirer la ligne" disabled={vent.length <= 2}>×</button>
+                        </div>)}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <button type="button" style={small()} onClick={() => setVent([...vent, { compte: "", montant: "", evenement: f.evenement || "" }])}>+ Ajouter une ligne</button>
+                            {(() => { const t = n2(vent.reduce((x, v) => x + (Number(v.montant) || 0), 0)), r = n2(Number(f.montant || 0) - t); return <span style={{ fontSize: 13.5, color: Math.abs(r) < 0.005 && t > 0 ? C.accent : "#d7b56d" }}>Réparti {euros(t)}{Math.abs(r) >= 0.005 ? ` · reste ${euros(r)}` : t > 0 ? " ✓" : ""}</span> })()}
+                        </div>
+                        <div><span style={label}>{f.sens === "depense" ? "Payé depuis" : "Encaissé sur"}</span>
+                            <select style={champ} value={f.tresorerie || ""} onChange={(e) => set("tresorerie", e.target.value)}><option value="">— Choisir —</option>{tresos.map((p) => <option key={p.compte} value={p.compte}>{nomTreso(p.intitule)}</option>)}</select></div>
+                    </div> : f.sens !== "virement" ? <>
                         <div style={{ gridColumn: "1 / -1" }}><span style={label}>Poste comptable</span>
                             <select style={champ} value={f.compte || ""} onChange={(e) => set("compte", e.target.value)}>
                                 <option value="">— Choisir —</option>
@@ -515,10 +581,12 @@ function Saisie(c: Ctx) {
                         {f.avance_par && <label style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6, fontSize: 13.5, cursor: "pointer" }}><input type="checkbox" checked={!!f.rembourse} onChange={(e) => set("rembourse", e.target.checked)} style={{ accentColor: C.accent }} />Remboursé</label>}</div>}
                     <div style={{ gridColumn: "1 / -1" }}><span style={label}>Justificatif (photo ou PDF)</span><FichierForm v={f.piece_url} set={(v: any) => set("piece_url", v)} dossier="compta" accept="image/*,application/pdf" taille={1600} /></div>
                     <div style={{ gridColumn: "1 / -1" }}><span style={label}>Note</span><textarea style={{ ...champ, minHeight: 60, resize: "vertical" }} value={f.note || ""} onChange={(e) => set("note", e.target.value)} /></div>
+                    <label style={{ gridColumn: "1 / -1", display: "flex", gap: 8, alignItems: "center", fontSize: 13.5, cursor: "pointer" }}><input type="checkbox" checked={!!f.pointe} onChange={(e) => set("pointe", e.target.checked)} style={{ accentColor: C.accent }} />Pointé : vu sur le relevé de compte</label>
                 </fieldset>
                 {peut && <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
                     <button style={btn()} onClick={() => enregistrer(false)}>Enregistrer</button>
                     {!f.id && <button style={btn(false)} onClick={() => enregistrer(true)}>Enregistrer et saisir la suivante</button>}
+                    {f.id && <button style={btn(false)} onClick={() => { setF({ ...f, id: undefined, le: auj(), pointe: false, rembourse: false, note: (f.note || "").replace(/^Import AssoConnect.*$/, "") }); setMsg({ t: "Copie prête : vérifiez la date et le montant, puis enregistrez.", err: false }) }}>Dupliquer</button>}
                     {f.id && <button style={small(true)} onClick={supprimer}>Supprimer</button>}
                 </div>}
                 <Msg t={msg.t} err={msg.err} />
@@ -530,13 +598,14 @@ function Saisie(c: Ctx) {
                 <input style={{ ...champ, flex: "1 1 240px", maxWidth: 380 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher (libellé, tiers, poste, montant…)" />
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {([["", "Tout"], ["recette", "Recettes"], ["depense", "Dépenses"], ["virement", "Virements"], ["notes", "Notes de frais"]] as const).map(([k, t]) => <button key={k} onClick={() => setFiltre(k)} style={puceStyle(filtre === k)}>{t}</button>)}
+                    <button onClick={() => setFiltre("nonpointe" as any)} style={puceStyle((filtre as any) === "nonpointe")}>Non pointées</button>
                     {nVerif > 0 && <button onClick={() => setFiltre("verif")} style={{ ...puceStyle(filtre === "verif"), borderColor: filtre === "verif" ? C.accent : "#d7b56d" }}>À vérifier ({nVerif})</button>}
                 </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 8, marginBottom: 12 }}>
                 <select style={champ} value={mois} onChange={(e) => setMois(e.target.value)} aria-label="Mois"><option value="">Tous les mois</option>{MOIS_LONG.map((m, i) => <option key={m} value={String(i + 1).padStart(2, "0")}>{m[0].toUpperCase() + m.slice(1)}</option>)}</select>
                 <select style={champ} value={poste} onChange={(e) => setPoste(e.target.value)} aria-label="Poste"><option value="">Tous les postes</option>{postesUtilises.map((p) => <option key={p} value={p}>{p} · {nom(p)}</option>)}</select>
-                <select style={champ} value={act} onChange={(e) => setAct(e.target.value)} aria-label="Activité"><option value="">Toutes les activités</option>{actsExo.map((a) => <option key={a} value={a}>{a || "Non affecté"}</option>)}</select>
+                <select style={champ} value={act} onChange={(e) => setAct(e.target.value)} aria-label="Activité"><option value="">Toutes les activités</option>{actsExo.map((a) => <option key={a || "∅"} value={a || "∅"}>{a || "Non affecté"}</option>)}</select>
                 <select style={champ} value={treso} onChange={(e) => setTreso(e.target.value)} aria-label="Trésorerie"><option value="">Tous les comptes</option>{plan.filter((p) => p.classe === 5 && ecr.some((r) => mvt(r, p.compte))).map((p) => <option key={p.compte} value={p.compte}>{nomTreso(p.intitule)}</option>)}</select>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 6 }}>
@@ -546,15 +615,36 @@ function Saisie(c: Ctx) {
                     <button style={small()} onClick={exporterListe}>Exporter (Excel)</button>
                 </div>
             </div>
+            {peut && liste.length > 0 && <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", padding: "8px 0", fontSize: 13.5 }}>
+                <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}><input type="checkbox" checked={sel.size > 0 && liste.slice(0, limite).every((r) => sel.has(r.id!))} onChange={(e) => setSel(e.target.checked ? new Set(liste.slice(0, limite).map((r) => r.id!)) : new Set())} style={{ accentColor: C.accent, width: 16, height: 16 }} />Tout sélectionner{liste.length > limite ? ` (les ${limite} affichées)` : ""}</label>
+                {sel.size > 0 && <span style={{ color: C.mute }}>{sel.size} sélectionnée{sel.size > 1 ? "s" : ""}</span>}
+            </div>}
+            {sel.size > 0 && <div style={{ border: `1px solid ${C.accent}`, padding: 12, margin: "0 0 10px", display: "grid", gap: 10 }}>
+                <b style={{ fontSize: 14 }}>Modifier les {sel.size} écriture{sel.size > 1 ? "s" : ""} sélectionnée{sel.size > 1 ? "s" : ""}</b>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 6 }}><input style={champ} list="acs-evts" placeholder="Activité" value={groupe.act} onChange={(e) => setGroupe({ ...groupe, act: e.target.value })} /><button style={small()} onClick={() => grouper({ evenement: groupe.act.trim() || null }, groupe.act.trim() ? `activité « ${groupe.act.trim()} »` : "activité retirée")}>Appliquer</button></div>
+                    <div style={{ display: "flex", gap: 6 }}><select style={champ} value={groupe.poste} onChange={(e) => setGroupe({ ...groupe, poste: e.target.value })}><option value="">Poste…</option>{plan.filter((p) => (p.classe === 6 || p.classe === 7) && p.actif).map((p) => <option key={p.compte} value={p.compte}>{p.compte} · {p.intitule}</option>)}</select><button style={small()} disabled={!groupe.poste} onClick={() => grouper({ compte: groupe.poste, categorie: nom(groupe.poste) }, `poste ${groupe.poste}`)}>Appliquer</button></div>
+                    <div style={{ display: "flex", gap: 6 }}><select style={champ} value={groupe.treso} onChange={(e) => setGroupe({ ...groupe, treso: e.target.value })}><option value="">Compte de trésorerie…</option>{tresos.map((p) => <option key={p.compte} value={p.compte}>{nomTreso(p.intitule)}</option>)}</select><button style={small()} disabled={!groupe.treso} onClick={() => grouper({ tresorerie: groupe.treso }, `trésorerie ${nomTreso(nom(groupe.treso))}`)}>Appliquer</button></div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button style={small()} onClick={() => grouper({ pointe: true }, "pointées")}>Marquer pointées</button>
+                    <button style={small()} onClick={() => grouper({ pointe: false }, "non pointées")}>Retirer le pointage</button>
+                    <button style={small()} onClick={() => setSel(new Set())}>Annuler la sélection</button>
+                    <button style={{ ...small(true), marginLeft: "auto" }} onClick={() => grouper("suppr", "supprimées")}>Supprimer</button>
+                </div>
+                <p style={{ ...muted, fontSize: 12.5 }}>Le poste ne s’applique qu’aux recettes et dépenses ; vérifiez la sélection avant d’appliquer.</p>
+            </div>}
             {filtre === "verif" && <p style={{ fontSize: 13.5, color: "#d7b56d", margin: "4px 0 8px" }}>Ces écritures reprises d’AssoConnect n’ont pas de règlement retrouvé (souvent une vente annulée ou jamais payée). Ouvrez-les pour indiquer le compte d’encaissement si l’argent a bien été reçu.</p>}
             {liste.length === 0 ? <p style={{ ...muted, fontSize: 14 }}>Aucune écriture.</p> : liste.slice(0, limite).map((r) => (
-                <div key={r.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderTop: `1px solid ${C.line}`, fontSize: 14 }}>
-                    <button onClick={() => { setMsg({ t: "", err: false }); setF({ ...r }); window.scrollTo({ top: 0, behavior: "smooth" }) }} style={{ all: "unset", cursor: "pointer", flex: 1, minWidth: 0, display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+                <div key={r.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 0", borderTop: `1px solid ${C.line}`, fontSize: 14, background: sel.has(r.id!) ? "rgba(155,189,138,0.08)" : undefined }}>
+                    {peut && <input type="checkbox" checked={sel.has(r.id!)} onChange={() => setSel((x) => { const n = new Set(x); n.has(r.id!) ? n.delete(r.id!) : n.add(r.id!); return n })} style={{ accentColor: C.accent, width: 16, height: 16, flexShrink: 0 }} aria-label={`Sélectionner ${r.libelle}`} />}
+                    <button onClick={() => { setMsg({ t: "", err: false }); setVent(null); setF({ ...r }); window.scrollTo({ top: 0, behavior: "smooth" }) }} style={{ all: "unset", cursor: "pointer", flex: 1, minWidth: 0, display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
                         <span style={{ color: C.mute, fontSize: 13, minWidth: 64, fontVariantNumeric: "tabular-nums" }}>{new Date(r.le).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
                         <span style={{ flex: "1 1 220px", minWidth: 0 }}>{r.libelle}{r.tiers ? <span style={{ color: C.mute }}> · {r.tiers}</span> : null}
                             <span style={{ display: "block", fontSize: 12.5, color: C.mute }}>{r.sens === "virement" ? `${nomTreso(nom(r.tresorerie))} → ${nomTreso(nom(r.compte))}` : `${r.compte ? r.compte + " · " : ""}${nom(r.compte) || r.categorie || "Sans poste"}`}{r.evenement ? ` · ${r.evenement}` : ""}{r.sens !== "virement" && r.tresorerie ? ` · ${nomTreso(nom(r.tresorerie))}` : ""}{r.piece_url ? " · 📎" : ""}{aVerifier(r) ? <span style={{ color: "#d7b56d" }}> · à vérifier</span> : null}</span></span>
                     </button>
                     {r.avance_par && <button onClick={() => peut && basculerRembourse(r)} title={peut ? "Cliquer pour changer" : undefined} style={{ ...small(), fontSize: 12, padding: "4px 8px", color: r.rembourse ? C.mute : "#d7b56d", borderColor: r.rembourse ? C.line : "#d7b56d", whiteSpace: "nowrap" }}>{r.rembourse ? "Remboursé" : `À rembourser · ${r.avance_par}`}</button>}
+                    <button onClick={() => peut && basculerPointe(r)} title={r.pointe ? "Pointé sur le relevé (cliquer pour retirer)" : "Non pointé (cliquer pour pointer)"} aria-label={r.pointe ? "Pointé" : "Non pointé"} style={{ all: "unset", cursor: peut ? "pointer" : "default", width: 18, textAlign: "center", color: r.pointe ? C.accent : "rgba(246,240,230,0.25)", fontSize: 14 }}>{r.pointe ? "✓" : "○"}</button>
                     <span style={{ fontWeight: 600, color: couleur(r.sens), fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", minWidth: 86, textAlign: "right" }}>{r.sens === "depense" ? "−" : r.sens === "recette" ? "+" : ""}{euros(r.montant)}</span>
                 </div>
             ))}
@@ -625,13 +715,58 @@ function Budget({ exo, plan, ecr, budgets, peut, recharger }: { exo: number; pla
 }
 
 // ---------- Réglages : droit de saisie, soldes au 1er janvier, plan comptable ----------
-function Plan({ exo, plan, soldes, report, peut, recharger }: { exo: number; plan: Compte[]; soldes: Record<string, number>; report: Record<string, number>; peut: boolean; recharger: () => void }) {
+// activités et tiers : renommer (ou fusionner en donnant le nom d'un autre) sur toutes les écritures
+function Noms({ tout, peut, recharger }: { tout: Ecr[]; peut: boolean; recharger: () => void }) {
+    const client = sb()!
+    const [type, setType] = React.useState<"evenement" | "tiers">("evenement")
+    const [q, setQ] = React.useState("")
+    const [msg, setMsg] = React.useState({ t: "", err: false })
+    const [limite, setLimite] = React.useState(30)
+    const stats = new Map<string, { n: number; m: number; der: string }>()
+    for (const r of tout) { const k = (r as any)[type]; if (!k) continue; const x = stats.get(k) || { n: 0, m: 0, der: "" }; x.n++; x.m += r.sens === "virement" ? 0 : signe(r); if (r.le > x.der) x.der = r.le; stats.set(k, x) }
+    const l = [...stats].filter(([k]) => !q || sa(k).includes(sa(q))).sort((a, b) => (type === "evenement" ? b[1].n - a[1].n : a[0].localeCompare(b[0], "fr")))
+    const renommer = async (ancien: string, nouveau: string) => {
+        nouveau = nouveau.trim()
+        if (!nouveau || nouveau === ancien) return
+        const fusion = stats.has(nouveau)
+        if (!window.confirm(fusion ? `« ${nouveau} » existe déjà : fusionner les ${stats.get(ancien)!.n} écritures de « ${ancien} » avec lui ?` : `Renommer « ${ancien} » en « ${nouveau} » sur ${stats.get(ancien)!.n} écriture(s) ?`)) return recharger()
+        const { error } = await client.from("ecritures").update({ [type]: nouveau }).eq(type, ancien)
+        if (error) return setMsg({ t: error.message, err: true })
+        setMsg({ t: fusion ? "Fusion faite." : "Renommé.", err: false }); recharger()
+    }
+    return <div style={box}>
+        <span style={label}>Activités et tiers</span>
+        <p style={{ ...muted, fontSize: 13.5, margin: "4px 0 10px" }}>Renommez une activité ou un tiers : toutes ses écritures suivent. Pour regrouper deux noms (doublon, faute de frappe), donnez à l’un le nom exact de l’autre. Une nouvelle activité se crée simplement en la tapant à la saisie.</p>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+            <button style={puceStyle(type === "evenement")} onClick={() => { setType("evenement"); setQ("") }}>Activités</button>
+            <button style={puceStyle(type === "tiers")} onClick={() => { setType("tiers"); setQ("") }}>Tiers</button>
+            <input style={{ ...champ, flex: "1 1 200px", maxWidth: 300 }} placeholder="Rechercher…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        {l.slice(0, limite).map(([k, x]) => <div key={k} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 10, alignItems: "center", padding: "4px 0", borderTop: `1px solid ${C.line}`, fontSize: 14 }}>
+            <input key={k} disabled={!peut} defaultValue={k} onBlur={(e) => renommer(k, e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur() }} style={{ ...champ, padding: "5px 8px", background: "transparent", border: "1px solid transparent" }} onFocus={(e) => (e.target.style.borderColor = C.line)} aria-label={`Renommer ${k}`} />
+            <span style={{ color: C.mute, fontSize: 12.5, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{x.n} écriture{x.n > 1 ? "s" : ""} · {euros(x.m)} · {x.der.slice(0, 4)}</span>
+        </div>)}
+        {l.length > limite && <button style={{ ...small(), marginTop: 8 }} onClick={() => setLimite(limite + 100)}>Afficher plus ({l.length - limite})</button>}
+        {l.length === 0 && <p style={{ ...muted, fontSize: 14 }}>Aucun.</p>}
+        <Msg t={msg.t} err={msg.err} />
+    </div>
+}
+
+function Plan({ exo, plan, soldes, report, peut, recharger, tout }: { exo: number; plan: Compte[]; soldes: Record<string, number>; report: Record<string, number>; peut: boolean; recharger: () => void; tout: Ecr[] }) {
     const client = sb()!
     const [msg, setMsg] = React.useState({ t: "", err: false })
     const [nouv, setNouv] = React.useState({ compte: "", intitule: "" })
     const [voir, setVoir] = React.useState<number>(6)
     const [admins, setAdmins] = React.useState<any[]>([])
     React.useEffect(() => { client.from("adherents").select("id,prenom,nom,email,saisie_compta,fonction_bureau").eq("role", "admin").order("nom").then(({ data }: any) => setAdmins(data ?? [])) }, [])
+    const utilises = new Set(tout.flatMap((r) => [r.compte, r.tresorerie]).filter(Boolean) as string[])
+    const supprimerCompte = async (c: Compte) => {
+        if (utilises.has(c.compte)) return setMsg({ t: "Ce compte a des écritures : décochez-le plutôt pour le masquer.", err: true })
+        if (!window.confirm(`Supprimer le compte ${c.compte} · ${c.intitule} ?`)) return
+        await client.from("budgets").delete().eq("compte", c.compte); await client.from("soldes_ouverture").delete().eq("compte", c.compte)
+        const { error } = await client.from("plan_comptable").delete().eq("compte", c.compte)
+        if (error) setMsg({ t: error.message, err: true }); else { setMsg({ t: "Compte supprimé.", err: false }); recharger() }
+    }
     const maj = async (c: Compte, champs: any) => { const { error } = await client.from("plan_comptable").update(champs).eq("compte", c.compte); if (error) setMsg({ t: error.message, err: true }); else recharger() }
     const ajouter = async () => {
         const compte = nouv.compte.trim(), intitule = nouv.intitule.trim()
@@ -669,10 +804,11 @@ function Plan({ exo, plan, soldes, report, peut, recharger }: { exo: number; pla
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "6px 0 10px" }}>{classes.map(([k, t]) => <button key={k} onClick={() => setVoir(k)} style={{ ...small(), padding: "6px 12px", fontSize: 13, background: voir === k ? C.accent : "transparent", color: voir === k ? C.accentDark : C.txt, borderColor: voir === k ? C.accent : C.line }}>{t}</button>)}</div>
             <p style={{ ...muted, fontSize: 13, marginBottom: 6 }}>Décochez les postes inutilisés : ils disparaissent des listes de saisie sans être supprimés.</p>
             {plan.filter((p) => p.classe === voir).map((p) => (
-                <div key={p.compte} style={{ display: "grid", gridTemplateColumns: "24px 70px minmax(0, 1fr)", gap: 10, alignItems: "center", padding: "4px 0", borderTop: `1px solid ${C.line}`, fontSize: 14, opacity: p.actif ? 1 : 0.55 }}>
+                <div key={p.compte} style={{ display: "grid", gridTemplateColumns: "24px 70px minmax(0, 1fr) auto", gap: 10, alignItems: "center", padding: "4px 0", borderTop: `1px solid ${C.line}`, fontSize: 14, opacity: p.actif ? 1 : 0.55 }}>
                     <input type="checkbox" disabled={!peut} checked={p.actif} onChange={() => maj(p, { actif: !p.actif })} style={{ accentColor: C.accent, width: 16, height: 16 }} aria-label={`Utiliser ${p.intitule}`} />
                     <span style={{ color: C.mute, fontVariantNumeric: "tabular-nums" }}>{p.compte}</span>
                     <input key={`${p.compte}-${p.intitule}`} disabled={!peut} defaultValue={p.intitule} onBlur={(e) => e.target.value.trim() && e.target.value.trim() !== p.intitule && maj(p, { intitule: e.target.value.trim() })} style={{ ...champ, padding: "5px 8px", background: "transparent", border: "1px solid transparent" }} />
+                    {peut && !utilises.has(p.compte) ? <button style={{ ...small(true), padding: "3px 8px", fontSize: 12 }} onClick={() => supprimerCompte(p)} aria-label={`Supprimer ${p.compte}`}>Supprimer</button> : <span style={{ color: C.mute, fontSize: 12 }}>{utilises.has(p.compte) ? "utilisé" : ""}</span>}
                 </div>
             ))}
             {peut && <div style={{ display: "grid", gridTemplateColumns: "110px minmax(0, 1fr) auto", gap: 8, marginTop: 12 }}>
@@ -682,5 +818,6 @@ function Plan({ exo, plan, soldes, report, peut, recharger }: { exo: number; pla
             </div>}
             <Msg t={msg.t} err={msg.err} />
         </div>
+        <Noms tout={tout} peut={peut} recharger={recharger} />
     </>
 }
