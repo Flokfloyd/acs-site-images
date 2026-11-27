@@ -93,7 +93,6 @@ export function Bibliotheque() {
                         {l.couverture_url
                             ? <img src={l.couverture_url} alt="" loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform 300ms ease" }} />
                             : <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, textAlign: "center", fontFamily: serif, fontSize: 20, lineHeight: 1.2, color: C.txt, fontWeight: 600 }}>{l.titre}</span>}
-                        <span style={{ position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)", maxWidth: "calc(100% - 24px)", boxSizing: "border-box", background: "rgba(22,18,15,0.88)", color: C.txt, fontSize: cols === 2 ? 12.5 : 14, fontWeight: 600, lineHeight: 1.25, padding: "6px 14px", width: "max-content", textAlign: "center" }}>{l.titre.split(/[,(]/)[0].trim()}</span>
                     </button>
                 ))}
             </div>
