@@ -1298,3 +1298,8 @@ create policy soldes_saisie on public.soldes_ouverture for all using (peut_saisi
 grant select, insert, update, delete on public.budgets, public.soldes_ouverture to authenticated;
 alter table public.ecritures drop constraint if exists ecritures_sens_check;
 alter table public.ecritures add constraint ecritures_sens_check check (sens in ('recette', 'depense', 'virement'));
+
+-- 33. Bibliothèque visible de tous (page Cultiver)
+drop policy if exists livres_lecture on public.livres;
+create policy livres_lecture on public.livres for select using (true);
+grant select on public.livres to anon;

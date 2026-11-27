@@ -1,12 +1,10 @@
-// BibliothequePage.tsx — page « Bibliothèque » : les meilleurs livres sur les cactus et succulentes.
-// Réservée aux adhérents connectés. Les livres se gèrent dans l'administration (onglet Bibliothèque).
+// BibliothequePage.tsx — « Bibliothèque » : les meilleurs livres sur les cactus et succulentes, visibles de tous
+// (en bas de la page Cultiver), présentés comme les semestriels de l'accueil. Gérés dans l'administration (onglet Bibliothèque).
 // Couvertures réduites à 500 px à l'envoi (environ 30 Ko) et chargées seulement quand elles apparaissent à l'écran.
 import * as React from "react"
-import { addPropertyControls, ControlType } from "framer"
 import { createPortal } from "react-dom"
 import { C, serif } from "./AcsBase.tsx"
 import { sb, box, small, muted, input } from "./EspaceMembre.tsx"
-import { ReserveAdherents } from "./GaleriePage.tsx"
 
 type Livre = { id: string; titre: string; auteurs?: string; editeur?: string; annee?: number; pages?: number; langue?: string; isbn?: string; genres?: string; caracteristiques?: string; avis?: string; couverture_url?: string }
 const sa = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
@@ -53,44 +51,49 @@ function Fiche({ l, fermer }: { l: Livre; fermer: () => void }) {
 
 export function Bibliotheque() {
     const [livres, setLivres] = React.useState<Livre[] | null>(null)
-    const [err, setErr] = React.useState("")
     const [q, setQ] = React.useState("")
     const [genre, setGenre] = React.useState<string | null>(null)
     const [ouvert, setOuvert] = React.useState<Livre | null>(null)
+    const ref = React.useRef<HTMLDivElement>(null)
+    const [cols, setCols] = React.useState(4)
     React.useEffect(() => {
-        sb()?.from("livres").select("*").order("ordre").order("titre").then(({ data, error }: any) => { if (error) setErr(error.message); setLivres(data ?? []) })
+        sb()?.from("livres").select("*").order("ordre").order("titre").then(({ data }: any) => setLivres(data ?? []))
     }, [])
-    if (!livres) return <div style={box}><p style={muted}>Chargement…</p></div>
-    if (err && !livres.length) return <div style={box}><p style={muted}>La bibliothèque n’est pas encore disponible.</p></div>
+    React.useEffect(() => {
+        const el = ref.current; if (!el) return
+        const ro = new ResizeObserver(() => { const w = el.clientWidth; setCols(w < 560 ? 2 : w < 860 ? 3 : 4) })
+        ro.observe(el); return () => ro.disconnect()
+    }, [livres === null])
+    if (!livres) return <div ref={ref} style={{ width: "100%", minHeight: 200 }} />
+    if (!livres.length) return <div ref={ref} style={{ width: "100%" }}><p style={muted}>La bibliothèque sera bientôt garnie.</p></div>
     const tous = [...new Set(livres.flatMap(genresDe))].sort((a, b) => a.localeCompare(b, "fr"))
     const mots = sa(q).split(/\s+/).filter(Boolean)
     const vus = livres.filter((l) => (!genre || genresDe(l).includes(genre)) && mots.every((m) => sa(`${l.titre} ${l.auteurs || ""} ${l.genres || ""} ${l.editeur || ""}`).includes(m)))
     const puce = (actif: boolean): React.CSSProperties => ({ ...small(), padding: "6px 12px", fontSize: 13, background: actif ? C.accent : "transparent", color: actif ? C.accentDark : C.txt, borderColor: actif ? C.accent : C.line })
+    const outils = livres.length > 8   // recherche et filtres seulement quand la liste s'allonge
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                <input style={{ ...input, flex: "1 1 240px", maxWidth: 420 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un titre, un auteur, une famille…" />
-                <span style={{ ...muted, fontSize: 13 }}>{vus.length} livre{vus.length > 1 ? "s" : ""}</span>
-            </div>
-            {tous.length > 0 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <button style={puce(!genre)} onClick={() => setGenre(null)}>Tous</button>
-                {tous.map((g) => <button key={g} style={puce(genre === g)} onClick={() => setGenre(genre === g ? null : g)}>{g}</button>)}
-            </div>}
-            {vus.length === 0 ? <div style={box}><p style={muted}>Aucun livre ne correspond.</p></div> : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 14 }}>
-                    {vus.map((l) => (
-                        <button key={l.id} onClick={() => setOuvert(l)} style={{ all: "unset", cursor: "pointer", display: "flex", gap: 14, padding: 14, background: C.panel, border: `1px solid ${C.line}`, boxSizing: "border-box", minWidth: 0 }}>
-                            <Couverture l={l} hauteur={150} />
-                            <span style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0, color: C.txt, fontFamily: "Poppins, sans-serif" }}>
-                                <span style={{ fontFamily: serif, fontSize: 18, lineHeight: 1.25, fontWeight: 600 }}>{l.titre}</span>
-                                {l.auteurs && <span style={{ fontSize: 13.5, color: C.mute }}>{l.auteurs}{l.annee ? ` · ${l.annee}` : ""}</span>}
-                                <span style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>{genresDe(l).slice(0, 4).map((g) => <span key={g} style={{ fontSize: 12, padding: "2px 8px", border: `1px solid ${C.line}`, color: C.accent }}>{g}</span>)}</span>
-                                <span style={{ fontSize: 13.5, fontWeight: 600, color: C.accent, marginTop: "auto" }}>Voir la fiche →</span>
-                            </span>
-                        </button>
-                    ))}
+        <div ref={ref} style={{ width: "100%", display: "flex", flexDirection: "column", gap: 20, fontFamily: "Poppins, sans-serif" }}>
+            {outils && <>
+                <input style={{ ...input, maxWidth: 420 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un titre, un auteur, une famille…" />
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <button style={puce(!genre)} onClick={() => setGenre(null)}>Tous</button>
+                    {tous.map((g) => <button key={g} style={puce(genre === g)} onClick={() => setGenre(genre === g ? null : g)}>{g}</button>)}
                 </div>
-            )}
+            </>}
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: cols === 2 ? 14 : 24 }}>
+                {vus.map((l) => (
+                    <button key={l.id} onClick={() => setOuvert(l)} aria-label={`${l.titre}, voir la fiche`}
+                        style={{ all: "unset", cursor: "pointer", position: "relative", display: "block", background: "#241c17", aspectRatio: "0.72", overflow: "hidden", boxSizing: "border-box" }}
+                        onMouseEnter={(e) => { const i = e.currentTarget.querySelector("img") as HTMLImageElement | null; if (i) i.style.transform = "scale(1.03)" }}
+                        onMouseLeave={(e) => { const i = e.currentTarget.querySelector("img") as HTMLImageElement | null; if (i) i.style.transform = "none" }}>
+                        {l.couverture_url
+                            ? <img src={l.couverture_url} alt="" loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", transition: "transform 300ms ease" }} />
+                            : <span style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: 16, textAlign: "center", fontFamily: serif, fontSize: 20, lineHeight: 1.2, color: C.txt, fontWeight: 600 }}>{l.titre}</span>}
+                        <span style={{ position: "absolute", left: "50%", bottom: 14, transform: "translateX(-50%)", maxWidth: "calc(100% - 24px)", boxSizing: "border-box", background: "rgba(22,18,15,0.88)", color: C.txt, fontSize: cols === 2 ? 12.5 : 14, fontWeight: 600, padding: "6px 14px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{l.titre.split(/[,(]/)[0].trim()}</span>
+                    </button>
+                ))}
+            </div>
+            {vus.length === 0 && <p style={muted}>Aucun livre ne correspond.</p>}
             {ouvert && <Fiche l={ouvert} fermer={() => setOuvert(null)} />}
         </div>
     )
@@ -100,10 +103,6 @@ export function Bibliotheque() {
  * @framerSupportedLayoutWidth any-prefer-fixed
  * @framerSupportedLayoutHeight auto
  */
-export default function BibliothequePage(props: { pageConnexion: string }) {
-    return <ReserveAdherents pageConnexion={props.pageConnexion} texte="La bibliothèque des meilleurs livres sur les cactus et succulentes est réservée aux adhérents connectés." contenu={() => <Bibliotheque />} />
+export default function BibliothequePage() {
+    return <Bibliotheque />
 }
-
-addPropertyControls(BibliothequePage, {
-    pageConnexion: { type: ControlType.String, title: "Page de connexion", defaultValue: "/espace-membre" },
-})
