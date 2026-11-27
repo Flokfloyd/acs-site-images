@@ -1071,7 +1071,7 @@ export function GalerieMembres() {
                 // vue album : une vignette par album (sa première photo) ; un clic ouvre l'album
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
                     {groupes.map((g) => (
-                        <button key={g.titre} onClick={() => setAlbumOuvert(g.titre)} style={{ all: "unset", cursor: "pointer", display: "block", background: C.panel, border: `1px solid ${C.line}` }}>
+                        <button key={g.titre} onClick={() => setAlbumOuvert(g.titre)} style={{ all: "unset", boxSizing: "border-box", cursor: "pointer", display: "flex", flexDirection: "column", justifyContent: "flex-start", alignItems: "stretch", background: C.panel, border: `1px solid ${C.line}` }}>
                             <div role="img" aria-label={g.titre} style={{ height: 170, backgroundColor: "#2e241e", backgroundImage: `url("${g.liste[0].vignette_url || g.liste[0].image_url}")`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />
                             <div style={{ padding: "10px 12px" }}>
                                 <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>{g.titre}</div>
