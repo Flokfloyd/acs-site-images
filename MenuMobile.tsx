@@ -59,7 +59,7 @@ export default function MenuMobile(props: { accent: string }) {
             <span style={{ font: "600 12px " + FONT, letterSpacing: "0.12em", textTransform: "uppercase", color: accent }}>Membres</span>
             {connecte ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
-                {[["Vue d’ensemble", ""], ["Profil", "#profil"], ["Collection", "#collection"], ["Sondages", "#sondages"], ["Discussion", "#discussion"], ["Annuaire", "#annuaire"], ["Bibliothèque", "/bibliotheque"]].map(([t, h]) => (
+                {[["Vue d’ensemble", ""], ["Profil", "#profil"], ["Collection", "#collection"], ["Sondages", "#sondages"], ["Discussion", "#discussion"], ["Annuaire", "#annuaire"]].map(([t, h]) => (
                   <a key={t} href={h.startsWith("/") ? h : "/espace-membre" + h} onClick={() => setOpen(false)} style={{ font: "500 15px " + FONT, color: "#f6f0e6", textDecoration: "none", padding: "10px 12px", border: "1px solid rgba(246,240,230,0.14)" }}>{t}</a>
                 ))}
               </div>
