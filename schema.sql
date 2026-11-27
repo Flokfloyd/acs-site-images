@@ -1134,3 +1134,167 @@ select * from (values
    'Cactaceae, cactées globulaires, identification', '1 094 espèces de cactées globulaires en couleur, avec nom scientifique, synonymes, dimensions, aiguillons, fleurs et répartition. Épuisé.', 40)
 ) v(titre, auteurs, editeur, annee, pages, langue, isbn, genres, caracteristiques, ordre)
 where not exists (select 1 from public.livres);
+
+
+-- 32. Comptabilité : plan comptable de l'association, écritures rattachées à un poste et à un compte de trésorerie,
+--     budget prévisionnel par poste, soldes d'ouverture. Saisie réservée au trésorier, lecture pour tous les admins.
+alter table public.adherents add column if not exists saisie_compta boolean not null default false;
+create or replace function public.peut_saisir_compta() returns boolean
+language sql stable security definer set search_path = public as $$
+  select est_admin() and (
+    exists (select 1 from adherents where email = mon_email() and saisie_compta)
+    -- tant que personne n'a reçu le droit de saisie, tous les admins peuvent saisir
+    or not exists (select 1 from adherents where saisie_compta and actif)
+  )
+$$;
+grant execute on function public.peut_saisir_compta() to authenticated;
+
+create table if not exists public.plan_comptable (
+  compte   text primary key check (compte ~ '^[0-9]{3,8}$'),
+  intitule text not null check (char_length(intitule) between 2 and 120),
+  classe   int not null check (classe between 1 and 8),
+  actif    boolean not null default true
+);
+alter table public.plan_comptable enable row level security;
+drop policy if exists plan_lecture on public.plan_comptable;
+create policy plan_lecture on public.plan_comptable for select using (est_admin());
+drop policy if exists plan_saisie on public.plan_comptable;
+create policy plan_saisie on public.plan_comptable for all using (peut_saisir_compta()) with check (peut_saisir_compta());
+grant select, insert, update, delete on public.plan_comptable to authenticated;
+insert into public.plan_comptable (compte, intitule, classe, actif) values
+  ('110000', 'Report à nouveau excédentaire (solde créditeur)', 1, true),
+  ('119000', 'Report à nouveau (solde débiteur)', 1, false),
+  ('120000', 'Résultat de l''exercice (excédent)', 1, true),
+  ('129000', 'Résultat de l''exercice (déficit)', 1, false),
+  ('401000', 'Fournisseurs', 4, true),
+  ('411000', 'Clients', 4, true),
+  ('467000', 'Divers - comptes débiteurs et produits à recevoir', 4, true),
+  ('511200', 'Chèques à encaisser', 5, true),
+  ('512001', 'Banques - Compte Courant', 5, true),
+  ('512002', 'Banques - Compte Paypal', 5, true),
+  ('512003', 'Banques - Livret A', 5, true),
+  ('512004', 'Banques - Zettle', 5, false),
+  ('517001', 'Compte en ligne - Armorique cactus succulentes', 5, false),
+  ('517002', 'Compte en ligne - Armorique cactus succulentes', 5, true),
+  ('531001', 'Caisse - Caisse - Espèces', 5, true),
+  ('580000', 'Virements internes', 5, true),
+  ('601000', 'Achats de matières premières (ex : boissons, alimentation)', 6, false),
+  ('601100', 'Achats pour Buvette Expo', 6, true),
+  ('601200', 'Achats pour Repas Expo', 6, true),
+  ('601300', 'Achats pour Repas A.G', 6, true),
+  ('601400', 'Achats pour Réunion Asso', 6, true),
+  ('604000', 'Achats de prestations de services', 6, false),
+  ('604100', 'Frais de gardiennage', 6, true),
+  ('606000', 'Achats non stockés de matières et fournitures', 6, false),
+  ('606110', 'Frais de carburant', 6, true),
+  ('606300', 'Petit matériel (<600€) ou fournitures pour activités', 6, true),
+  ('606400', 'Fournitures administratives (ex : papeterie, fournitures bureau)', 6, true),
+  ('606800', 'Achats pour Salon des plantes exotiques', 6, true),
+  ('607000', 'Achat de marchandises revendues telles quelles (ex : T-shirts)', 6, false),
+  ('607100', 'Achat d''Étiquettes', 6, false),
+  ('607200', 'Achat de Chabasite', 6, true),
+  ('607300', 'Achat de Gravier', 6, true),
+  ('607400', 'Achat de Ponce', 6, true),
+  ('607410', 'Achat de Perlite', 6, true),
+  ('607420', 'Achat de Pouzzolane', 6, true),
+  ('607500', 'Achat de Galettes saucisses', 6, false),
+  ('607600', 'Achat de de Pots', 6, true),
+  ('607700', 'Achat de Plantes', 6, true),
+  ('607800', 'Achat T-shirt', 6, true),
+  ('613000', 'Locations de matériel pour expo', 6, true),
+  ('613100', 'Locations Logiciel AssoConnect', 6, true),
+  ('613500', 'Locations de véhicules', 6, false),
+  ('613510', 'Locations mobilières salle communale', 6, false),
+  ('616000', 'Primes d''assurances (ex : assurances de l''association, responsabilité civile, incendie)', 6, true),
+  ('618000', 'Divers', 6, false),
+  ('618001', 'Evénement, donation, participation', 6, false),
+  ('622000', 'Rémunérations d''intermédiaires et honoraires', 6, true),
+  ('623000', 'Publicité, publications, relations publiques', 6, true),
+  ('623801', 'Don Associatif', 6, true),
+  ('625000', 'Déplacements, missions et réceptions', 6, true),
+  ('625100', 'Voyages et déplacements', 6, true),
+  ('625200', 'Traiteur repas A.G', 6, false),
+  ('625300', 'Traiteur repas Expo vente Bédée', 6, true),
+  ('625600', 'Sortie ACS et missions (Avec repas et déplacement)', 6, false),
+  ('625700', 'Repas bénévole', 6, true),
+  ('626000', 'Frais postaux et de télécommunications', 6, true),
+  ('627000', 'Services bancaires CMB', 6, true),
+  ('627100', 'Services bancaires commission CB Zettle', 6, false),
+  ('627200', 'Services bancaires Commission Paypal', 6, true),
+  ('628100', 'Remboursement de cautions', 6, false),
+  ('628140', 'Tombola bénévoles', 6, true),
+  ('654000', 'Pertes sur créances irrécouvrables', 6, true),
+  ('658600', 'Cotisations versées aux associations', 6, false),
+  ('701100', 'Ventes Buvette', 7, true),
+  ('701120', 'Vente Magazine ACS', 7, true),
+  ('701130', 'Vente cagettes', 7, true),
+  ('702100', 'Vente de Tickets de Tombola', 7, true),
+  ('706000', 'Ventes de prestations de services', 7, false),
+  ('707000', 'Ventes de marchandises', 7, false),
+  ('707100', 'Ventes de Plantes', 7, true),
+  ('707101', 'Vente T-Shirt', 7, true),
+  ('707102', 'Vente d''Engrais', 7, true),
+  ('707200', 'Ventes de Chabasite', 7, true),
+  ('707300', 'Ventes de Pots', 7, true),
+  ('707400', 'Ventes d''Étiquettes', 7, true),
+  ('707500', 'Ventes de Gravier', 7, true),
+  ('707520', 'Vente de Pouzzolane', 7, true),
+  ('707600', 'Ventes de Ponce', 7, true),
+  ('707700', 'Ventes de Galettes saucisses', 7, false),
+  ('707800', 'Reprise invendus', 7, true),
+  ('708000', 'Produits des activités annexes', 7, false),
+  ('708500', 'Frais de port sur vente facturées', 7, false),
+  ('708800', 'Autres recettes d''activités', 7, true),
+  ('708810', 'Participation Voyage', 7, false),
+  ('708820', 'Ventes Repas Expo Bédée', 7, true),
+  ('708830', 'Vente Repas', 7, false),
+  ('709000', 'Rabais, remises et ristournes accordés par l''association', 7, false),
+  ('740600', 'Subventions d''exploitation - Autres', 7, false),
+  ('754000', 'Dons et Collectes', 7, true),
+  ('756000', 'Adhésions', 7, true),
+  ('758000', 'Produits divers de gestion courante', 7, true),
+  ('760000', 'Produits financiers', 7, false),
+  ('770000', 'Produits exceptionnels', 7, true),
+  ('861000', 'Mise à disposition gratuite de biens', 8, true),
+  ('870000', 'Dons en nature', 8, true),
+  ('890000', 'Bilan', 8, false)
+on conflict (compte) do nothing;
+
+alter table public.ecritures add column if not exists compte text references public.plan_comptable(compte);   -- poste (classe 6 ou 7)
+alter table public.ecritures add column if not exists tresorerie text references public.plan_comptable(compte); -- 512…, 531…, 511…
+alter table public.ecritures add column if not exists tiers text check (char_length(tiers) <= 120);
+alter table public.ecritures add column if not exists evenement text check (char_length(evenement) <= 80);       -- « Salon 2027 », « AG 2027 »…
+alter table public.ecritures add column if not exists avance_par text check (char_length(avance_par) <= 120);    -- note de frais : qui a avancé
+alter table public.ecritures add column if not exists rembourse boolean not null default false;
+alter table public.ecritures add column if not exists pointe boolean not null default false;                     -- rapproché avec le relevé
+drop policy if exists ecriture_admin on public.ecritures;
+drop policy if exists ecriture_lecture on public.ecritures;
+create policy ecriture_lecture on public.ecritures for select using (est_admin());
+drop policy if exists ecriture_saisie on public.ecritures;
+create policy ecriture_saisie on public.ecritures for all using (peut_saisir_compta()) with check (peut_saisir_compta());
+
+create table if not exists public.budgets (
+  exercice int not null,
+  compte   text not null references public.plan_comptable(compte),
+  montant  numeric(10,2) not null default 0,
+  primary key (exercice, compte)
+);
+create table if not exists public.soldes_ouverture (
+  exercice int not null,
+  compte   text not null references public.plan_comptable(compte),
+  montant  numeric(10,2) not null default 0,
+  primary key (exercice, compte)
+);
+alter table public.budgets enable row level security;
+alter table public.soldes_ouverture enable row level security;
+drop policy if exists budgets_lecture on public.budgets;
+create policy budgets_lecture on public.budgets for select using (est_admin());
+drop policy if exists budgets_saisie on public.budgets;
+create policy budgets_saisie on public.budgets for all using (peut_saisir_compta()) with check (peut_saisir_compta());
+drop policy if exists soldes_lecture on public.soldes_ouverture;
+create policy soldes_lecture on public.soldes_ouverture for select using (est_admin());
+drop policy if exists soldes_saisie on public.soldes_ouverture;
+create policy soldes_saisie on public.soldes_ouverture for all using (peut_saisir_compta()) with check (peut_saisir_compta());
+grant select, insert, update, delete on public.budgets, public.soldes_ouverture to authenticated;
+alter table public.ecritures drop constraint if exists ecritures_sens_check;
+alter table public.ecritures add constraint ecritures_sens_check check (sens in ('recette', 'depense', 'virement'));

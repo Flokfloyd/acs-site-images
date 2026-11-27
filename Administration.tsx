@@ -11,6 +11,7 @@ import {
 import { GALERIE } from "./GalerieAccueil.tsx"
 import { ZONES_SALON, ouvrirFormulairePapier } from "./InscriptionSalon.tsx"
 import GuideAdmin from "./GuideAdmin.tsx"
+import ComptaAdmin from "./ComptaAdmin.tsx"
 import { TachesAdmin, RetroplanningAdmin, AlertesRetroplanning } from "./PlanningSalon.tsx"
 import type { Champ, Question } from "./EspaceMembre.tsx"
 const { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage } = UI
@@ -95,7 +96,7 @@ export default function Administration(props: { pageMembre: string }) {
                 <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => { const a = new Date().getFullYear(); return { annee: a, montant: 20, formule: "Année complète", debut: `${a}-01-01`, fin: `${a}-12-31`, source: "Chèque" } }} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
                 <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
             {onglet === "adherents" && <AdherentsAdmin moi={email} />}
-            {onglet === "compta" && <Compta />}
+            {onglet === "compta" && <ComptaAdmin moi={email} />}
             {onglet === "salon" && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {([["exposants", "Exposants et réglages"], ["fiches", "Fiches producteurs"], ["planning", "Tâches des bénévoles"], ["retro", "Rétroplanning"]] as const).map(([k, t]) => <button key={k} onClick={() => setSousSalon(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sousSalon === k ? C.accent : "transparent", color: sousSalon === k ? C.accentDark : C.txt, borderColor: sousSalon === k ? C.accent : C.line }}>{t}</button>)}
             </div>}
@@ -1013,66 +1014,6 @@ function Inscrits({ evt, moi, ouvrirCampagne }: { evt: any; moi: string; ouvrirC
 }
 
 // ---------- Comptabilité ----------
-function Compta() {
-    const client = sb()
-    const [annee, setAnnee] = React.useState(new Date().getFullYear())
-    const [d, setD] = React.useState<{ adh: any[]; ins: any[]; dons: any[]; ecr: any[] } | null>(null)
-    const [cle, setCle] = React.useState(0)
-    React.useEffect(() => {
-        const deb = `${annee}-01-01`, fin = `${annee + 1}-01-01`
-        Promise.all([
-            client.from("adhesions").select("*").eq("annee", annee),
-            client.from("inscriptions").select("*").gte("cree_le", deb).lt("cree_le", fin),
-            client.from("dons").select("*").gte("le", deb).lt("le", fin),
-            client.from("ecritures").select("*").gte("le", deb).lt("le", fin).order("le"),
-        ]).then(([a, i, dn, e]: any[]) => setD({ adh: a.data ?? [], ins: (i.data ?? []).filter((r: any) => r.statut === "valide"), dons: dn.data ?? [], ecr: e.data ?? [] }))
-    }, [annee, cle])
-    const somme = (l: any[]) => l.reduce((s, r) => s + (Number(r.montant) || 0), 0)
-    const lignesRecettes: [string, number][] = d ? [["Adhésions", somme(d.adh)], ["Inscriptions et achats en ligne", somme(d.ins)], ["Dons", somme(d.dons)]] : []
-    const parCat = (sens: string) => { const m = new Map<string, number>(); for (const r of d?.ecr ?? []) if (r.sens === sens) m.set(r.categorie || "Divers", (m.get(r.categorie || "Divers") || 0) + Number(r.montant)); return [...m.entries()].sort((a, b) => b[1] - a[1]) }
-    const recettes = d ? somme(d.adh) + somme(d.ins) + somme(d.dons) + somme(d.ecr.filter((r) => r.sens === "recette")) : 0
-    const depenses = d ? somme(d.ecr.filter((r) => r.sens === "depense")) : 0
-    const journal = () => {
-        if (!d) return
-        const l: any[][] = [
-            ...d.adh.map((r) => [r.debut || r.cree_le?.slice(0, 10), "Recette", "Adhésions", `Adhésion ${r.annee} · ${r.email}`, r.montant, r.source || ""]),
-            ...d.ins.map((r) => [r.cree_le?.slice(0, 10), "Recette", "Inscriptions", `${r.formulaire} · ${r.email}`, r.montant, ""]),
-            ...d.dons.map((r) => [r.le, "Recette", "Dons", `Don · ${r.email}`, r.montant, ""]),
-            ...d.ecr.map((r) => [r.le, r.sens === "recette" ? "Recette" : "Dépense", r.categorie || "Divers", r.libelle, r.sens === "recette" ? r.montant : -r.montant, r.moyen || ""]),
-        ].sort((a, b) => String(a[0]).localeCompare(String(b[0])))
-        exporter(`comptes-acs-${annee}.csv`, ["Date", "Type", "Catégorie", "Libellé", "Montant", "Moyen"], l)
-    }
-    const ligne = (t: string, v: number, fort = false) => <div key={t} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "7px 0", borderTop: `1px solid ${C.line}`, fontWeight: fort ? 700 : 400 }}><span>{t}</span><span>{euros(v)}</span></div>
-
-    return (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
-            <div style={box}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <button style={small()} onClick={() => setAnnee(annee - 1)}>‹</button>
-                        <h3 style={{ ...h2, fontSize: 22, margin: "0 8px" }}>Exercice {annee}</h3>
-                        <button style={small()} onClick={() => setAnnee(annee + 1)}>›</button>
-                    </div>
-                    <button style={btn(false)} onClick={journal}>Exporter le journal (CSV)</button>
-                </div>
-                {!d ? <p style={muted}>Chargement…</p> : <>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 1, background: C.line, border: `1px solid ${C.line}`, marginBottom: 20 }}>
-                        {[["Recettes", recettes, C.accent], ["Dépenses", depenses, C.danger], ["Solde", recettes - depenses, recettes - depenses >= 0 ? C.txt : C.danger]].map(([t, v, c]) => <div key={t as string} style={{ background: C.panel, padding: "14px 16px" }}><div style={{ color: C.mute, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>{t}</div><div style={{ fontFamily: serif, fontSize: 26, fontWeight: 600, color: c as string }}>{euros(v as number)}</div></div>)}
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 28 }}>
-                        <div><span style={label}>Recettes</span>{lignesRecettes.map(([t, v]) => ligne(t, v))}{parCat("recette").map(([t, v]) => ligne(t, v))}{ligne("Total", recettes, true)}</div>
-                        <div><span style={label}>Dépenses</span>{parCat("depense").length === 0 && <p style={{ ...muted, padding: "7px 0" }}>Aucune dépense saisie.</p>}{parCat("depense").map(([t, v]) => ligne(t, v))}{ligne("Total", depenses, true)}</div>
-                    </div>
-                    <p style={{ ...muted, fontSize: 13, marginTop: 16 }}>Les adhésions, inscriptions réglées et dons sont comptés automatiquement. Saisissez ci-dessous les autres recettes (ventes au salon, boutique…) et les dépenses.</p>
-                </>}
-            </div>
-            <div onClick={() => setTimeout(() => setCle((x) => x + 1), 1500)}>
-                <Editeur table="ecritures" ordre="le" desc titre="Recettes et dépenses saisies" champs={CHAMPS_ECR} nouveau={() => ({ le: new Date().toISOString().slice(0, 10), sens: "depense" })} resume={(r) => `${dateFr(r.le)} · ${r.sens === "recette" ? "+" : "−"}${euros(r.montant)} · ${r.libelle}${r.categorie ? " · " + r.categorie : ""}`} />
-            </div>
-        </div>
-    )
-}
-
 // ---------- Sondages ----------
 const TYPES_Q: [Question["type"], string][] = [["unique", "Un seul choix"], ["multiple", "Plusieurs choix"], ["nombre", "Nombre"], ["texte", "Réponse libre"]]
 const nid = () => Math.random().toString(36).slice(2, 8)
