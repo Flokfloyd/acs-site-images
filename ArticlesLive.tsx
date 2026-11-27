@@ -56,8 +56,10 @@ function Liste({ lien }: { lien: string }) {
         const ro = new ResizeObserver(() => { const w = el.clientWidth; setCols(w < 600 ? 1 : w < 900 ? 2 : 3) })
         ro.observe(el); return () => ro.disconnect()
     }, [])
+    // sans article publié, le bloc disparaît (pas d'espace vide sous les guides) ; sinon il prolonge la grille des guides
+    if (liste && liste.length === 0) return <div ref={ref}><style>{`[data-framer-name="Articles (gérés dans l’administration)"]{display:none!important}`}</style></div>
     return (
-        <div ref={ref} style={{ width: "100%" }}>
+        <div ref={ref} style={{ width: "100%", marginTop: liste && liste.length ? -32 : 0 }}>
             {liste && liste.length > 0 && <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 24 }}>
                 {liste.map((a) => (
                     <a key={a.id} href={`${lien}#${a.slug}`} style={{ display: "flex", flexDirection: "column", background: "#fbf7ef", textDecoration: "none", color: "#1d1612" }}>
