@@ -678,7 +678,7 @@ function Aide({ children }: { children: React.ReactNode }) {
 }
 
 // ---------- Éditeur générique (liste + formulaire) ----------
-export type Champ = { defaut?: string; k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "admin" | "sommaire" | "fichier" | "choix"; options?: [string, string][]; requis?: boolean; aide?: string; dossier?: string; accept?: string; place?: string }
+export type Champ = { defaut?: string; k: string; t: string; type: "text" | "textarea" | "date" | "number" | "bool" | "admin" | "sommaire" | "fichier" | "choix"; options?: [string, string][]; requis?: boolean; aide?: string; dossier?: string; accept?: string; place?: string; taille?: number }
 
 export const JOURS_MOIS = (d: string) => { try { return new Date(d + "T12:00:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).replace(/^./, (c) => c.toUpperCase()) } catch (e) { return d } }
 export function preparerEvenement(r: any): string | null {
@@ -849,7 +849,7 @@ function ChampForm({ c, v, set }: { c: Champ; v: any; set: (v: any) => void }) {
     if (c.type === "textarea") el = <textarea style={{ ...input, minHeight: 90, resize: "vertical" }} value={v ?? ""} onChange={(e) => set(e.target.value)} />
         else if (c.type === "sommaire") el = <SommaireForm v={v} set={set} />
     else if (c.type === "choix") el = <select style={input} value={v ?? ""} ref={(x) => { if (x && c.defaut && !(c.options || []).some(([k]) => k === v)) setTimeout(() => set(c.defaut), 0) }} onChange={(e) => set(e.target.value)}>{(c.options || []).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
-    else if (c.type === "fichier") el = <FichierForm v={v} set={set} dossier={c.dossier || "divers"} accept={c.accept} />
+    else if (c.type === "fichier") el = <FichierForm v={v} set={set} dossier={c.dossier || "divers"} accept={c.accept} taille={c.taille} />
     else el = <input style={input} type={c.type === "date" ? "date" : c.type === "number" ? "number" : "text"} placeholder={c.place} value={v ?? ""} onChange={(e) => set(e.target.value)} />
     return <div><span style={label}>{c.t}{c.requis ? " *" : ""}</span>{el}{aide}</div>
 }
@@ -863,14 +863,14 @@ function SommaireForm({ v, set }: { v: any; set: (v: any) => void }) {
     }} placeholder={"Édito ; 2\nEcheveria ; 6"} />
 }
 
-export function FichierForm({ v, set, dossier, accept }: { v: any; set: (v: any) => void; dossier: string; accept?: string }) {
+export function FichierForm({ v, set, dossier, accept, taille }: { v: any; set: (v: any) => void; dossier: string; accept?: string; taille?: number }) {
     const client = sb()!
     const [etat, setEtat] = React.useState("")
     const envoyer = async (f: File) => {
         setEtat("Envoi…")
         // les photos sont réduites (2 000 px au plus) avant l’envoi : elles restent nettes et pèsent 5 à 10 fois moins
         const image = /^image\/(jpeg|png|webp)$/.test(f.type)
-        const contenu: Blob = image ? await GALERIE.reduireImage(f) : f
+        const contenu: Blob = image ? await GALERIE.reduireImage(f, taille || 2000, taille && taille <= 800 ? 0.8 : 0.85) : f
         const nom = `${dossier}/${Date.now()}-${f.name.normalize("NFD").replace(/[^\w.-]+/g, "-").replace(/\.(png|webp|jpe?g)$/i, image ? ".jpg" : "$&")}`
         const { error } = await client.storage.from("semestriels").upload(nom, contenu, { upsert: false, contentType: image ? "image/jpeg" : f.type || undefined })
         if (error) return setEtat("Échec : " + error.message)
@@ -1072,7 +1072,7 @@ export function GalerieMembres() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
                     {groupes.map((g) => (
                         <button key={g.titre} onClick={() => setAlbumOuvert(g.titre)} style={{ all: "unset", cursor: "pointer", display: "block", background: C.panel, border: `1px solid ${C.line}` }}>
-                            <div style={{ height: 170, overflow: "hidden", background: "#2e241e" }}><img src={g.liste[0].vignette_url || g.liste[0].image_url} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
+                            <div style={{ position: "relative", height: 170, overflow: "hidden", background: "#2e241e" }}><img src={g.liste[0].vignette_url || g.liste[0].image_url} alt="" loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
                             <div style={{ padding: "10px 12px" }}>
                                 <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>{g.titre}</div>
                                 <div style={{ fontSize: 12.5, color: C.mute, marginTop: 2 }}>{g.sous ? g.sous + " · " : ""}{g.liste.length} photo{g.liste.length > 1 ? "s" : ""}</div>

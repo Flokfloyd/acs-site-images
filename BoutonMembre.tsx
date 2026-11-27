@@ -3,7 +3,7 @@ import * as React from "react"
 import { addPropertyControls, ControlType } from "framer"
 import { sb } from "./AcsBase.tsx"
 
-const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Collection", "#collection"], ["Sondages", "#sondages"], ["Discussion", "#discussion"], ["Annuaire", "#annuaire"]]
+const LIENS_MEMBRE: [string, string][] = [["Vue d’ensemble", ""], ["Profil", "#profil"], ["Collection", "#collection"], ["Sondages", "#sondages"], ["Discussion", "#discussion"], ["Annuaire", "#annuaire"], ["Bibliothèque", "/bibliotheque"]]
 const POLICE = "Poppins, sans-serif"
 
 // Barre de défilement aux couleurs du site (injectée une fois : ce composant est dans la barre de navigation de toutes les pages)

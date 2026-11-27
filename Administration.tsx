@@ -28,7 +28,7 @@ function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
     return [setEl, etroit]
 }
 
-const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["salon", "Salon"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"], ["guide", "Guide"]] as const
+const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["salon", "Salon"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"], ["bibliotheque", "Bibliothèque"], ["guide", "Guide"]] as const
 type O = (typeof ONGLETS)[number][0]
 const lireHash = (): O => {
     if (typeof window === "undefined") return "agenda"
@@ -48,7 +48,7 @@ export default function Administration(props: { pageMembre: string }) {
     const [email, setEmail] = React.useState("")
     const [onglet, setO] = React.useState<O>("agenda")
     const [campagneOuverte, setCampagneOuverte] = React.useState<string | null>(null)
-    const [sousSalon, setSousSalon] = React.useState<"exposants" | "planning" | "retro">("exposants")
+    const [sousSalon, setSousSalon] = React.useState<"exposants" | "planning" | "retro" | "fiches">("exposants")
     const [ref, etroit] = useEtroit(760)
 
     React.useEffect(() => {
@@ -97,11 +97,15 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "adherents" && <AdherentsAdmin moi={email} />}
             {onglet === "compta" && <Compta />}
             {onglet === "salon" && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {([["exposants", "Exposants et réglages"], ["planning", "Tâches des bénévoles"], ["retro", "Rétroplanning"]] as const).map(([k, t]) => <button key={k} onClick={() => setSousSalon(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sousSalon === k ? C.accent : "transparent", color: sousSalon === k ? C.accentDark : C.txt, borderColor: sousSalon === k ? C.accent : C.line }}>{t}</button>)}
+                {([["exposants", "Exposants et réglages"], ["fiches", "Fiches producteurs"], ["planning", "Tâches des bénévoles"], ["retro", "Rétroplanning"]] as const).map(([k, t]) => <button key={k} onClick={() => setSousSalon(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sousSalon === k ? C.accent : "transparent", color: sousSalon === k ? C.accentDark : C.txt, borderColor: sousSalon === k ? C.accent : C.line }}>{t}</button>)}
             </div>}
+            {onglet === "salon" && sousSalon === "fiches" && <><Aide>Chaque fiche s’ouvre quand un visiteur clique sur le nom de l’exposant dans la liste des exposants de la page Salon. Écrivez le nom exactement comme dans la liste (le nom de la demande d’emplacement). Photo : un stand ou des plantes, sans personne reconnaissable sauf accord.</Aide>
+                <Editeur table="producteurs" ordre="nom" titre="Fiches producteurs" champs={CHAMPS_PRODUCTEUR} nouveau={() => ({ visible: true })} resume={(r) => `${r.nom}${r.specialites ? " · " + r.specialites : ""}${r.visible ? "" : " (masquée)"}`} /></>}
+            {onglet === "bibliotheque" && <><Aide>La bibliothèque est une page réservée aux adhérents : les meilleurs livres sur les cactus et succulentes, avec leur couverture, leurs caractéristiques et les sujets abordés. Photographiez la couverture : elle est réduite automatiquement pour rester légère.</Aide>
+                <Editeur table="livres" ordre="ordre" titre="Livres" champs={CHAMPS_LIVRE} nouveau={(l) => ({ ordre: (l.length + 1) * 10, langue: "Français" })} resume={(r) => `${r.titre}${r.auteurs ? " · " + r.auteurs : ""}${r.annee ? " (" + r.annee + ")" : ""}`} /></>}
             {onglet === "salon" && sousSalon === "planning" && <TachesAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "retro" && <RetroplanningAdmin client={client} etroit={etroit} />}
-            {onglet === "salon" && sousSalon === "exposants" && <><Aide>Les exposants déposent leur demande sur la page Salon (ou sur le formulaire papier). Acceptez, attribuez la zone, les mètres et le n° de stand, puis fixez la contribution : elle se calcule d’après les tarifs par mètre, et reste modifiable. Rien n’est envoyé aux exposants automatiquement.</Aide>
+            {onglet === "salon" && sousSalon === "exposants" && <><Aide>Les exposants déposent leur demande sur la page Salon (ou sur le formulaire papier). Acceptez, attribuez la zone, la surface (m²), les tables et le n° de stand, puis fixez la contribution : elle se calcule d’après les tarifs au m², et reste modifiable. Rien n’est envoyé aux exposants automatiquement.</Aide>
                 <GestionSalon etroit={etroit} /></>}
             {onglet === "boutique" && <><AccesPage page="boutique" nom="Boutique" /><Aide>Les articles cochés « En vente » apparaissent sur la page Boutique du site, dans l’ordre indiqué. Laissez le stock vide si vous ne le suivez pas.</Aide>
                 <Editeur table="produits" ordre="ordre" titre="Articles" champs={CHAMPS_PROD} nouveau={(l) => ({ actif: true, ordre: (l.length + 1) * 10 })} resume={(r) => `${r.categorie ? r.categorie + " · " : ""}${r.nom} · ${euros(r.prix)}${r.stock != null ? ` · stock ${r.stock}` : ""}${r.actif ? "" : " (retiré)"}`} /></>}
@@ -117,6 +121,31 @@ export default function Administration(props: { pageMembre: string }) {
 }
 Administration.defaultProps = { pageMembre: "/espace-membre" }
 addPropertyControls(Administration, { pageMembre: { type: ControlType.String, title: "Page membre", defaultValue: "/espace-membre" } })
+
+const CHAMPS_PRODUCTEUR: Champ[] = [
+    { k: "nom", t: "Nom (comme dans la liste des exposants)", type: "text", requis: true },
+    { k: "specialites", t: "Spécialités", type: "text", place: "Cactées et succulentes, aloès…" },
+    { k: "ville", t: "Ville", type: "text" },
+    { k: "departement", t: "Département (n°)", type: "text", place: "29" },
+    { k: "presentation", t: "Présentation", type: "textarea" },
+    { k: "site_web", t: "Site web ou page Facebook", type: "text", place: "https://…" },
+    { k: "photo_url", t: "Photo (stand ou plantes)", type: "fichier", dossier: "producteurs", accept: "image/*", taille: 1200 },
+    { k: "visible", t: "Fiche visible sur le site", type: "bool" },
+]
+const CHAMPS_LIVRE: Champ[] = [
+    { k: "titre", t: "Titre", type: "text", requis: true },
+    { k: "auteurs", t: "Auteur(s)", type: "text" },
+    { k: "editeur", t: "Éditeur", type: "text" },
+    { k: "annee", t: "Année", type: "number" },
+    { k: "pages", t: "Nombre de pages", type: "number" },
+    { k: "langue", t: "Langue", type: "text" },
+    { k: "isbn", t: "ISBN", type: "text" },
+    { k: "genres", t: "Familles et sujets abordés (séparés par des virgules)", type: "text", place: "Cactaceae, culture, identification" },
+    { k: "caracteristiques", t: "Caractéristiques", type: "textarea", place: "Format, illustrations, niveau…" },
+    { k: "avis", t: "Pourquoi on le recommande", type: "textarea" },
+    { k: "couverture_url", t: "Couverture (photo)", type: "fichier", dossier: "livres", accept: "image/*", taille: 500 },
+    { k: "ordre", t: "Ordre d’affichage", type: "number" },
+]
 
 // Page Adhésion : la campagne la plus récente dont la date d’ouverture est passée s’affiche (année, tarif, bouton)
 const CHAMPS_CAMPAGNE_ADH: Champ[] = [
@@ -1352,6 +1381,8 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
         if (!silencieux) setMsg({ t: "Brouillon enregistré.", err: false })
         return data
     }
+    const [aConfirmer, setAConfirmer] = React.useState<{ id: string; sujet: string; n: number; cible: string } | null>(null)
+    React.useEffect(() => setAConfirmer(null), [c?.id, c?.cible, c?.sujet, c?.contenu, (c?.emails || []).join(",")])
     const test = async () => {
         const d = await sauver(true); if (!d) return
         setOccupe(true); const r = await envoyer({ a: [moi], sujet: "[Test] " + d.sujet, contenu: d.contenu }); setOccupe(false)
@@ -1363,7 +1394,13 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
         const { data: dest } = await client.rpc("destinataires", { c: d.id })
         const n = dest?.length ?? 0
         if (!n) return setMsg({ t: "Aucun destinataire pour cette cible.", err: true })
-        if (!window.confirm(`Envoyer « ${d.sujet} » à ${n} personne(s) ? L’envoi ne peut pas être annulé.`)) return
+        // confirmation dans la page, avec le nombre de destinataires, pour éviter un envoi par erreur
+        setAConfirmer({ id: d.id, sujet: d.sujet, n, cible: (CIBLES.find(([v]) => v === d.cible) || ["", d.cible])[1] })
+    }
+    const confirmerEnvoi = async () => {
+        const k = aConfirmer; if (!k) return
+        setAConfirmer(null)
+        const d = { id: k.id }
         setOccupe(true); const r = await envoyer({ campagne_id: d.id }); setOccupe(false)
         setMsg({ t: r.texte, err: !r.ok })
         const l = await charger(); setC(l.find((x: any) => x.id === d.id) || null)
@@ -1419,11 +1456,19 @@ function Campagnes({ moi, ouverte, setOuverte }: { moi: string; ouverte: string 
                         <span style={{ display: "block", fontSize: 13, color: C.mute, marginTop: 4 }}>Texte simple : laissez une ligne vide entre les paragraphes. Les liens (https://…) deviennent cliquables. Un pied de page pour se désabonner est ajouté automatiquement.</span></div>
                     {CIBLES_ESPACE.includes(c.cible) && <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}><input type="checkbox" checked={!!c.dans_espace} onChange={(e) => setC({ ...c, dans_espace: e.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent }} />Afficher aussi ce message dans l’espace membre (rubrique Messages)</label>}
                 </fieldset>
-                {!envoyee && <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
-                    <button style={btn()} disabled={occupe} onClick={envoyerTout}>{occupe ? "Envoi…" : "Envoyer"}</button>
+                {!envoyee && !aConfirmer && <div style={{ display: "flex", gap: 10, marginTop: 22, flexWrap: "wrap" }}>
                     <button style={btn(false)} disabled={occupe} onClick={test}>M’envoyer un test</button>
                     <button style={btn(false)} disabled={occupe} onClick={() => sauver()}>Enregistrer le brouillon</button>
+                    <button style={btn()} disabled={occupe} onClick={envoyerTout}>{occupe ? "Envoi…" : "Envoyer…"}</button>
                     {c.id && <button style={small(true)} onClick={() => supprimer(c)}>Supprimer</button>}
+                </div>}
+                {!envoyee && aConfirmer && <div role="alertdialog" style={{ marginTop: 22, border: `2px solid ${C.accent}`, background: "rgba(155,189,138,0.08)", padding: "16px 18px" }}>
+                    <b style={{ display: "block", fontSize: 17, marginBottom: 6 }}>Confirmer l’envoi</b>
+                    <p style={{ margin: "0 0 14px", lineHeight: 1.5 }}>« {aConfirmer.sujet} » va partir à <b>{aConfirmer.n} personne{aConfirmer.n > 1 ? "s" : ""}</b> ({aConfirmer.cible}). L’envoi ne peut pas être annulé.</p>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button style={btn(false)} onClick={() => setAConfirmer(null)}>Non, revenir au message</button>
+                        <button style={btn()} disabled={occupe} onClick={confirmerEnvoi}>Oui, envoyer à {aConfirmer.n} personne{aConfirmer.n > 1 ? "s" : ""}</button>
+                    </div>
                 </div>}
                 {c.statut === "erreur" && c.erreur && <p style={{ color: C.danger, fontSize: 13, marginTop: 12 }}>Dernière erreur : {c.erreur}</p>}
                 <Msg text={msg.t} err={msg.err} />
@@ -1492,7 +1537,7 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
     const parZone = ZONES_SALON.map((z) => {
         const dem = l.filter((d) => d.zone_1 === z && !["refusee", "annulee"].includes(d.statut))
         const att = l.filter((d) => d.statut === "acceptee" && d.zone_attribuee === z)
-        return { z, n: dem.length, m: dem.reduce((a, d) => a + Number(d.metres || 0), 0), na: att.length, ma: att.reduce((a, d) => a + Number(d.metres_attribues || 0), 0) }
+        return { z, n: dem.length, m: dem.reduce((a, d) => a + Number(d.metres || 0), 0), na: att.length, ma: att.reduce((a, d) => a + Number(d.metres_attribues || 0), 0), ta: att.reduce((a, d) => a + Number(d.tables_attribuees ?? d.tables ?? 0), 0) }
     })
     const acceptees = l.filter((d) => d.statut === "acceptee")
     const totalContrib = acceptees.reduce((a, d) => a + Number(d.contribution || 0), 0), encaisse = acceptees.filter((d) => d.paye).reduce((a, d) => a + Number(d.contribution || 0), 0)
@@ -1508,8 +1553,8 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
                 <div style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr)" : "repeat(4, minmax(0,1fr))", gap: 12, marginTop: 10 }}>
                     <div><span style={label}>Édition</span><input style={input} type="number" value={reg.edition} onChange={(e) => setReg((x: any) => ({ ...x, edition: Number(e.target.value) }))} onBlur={async () => { await sb()!.from("salon_reglages").upsert({ ...reg }); charger() }} /></div>
                     <div><span style={label}>Date limite</span><input style={input} type="date" value={reg.date_limite || ""} onChange={(e) => majReg("date_limite", e.target.value || null)} /></div>
-                    <div><span style={label}>Tarif pro (€ / m)</span><input style={input} type="number" min={0} step={0.5} value={reg.tarif_pro ?? ""} onChange={(e) => majReg("tarif_pro", e.target.value === "" ? null : Number(e.target.value))} /></div>
-                    <div><span style={label}>Tarif amateur (€ / m)</span><input style={input} type="number" min={0} step={0.5} value={reg.tarif_amateur ?? ""} onChange={(e) => majReg("tarif_amateur", e.target.value === "" ? null : Number(e.target.value))} /></div>
+                    <div><span style={label}>Tarif pro (€ / m²)</span><input style={input} type="number" min={0} step={0.5} value={reg.tarif_pro ?? ""} onChange={(e) => majReg("tarif_pro", e.target.value === "" ? null : Number(e.target.value))} /></div>
+                    <div><span style={label}>Tarif amateur (€ / m²)</span><input style={input} type="number" min={0} step={0.5} value={reg.tarif_amateur ?? ""} onChange={(e) => majReg("tarif_amateur", e.target.value === "" ? null : Number(e.target.value))} /></div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: etroit ? "minmax(0,1fr) minmax(0,1fr)" : "repeat(4, minmax(0,1fr))", gap: 12, marginTop: 12 }}>
                     <div><span style={label}>Premier jour du salon</span><input style={input} type="date" value={reg.date_debut || ""} onChange={(e) => majReg("date_debut", e.target.value || null)} /></div>
@@ -1536,8 +1581,8 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
                 {parZone.map((z) => (
                     <div key={z.z} style={{ ...box, padding: "14px 16px" }}>
                         <div style={{ fontSize: 13, color: C.mute }}>{z.z}</div>
-                        <div style={{ fontFamily: serif, fontSize: 24, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{z.ma} m <span style={{ fontSize: 14, color: C.mute, fontFamily: "inherit", fontWeight: 400 }}>attribués</span></div>
-                        <div style={{ fontSize: 12.5, color: C.mute }}>{z.na} stand{z.na > 1 ? "s" : ""} · {z.n} demande{z.n > 1 ? "s" : ""} pour {z.m} m</div>
+                        <div style={{ fontFamily: serif, fontSize: 24, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{z.ma} m² <span style={{ fontSize: 14, color: C.mute, fontFamily: "inherit", fontWeight: 400 }}>attribués</span></div>
+                        <div style={{ fontSize: 12.5, color: C.mute }}>{z.na} stand{z.na > 1 ? "s" : ""} · {z.ta} table{z.ta > 1 ? "s" : ""} · {z.n} demande{z.n > 1 ? "s" : ""} pour {z.m} m²</div>
                     </div>
                 ))}
             </div>
@@ -1548,7 +1593,7 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
                     <span style={{ flex: 1 }} />
                     <button style={small()} onClick={nouvelle}>+ Demande papier</button>
                     <button style={small()} onClick={() => ouvrirFormulairePapier(reg.edition)}>Formulaire vierge</button>
-                    <button style={small()} onClick={() => exporter(`demandes-salon-${reg.edition}.csv`, ["Reçue le", "Source", "Profil", "Nom", "Contact", "E-mail", "Téléphone", "Ville", "Dépt", "SIRET", "Catégorie", "Zone 1", "Zone 2", "Mètres demandés", "Statut", "Zone attribuée", "Mètres attribués", "Stand", "Contribution", "Payé", "Remarques", "Note"], l.map((d) => [dateFr(d.cree_le), d.source, d.profil, d.nom, d.contact, d.email, d.telephone, d.ville, d.departement, d.siret, d.categorie, d.zone_1, d.zone_2, d.metres, STATUTS_SALON.find((x) => x[0] === d.statut)?.[1], d.zone_attribuee, d.metres_attribues, d.stand, d.contribution, d.paye ? "oui" : "", d.commentaire, d.note]))}>Exporter (Excel)</button>
+                    <button style={small()} onClick={() => exporter(`demandes-salon-${reg.edition}.csv`, ["Reçue le", "Source", "Profil", "Nom", "Contact", "E-mail", "Téléphone", "Ville", "Dépt", "SIRET", "Catégorie", "Zone 1", "Zone 2", "Surface demandée (m²)", "Tables demandées", "Statut", "Zone attribuée", "Surface attribuée (m²)", "Tables attribuées", "Stand", "Contribution", "Payé", "Remarques", "Note"], l.map((d) => [dateFr(d.cree_le), d.source, d.profil, d.nom, d.contact, d.email, d.telephone, d.ville, d.departement, d.siret, d.categorie, d.zone_1, d.zone_2, d.metres, d.tables, STATUTS_SALON.find((x) => x[0] === d.statut)?.[1], d.zone_attribuee, d.metres_attribues, d.tables_attribuees, d.stand, d.contribution, d.paye ? "oui" : "", d.commentaire, d.note]))}>Exporter (Excel)</button>
                     <button style={small()} disabled={!acceptees.length} onClick={() => exporter(`depliant-exposants-${reg.edition}.csv`, ["Stand", "Zone", "Nom", "Dépt", "Catégorie", "Type"], [...acceptees].sort((a, b) => ZONES_SALON.indexOf(a.zone_attribuee) - ZONES_SALON.indexOf(b.zone_attribuee) || String(a.stand || "").localeCompare(String(b.stand || ""), "fr", { numeric: true })).map((d) => [d.stand, d.zone_attribuee, nomDepliant(d), d.profil === "Professionnel" ? d.departement : "", d.categorie, d.profil === "Amateur" ? "amateur" : ""]))}>Liste pour le dépliant</button>
                 </div>
                 {msg && <p style={{ margin: "10px 0 0", color: C.danger, fontSize: 14 }}>{msg}</p>}
@@ -1562,9 +1607,9 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
                                     <tr style={{ background: i % 2 ? zebre : undefined, cursor: "pointer" }} onClick={() => setOuverte(ouverte === d.id ? null : d.id)}>
                                         <td style={cellule}><b style={{ fontWeight: 600 }}>{d.nom}</b><span style={{ display: "block", fontSize: 12.5, color: C.mute }}>{d.profil}{d.departement ? ` · ${d.departement}` : ""}{d.source === "papier" ? " · papier" : ""} · {dateFr(d.cree_le)}</span></td>
                                         <td style={cellule}>{d.categorie}</td>
-                                        <td style={cellule}>{d.zone_1}{d.zone_2 ? <span style={{ color: C.mute }}> (ou {d.zone_2})</span> : null}<span style={{ display: "block", fontSize: 12.5, color: C.mute }}>{d.metres} m</span></td>
+                                        <td style={cellule}>{d.zone_1}{d.zone_2 ? <span style={{ color: C.mute }}> (ou {d.zone_2})</span> : null}<span style={{ display: "block", fontSize: 12.5, color: C.mute }}>{d.metres} m²{d.tables != null ? ` · ${d.tables} table${d.tables > 1 ? "s" : ""}` : ""}</span></td>
                                         <td style={{ ...cellule, color: coul(d.statut), fontWeight: 600, fontSize: 13 }}>{STATUTS_SALON.find((x) => x[0] === d.statut)?.[1]}</td>
-                                        <td style={cellule}>{d.zone_attribuee ? `${d.zone_attribuee} · ${d.metres_attribues ?? "?"} m${d.stand ? ` · stand ${d.stand}` : ""}` : <span style={{ color: C.mute }}>—</span>}</td>
+                                        <td style={cellule}>{d.zone_attribuee ? `${d.zone_attribuee} · ${d.metres_attribues ?? "?"} m²${d.tables_attribuees != null ? ` · ${d.tables_attribuees} table${d.tables_attribuees > 1 ? "s" : ""}` : ""}${d.stand ? ` · stand ${d.stand}` : ""}` : <span style={{ color: C.mute }}>—</span>}</td>
                                         <td style={cellule}>{d.contribution != null ? euros(d.contribution) : <span style={{ color: C.mute }}>—</span>}{d.paye ? <span style={{ display: "block", fontSize: 12.5, color: C.accent }}>payé</span> : null}</td>
                                     </tr>
                                     {ouverte === d.id && (
@@ -1573,12 +1618,13 @@ function GestionSalon({ etroit }: { etroit: boolean }) {
                                                 <div><span style={label}>Statut</span><select style={champ2} value={d.statut} onChange={(e) => maj(d, { statut: e.target.value, ...(e.target.value === "acceptee" && !d.zone_attribuee ? { zone_attribuee: d.zone_1, metres_attribues: d.metres } : {}) })}>{STATUTS_SALON.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select></div>
                                                 <div><span style={label}>Zone attribuée</span><select style={champ2} value={d.zone_attribuee || ""} onChange={(e) => maj(d, { zone_attribuee: e.target.value || null })}><option value="">—</option>{ZONES_SALON.map((z) => <option key={z}>{z}</option>)}</select></div>
                                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                                                    <div><span style={label}>Mètres</span><input style={champ2} type="number" min={0} step={1} value={d.metres_attribues ?? ""} onChange={(e) => maj(d, { metres_attribues: e.target.value === "" ? null : Number(e.target.value) })} /></div>
+                                                    <div><span style={label}>Surface (m²)</span><input style={champ2} type="number" min={0} step={1} value={d.metres_attribues ?? ""} onChange={(e) => maj(d, { metres_attribues: e.target.value === "" ? null : Number(e.target.value) })} /></div>
+                                                    <div><span style={label}>Tables</span><input style={champ2} type="number" min={0} step={1} value={d.tables_attribuees ?? ""} placeholder={d.tables != null ? String(d.tables) : ""} onChange={(e) => maj(d, { tables_attribuees: e.target.value === "" ? null : Number(e.target.value) })} /></div>
                                                     <div><span style={label}>Stand n°</span><input style={champ2} value={d.stand || ""} onChange={(e) => setL((x) => x && x.map((y) => (y.id === d.id ? { ...y, stand: e.target.value } : y)))} onBlur={(e) => maj(d, { stand: e.target.value || null })} /></div>
                                                 </div>
                                                 <div><span style={label}>Contribution (€)</span>
                                                     <div style={{ display: "flex", gap: 6 }}><input style={champ2} type="number" min={0} step={0.5} value={d.contribution ?? ""} onChange={(e) => maj(d, { contribution: e.target.value === "" ? null : Number(e.target.value) })} />
-                                                        {tarif(d) > 0 && <button style={{ ...small(), whiteSpace: "nowrap" }} title={`${d.metres_attribues ?? d.metres} m × ${tarif(d)} €`} onClick={() => maj(d, { contribution: suggere(d) })}>= {euros(suggere(d))}</button>}</div></div>
+                                                        {tarif(d) > 0 && <button style={{ ...small(), whiteSpace: "nowrap" }} title={`${d.metres_attribues ?? d.metres} m² × ${tarif(d)} €`} onClick={() => maj(d, { contribution: suggere(d) })}>= {euros(suggere(d))}</button>}</div></div>
                                                 <label style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 22, cursor: "pointer" }}><input type="checkbox" checked={!!d.paye} onChange={(e) => maj(d, { paye: e.target.checked })} style={{ width: 18, height: 18, accentColor: C.accent }} />Contribution payée</label>
                                                 <div><span style={label}>Note du bureau</span><input style={champ2} value={d.note || ""} onChange={(e) => setL((x) => x && x.map((y) => (y.id === d.id ? { ...y, note: e.target.value } : y)))} onBlur={(e) => maj(d, { note: e.target.value || null })} /></div>
                                             </div>

@@ -123,12 +123,15 @@ function ChoixAgenda({ agenda }: { agenda: any }) {
     const choix: React.CSSProperties = { ...base, height: 40, padding: "0 14px", fontSize: 14, fontWeight: 500, background: "rgba(246,240,230,0.06)" }
     if (!ouvert) return <button style={base} onClick={() => setOuvert(true)}><IconeAgenda />Ajouter à l’agenda</button>
     return (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", fontFamily: "Poppins, sans-serif" }}>
-            <span style={{ fontSize: 13, color: C.mute, marginRight: 2 }}>Ajouter à :</span>
+        // choix en colonne : reste étroit, donc ne déborde pas sur téléphone
+        <div style={{ display: "inline-flex", flexDirection: "column", gap: 6, alignItems: "stretch", fontFamily: "Poppins, sans-serif", maxWidth: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 13, color: C.mute }}>Ajouter à :</span>
+                <button aria-label="Fermer" style={{ ...choix, height: 28, padding: "0 8px", background: "transparent", border: "none", color: C.mute, fontSize: 18 }} onClick={() => setOuvert(false)}>×</button>
+            </div>
             <a href={lienGoogle(agenda)} target="_blank" rel="noopener" style={choix} onClick={() => setOuvert(false)}>Google Agenda</a>
             <a href={lienOutlook(agenda)} target="_blank" rel="noopener" style={choix} onClick={() => setOuvert(false)}>Outlook</a>
             <button style={choix} onClick={() => { telechargerIcs([agenda], "salon-acs.ics"); setOuvert(false) }}>Apple (iPhone, Mac)</button>
-            <button aria-label="Fermer" style={{ ...choix, padding: "0 12px", background: "transparent", border: "none", color: C.mute }} onClick={() => setOuvert(false)}>×</button>
         </div>
     )
 }

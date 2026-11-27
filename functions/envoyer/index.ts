@@ -11,12 +11,15 @@ const cors = {
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { ...cors, "Content-Type": "application/json" } })
 
 const echapper = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+// logo de l’association en tête de chaque e-mail (image publique servie par jsDelivr)
+const LOGO = "https://cdn.jsdelivr.net/gh/Flokfloyd/acs-site-images@70e2bb0c6d885e7937a51607fcdacfdd5dc0cf5a/3-logos/acs-noir.png"
+
 function enHtml(texte: string, site: string, exposant = false) {
   const corps = echapper(texte)
     .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#4f7a3c">$1</a>')
     .split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${p.replace(/\n/g, "<br>")}</p>`).join("")
   return `<div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#2b2420;line-height:1.55">
-<p style="margin:0 0 18px;font-family:Georgia,serif;font-size:18px;font-weight:bold">A.C.S. · Armorique Cactus Succulentes</p>
+<a href="${site}" style="display:block;margin:0 0 20px"><img src="${LOGO}" width="200" height="93" alt="A.C.S. · Armorique Cactus Succulentes" style="display:block;border:0;width:200px;height:auto"></a>
 ${corps}
 <hr style="border:none;border-top:1px solid #ddd;margin:26px 0 12px">
 ${exposant ? `<p style="color:#888;font-size:12px;margin:0">Vous recevez cet e-mail car vous avez demandé un emplacement au Salon des Plantes de l’ACS. Pour ne plus en recevoir, répondez simplement à ce message.</p>` : `<p style="color:#888;font-size:12px;margin:0">Vous recevez cet e-mail en tant qu’adhérent de l’association. Pour ne plus recevoir ces e-mails, décochez l’option dans votre profil : <a href="${site}/espace-membre#profil" style="color:#888">${site.replace(/^https?:\/\//, "")}/espace-membre</a>.</p>`}

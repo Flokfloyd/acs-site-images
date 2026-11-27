@@ -5,7 +5,8 @@ import { addPropertyControls, ControlType } from "framer"
 import { C, font, serif, sb } from "./AcsBase.tsx"
 
 export const ZONES_SALON = ["Petite salle", "Entre les salles", "Grande salle", "Terrain de sport"] as const
-const METRES = [2, 4, 6, 8, 10, 12]
+const SURFACES = [2, 4, 6, 8, 10, 12]   // m²
+const TABLES = [0, 1, 2, 3, 4]          // tables de 0,80 × 1,80 m, selon le stock
 
 const champ: React.CSSProperties = { width: "100%", boxSizing: "border-box", colorScheme: "dark", background: "#0f0c0a", color: C.txt, border: `1px solid ${C.line}`, borderRadius: 0, padding: "11px 13px", font: "inherit", fontSize: 15, outline: "none" }
 const etiq: React.CSSProperties = { display: "block", fontSize: 11.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.accent, margin: "0 0 6px" }
@@ -14,8 +15,8 @@ const bouton = (plein = true): React.CSSProperties => ({ background: plein ? C.a
 const echap = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
 
 type Reglages = { edition: number; ouvert: boolean; date_limite: string | null; message: string | null }
-type Demande = { profil: "Amateur" | "Professionnel" | ""; nom: string; contact: string; email: string; telephone: string; ville: string; departement: string; siret: string; categorie: string; zone_1: string; zone_2: string; metres: number; commentaire: string }
-const vide: Demande = { profil: "", nom: "", contact: "", email: "", telephone: "", ville: "", departement: "", siret: "", categorie: "", zone_1: "", zone_2: "", metres: 2, commentaire: "" }
+type Demande = { profil: "Amateur" | "Professionnel" | ""; nom: string; contact: string; email: string; telephone: string; ville: string; departement: string; siret: string; categorie: string; zone_1: string; zone_2: string; metres: number; tables: number; commentaire: string }
+const vide: Demande = { profil: "", nom: "", contact: "", email: "", telephone: "", ville: "", departement: "", siret: "", categorie: "", zone_1: "", zone_2: "", metres: 4, tables: 1, commentaire: "" }
 
 // version papier : même questions, cases à cocher et lignes à remplir, prête à imprimer ou enregistrer en PDF
 export function ouvrirFormulairePapier(edition: number, rempli?: Demande) {
@@ -44,10 +45,11 @@ ${ligne("Ville", rempli?.ville)}${ligne("Département", rempli?.departement)}
 ${ligne("N° SIRET", rempli?.siret, "professionnels")}
 <h2>Ce que vous présentez</h2>
 ${ligne("Catégorie de végétaux", rempli?.categorie, "60 caractères au plus, repris dans le dépliant")}
-<h2>Emplacement souhaité</h2><p class="sous">Les zones sont celles du plan du dépliant. Base : une table de 0,80 × 2 m, soit 2 mètres linéaires. Attribution selon les disponibilités.</p>
+<h2>Emplacement souhaité</h2><p class="sous">Les zones sont celles du plan du dépliant. Tables de 0,80 × 1,80 m prêtées selon le stock. Attribution selon les disponibilités.</p>
 <div class="choix"><b style="width:100%">1er choix</b>${ZONES_SALON.map((z) => `${coche(rempli?.zone_1 === z)}${z}`).join(" ")}</div>
 <div class="choix"><b style="width:100%">2e choix (facultatif)</b>${ZONES_SALON.map((z) => `${coche(rempli?.zone_2 === z)}${z}`).join(" ")}</div>
-${ligne("Mètres linéaires demandés", rempli?.metres ? `${rempli.metres} m` : "", "2 m = 1 table")}
+${ligne("Surface du stand demandée", rempli?.metres ? `${rempli.metres} m²` : "", "en m²")}
+${ligne("Nombre de tables souhaitées", rempli ? String(rempli.tables ?? "") : "", "tables de 0,80 × 1,80 m, selon le stock")}
 <h2>Remarques</h2><div class="cadre">${rempli?.commentaire ? echap(rempli.commentaire) : ""}</div>
 <p class="pied">La contribution demandée est fixée par l’association selon la place attribuée ; elle vous sera communiquée avec la confirmation. Vos coordonnées servent uniquement à l’organisation du salon.<br>À renvoyer à : asso-acs@laposte.net · ou à remettre à un membre du bureau.</p>
 ${ligne("Date et signature", "")}</div></body></html>`)
@@ -90,7 +92,7 @@ export default function InscriptionSalon(props: { titre?: string }) {
         const t = (s: string) => s.trim() || null
         const { error } = await c.from("demandes_salon").insert({
             edition, profil: d.profil, nom: d.nom.trim(), contact: t(d.contact), email: d.email.trim().toLowerCase(), telephone: t(d.telephone), ville: t(d.ville),
-            departement: t(d.departement), siret: d.profil === "Professionnel" ? t(d.siret) : null, categorie: d.categorie.trim(), zone_1: d.zone_1, zone_2: d.zone_2 || null, metres: Number(d.metres) || 2, commentaire: t(d.commentaire),
+            departement: t(d.departement), siret: d.profil === "Professionnel" ? t(d.siret) : null, categorie: d.categorie.trim(), zone_1: d.zone_1, zone_2: d.zone_2 || null, metres: Number(d.metres) || 4, tables: Number(d.tables) || 0, commentaire: t(d.commentaire),
         })
         if (error) { setEtat(""); setErr(/demandes_salon|schema cache|exist/i.test(error.message) ? "Les demandes en ligne ouvriront très bientôt. En attendant, utilisez le formulaire à imprimer." : /row-level|policy/i.test(error.message) ? "Les demandes pour cette édition sont closes. Écrivez-nous à asso-acs@laposte.net." : "Envoi impossible : " + error.message); return }
         setEtat("ok")
@@ -172,11 +174,19 @@ export default function InscriptionSalon(props: { titre?: string }) {
                     </div>
 
                     <div>
-                        <span style={etiq}>Mètres linéaires</span>
+                        <span style={etiq}>Surface du stand</span>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {METRES.map((m) => <button key={m} type="button" onClick={() => set("metres", m)} aria-pressed={d.metres === m} style={{ ...bouton(d.metres === m), padding: "10px 14px", fontSize: 14, minWidth: 64 }}>{m} m</button>)}
+                            {SURFACES.map((m) => <button key={m} type="button" onClick={() => set("metres", m)} aria-pressed={d.metres === m} style={{ ...bouton(d.metres === m), padding: "10px 14px", fontSize: 14, minWidth: 64 }}>{m} m²</button>)}
                         </div>
-                        <p style={aide}>Base : une table de 0,80 × 2 m = 2 mètres linéaires ({d.metres / 2} table{d.metres > 2 ? "s" : ""}). Au-delà de 12 m, précisez-le en remarque.</p>
+                        <p style={aide}>Au-delà de 12 m², précisez-le en remarque.</p>
+                    </div>
+
+                    <div>
+                        <span style={etiq}>Tables souhaitées</span>
+                        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {TABLES.map((m) => <button key={m} type="button" onClick={() => set("tables", m)} aria-pressed={d.tables === m} style={{ ...bouton(d.tables === m), padding: "10px 14px", fontSize: 14, minWidth: 64 }}>{m === 0 ? "Aucune" : m}</button>)}
+                        </div>
+                        <p style={aide}>Tables de 0,80 × 1,80 m prêtées par l’association, selon le stock disponible.</p>
                     </div>
 
                     <div>

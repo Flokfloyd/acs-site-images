@@ -1065,3 +1065,72 @@ grant execute on function public.destinataires(uuid) to authenticated;
 
 -- 28. (retiré le 23/11/2026 : les Actualités font doublon avec l'Agenda)
 drop table if exists public.actualites;
+
+-- 29. Salon : surface des stands en m² (la colonne « metres » contient désormais des m²) et tables de 0,80 × 1,80 m
+comment on column public.demandes_salon.metres is 'surface demandée en m² (mètres linéaires jusqu''au salon 2026)';
+comment on column public.demandes_salon.metres_attribues is 'surface attribuée en m²';
+alter table public.demandes_salon add column if not exists tables smallint check (tables between 0 and 20);
+alter table public.demandes_salon add column if not exists tables_attribuees smallint check (tables_attribuees between 0 and 20);
+drop policy if exists demande_depot on public.demandes_salon;
+create policy demande_depot on public.demandes_salon for insert to anon, authenticated
+    with check (statut = 'nouvelle' and source = 'en ligne' and zone_attribuee is null and metres_attribues is null and tables_attribuees is null
+                and stand is null and contribution is null and paye = false and note is null
+                and edition in (select edition from public.salon_reglages where ouvert));
+
+-- 30. Fiches producteurs du salon : un clic sur un exposant de la liste publique ouvre sa fiche
+create table if not exists public.producteurs (
+  id           uuid primary key default gen_random_uuid(),
+  nom          text not null unique check (char_length(nom) between 2 and 120),   -- tel qu'il apparaît dans la liste des exposants
+  specialites  text check (char_length(specialites) <= 200),
+  ville        text check (char_length(ville) <= 120),
+  departement  text check (char_length(departement) <= 3),
+  presentation text check (char_length(presentation) <= 4000),
+  site_web     text check (char_length(site_web) <= 300),
+  photo_url    text,
+  visible      boolean not null default true,
+  maj_le       timestamptz not null default now()
+);
+alter table public.producteurs enable row level security;
+drop policy if exists producteurs_lecture on public.producteurs;
+create policy producteurs_lecture on public.producteurs for select using (visible or est_admin());
+drop policy if exists producteurs_admin on public.producteurs;
+create policy producteurs_admin on public.producteurs for all using (est_admin()) with check (est_admin());
+grant select on public.producteurs to anon, authenticated;
+grant insert, update, delete on public.producteurs to authenticated;
+
+-- 31. Bibliothèque : index des meilleurs livres (réservé aux adhérents)
+create table if not exists public.livres (
+  id               uuid primary key default gen_random_uuid(),
+  titre            text not null check (char_length(titre) between 2 and 200),
+  auteurs          text check (char_length(auteurs) <= 200),
+  editeur          text check (char_length(editeur) <= 120),
+  annee            int check (annee between 1700 and 2100),
+  pages            int check (pages between 1 and 20000),
+  langue           text check (char_length(langue) <= 40),
+  isbn             text check (char_length(isbn) <= 40),
+  genres           text check (char_length(genres) <= 300),          -- familles et thèmes abordés, séparés par des virgules
+  caracteristiques text check (char_length(caracteristiques) <= 2000),
+  avis             text check (char_length(avis) <= 2000),           -- pourquoi on le recommande
+  couverture_url   text,
+  ordre            int not null default 100,
+  cree_le          timestamptz not null default now()
+);
+alter table public.livres enable row level security;
+drop policy if exists livres_lecture on public.livres;
+create policy livres_lecture on public.livres for select using (est_membre() or est_admin());
+drop policy if exists livres_admin on public.livres;
+create policy livres_admin on public.livres for all using (est_admin()) with check (est_admin());
+grant select, insert, update, delete on public.livres to authenticated;
+
+insert into public.livres (titre, auteurs, editeur, annee, pages, langue, isbn, genres, caracteristiques, ordre)
+select * from (values
+  ('Taxonomie des Cactaceae (vol. 1 et 2)', 'Joël Lodé', 'Cactus-Aventures', 2015, 1436, 'Français', '978-84-617-2974-6',
+   'Cactaceae, taxonomie, génétique (ADN)', 'Deux grands volumes A4 reliés et un index des synonymes. Classification des cactées fondée surtout sur la génétique moléculaire ; 2 360 espèces et sous-espèces, 9 500 photos. Les volumes 3 à 6 (2026) décrivent les espèces.', 10),
+  ('Aizoaceae', 'Ernst van Jaarsveld', 'Ulmer', 2005, 239, 'Français', '978-2-84138-224-8',
+   'Aizoaceae, ficoïdes, Afrique du Sud', 'Ouvrage relié consacré à la famille des Aizoaceae (ficoïdes). Épuisé, à chercher d’occasion.', 20),
+  ('Lithops, joyaux du veld', 'Steven A. Hammer (trad. Mickaël Legrand)', 'Éditions Quæ', 2010, null, 'Français', '978-2-7592-0851-7',
+   'Lithops, Aizoaceae, culture, Afrique australe', 'Édition française revue et augmentée de « Lithops, Treasures of the Veld ». Photographies de Christopher Barnhill, clé botanique de Jonathan Clark.', 30),
+  ('Portraits de cactées', 'Rod et Ken Preston-Mafham', 'Ulmer', 2003, null, 'Français', '978-2-84138-213-2',
+   'Cactaceae, cactées globulaires, identification', '1 094 espèces de cactées globulaires en couleur, avec nom scientifique, synonymes, dimensions, aiguillons, fleurs et répartition. Épuisé.', 40)
+) v(titre, auteurs, editeur, annee, pages, langue, isbn, genres, caracteristiques, ordre)
+where not exists (select 1 from public.livres);
