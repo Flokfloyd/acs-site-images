@@ -1032,7 +1032,7 @@ function Discussion({ moi }: { moi: Adherent }) {
 export function GalerieMembres() {
     const client = sb()!
     const [photos, setPhotos] = React.useState<Photo[] | null>(null)
-    const [vue, setVue] = React.useState<"tout" | "section" | "album">("tout")
+    const [vue, setVue] = React.useState<"tout" | "section" | "album">("album")
     const [albumOuvert, setAlbumOuvert] = React.useState<string | null>(null)
     const [ouverte, setOuverte] = React.useState<{ liste: Photo[]; i: number } | null>(null)
     React.useEffect(() => {
@@ -1061,9 +1061,9 @@ export function GalerieMembres() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                     <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.mute, marginRight: 4 }}>Affichage</span>
-                    <button style={puce(vue === "tout")} onClick={() => { setVue("tout"); setAlbumOuvert(null) }}>Tout</button>
-                    <button style={puce(vue === "section")} onClick={() => { setVue("section"); setAlbumOuvert(null) }}>Par section</button>
                     <button style={puce(vue === "album")} onClick={() => { setVue("album"); setAlbumOuvert(null) }}>Par album</button>
+                    <button style={puce(vue === "section")} onClick={() => { setVue("section"); setAlbumOuvert(null) }}>Par section</button>
+                    <button style={puce(vue === "tout")} onClick={() => { setVue("tout"); setAlbumOuvert(null) }}>Tout</button>
                 </div>
                 <span style={{ ...muted, fontSize: 13 }}>{photos.length} photo{photos.length > 1 ? "s" : ""} · réservées aux adhérents, merci de ne pas les diffuser.</span>
             </div>

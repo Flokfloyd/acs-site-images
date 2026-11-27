@@ -6,7 +6,7 @@ import { createPortal } from "react-dom"
 import { C, serif } from "./AcsBase.tsx"
 import { sb, box, small, muted, input } from "./EspaceMembre.tsx"
 
-type Livre = { id: string; titre: string; auteurs?: string; editeur?: string; annee?: number; pages?: number; langue?: string; isbn?: string; genres?: string; caracteristiques?: string; avis?: string; couverture_url?: string }
+type Livre = { id: string; favori?: boolean; titre: string; auteurs?: string; editeur?: string; annee?: number; pages?: number; langue?: string; isbn?: string; genres?: string; caracteristiques?: string; avis?: string; couverture_url?: string }
 const sa = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
 const genresDe = (l: Livre) => (l.genres || "").split(",").map((g) => g.trim()).filter(Boolean)
 
@@ -54,6 +54,7 @@ export function Bibliotheque() {
     const [q, setQ] = React.useState("")
     const [genre, setGenre] = React.useState<string | null>(null)
     const [ouvert, setOuvert] = React.useState<Livre | null>(null)
+    const [tout, setTout] = React.useState(false)
     const ref = React.useRef<HTMLDivElement>(null)
     const [cols, setCols] = React.useState(4)
     React.useEffect(() => {
@@ -68,17 +69,20 @@ export function Bibliotheque() {
     if (!livres.length) return <div ref={ref} style={{ width: "100%" }}><p style={muted}>La bibliothèque sera bientôt garnie.</p></div>
     const tous = [...new Set(livres.flatMap(genresDe))].sort((a, b) => a.localeCompare(b, "fr"))
     const mots = sa(q).split(/\s+/).filter(Boolean)
-    const vus = livres.filter((l) => (!genre || genresDe(l).includes(genre)) && mots.every((m) => sa(`${l.titre} ${l.auteurs || ""} ${l.genres || ""} ${l.editeur || ""}`).includes(m)))
+    // d'emblée : les favoris (4 au plus) ; « Voir toute la bibliothèque » déplie le reste, avec recherche par plante
+    const favoris = (livres.some((l) => l.favori) ? livres.filter((l) => l.favori) : livres).slice(0, 4)
+    const vus = !tout ? favoris : livres.filter((l) => (!genre || genresDe(l).includes(genre)) && mots.every((m) => sa(`${l.titre} ${l.auteurs || ""} ${l.genres || ""}`).includes(m)))
+    const reste = livres.length - favoris.length
     const puce = (actif: boolean): React.CSSProperties => ({ ...small(), padding: "6px 12px", fontSize: 13, background: actif ? C.accent : "transparent", color: actif ? C.accentDark : C.txt, borderColor: actif ? C.accent : C.line })
-    const outils = livres.length > 8   // recherche et filtres seulement quand la liste s'allonge
     return (
         <div ref={ref} style={{ width: "100%", display: "flex", flexDirection: "column", gap: 20, fontFamily: "Poppins, sans-serif" }}>
-            {outils && <>
-                <input style={{ ...input, maxWidth: 420 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher un titre, un auteur, une famille…" />
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button style={puce(!genre)} onClick={() => setGenre(null)}>Tous</button>
+            {tout && <>
+                <input style={{ ...input, maxWidth: 420 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Rechercher une plante, un titre, un auteur…" />
+                {tous.length > 1 && <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    <span style={{ fontSize: 13, color: C.mute, marginRight: 4 }}>Plantes :</span>
+                    <button style={puce(!genre)} onClick={() => setGenre(null)}>Toutes</button>
                     {tous.map((g) => <button key={g} style={puce(genre === g)} onClick={() => setGenre(genre === g ? null : g)}>{g}</button>)}
-                </div>
+                </div>}
             </>}
             <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: cols === 2 ? 14 : 24 }}>
                 {vus.map((l) => (
@@ -94,6 +98,10 @@ export function Bibliotheque() {
                 ))}
             </div>
             {vus.length === 0 && <p style={muted}>Aucun livre ne correspond.</p>}
+            {(reste > 0 || tout) && <div>
+                <button onClick={() => { setTout(!tout); setQ(""); setGenre(null) }} style={{ ...small(), padding: "12px 20px", fontSize: 15, fontWeight: 600 }}>
+                    {tout ? "Revenir à la sélection" : `Voir toute la bibliothèque (${livres.length} livres) →`}</button>
+            </div>}
             {ouvert && <Fiche l={ouvert} fermer={() => setOuvert(null)} />}
         </div>
     )

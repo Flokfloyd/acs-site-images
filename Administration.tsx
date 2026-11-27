@@ -29,7 +29,7 @@ function useEtroit(seuil = 640): [(el: HTMLElement | null) => void, boolean] {
     return [setEl, etroit]
 }
 
-const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["salon", "Salon"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"], ["bibliotheque", "Bibliothèque"], ["guide", "Guide"]] as const
+const ONGLETS = [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["paiements", "Adhésions et paiements"], ["adherents", "Adhérents"], ["compta", "Comptabilité"], ["salon", "Salon"], ["boutique", "Boutique"], ["campagnes", "Campagnes e-mail"], ["sondages", "Sondages"], ["galerie", "Galerie"], ["semestriels", "Semestriels"], ["cultiver", "Cultiver"], ["guide", "Guide"]] as const
 type O = (typeof ONGLETS)[number][0]
 const lireHash = (): O => {
     if (typeof window === "undefined") return "agenda"
@@ -102,8 +102,7 @@ export default function Administration(props: { pageMembre: string }) {
             </div>}
             {onglet === "salon" && sousSalon === "fiches" && <><Aide>Chaque fiche s’ouvre quand un visiteur clique sur le nom de l’exposant dans la liste des exposants de la page Salon. Écrivez le nom exactement comme dans la liste (le nom de la demande d’emplacement). Photo : un stand ou des plantes, sans personne reconnaissable sauf accord.</Aide>
                 <Editeur table="producteurs" ordre="nom" titre="Fiches producteurs" champs={CHAMPS_PRODUCTEUR} nouveau={() => ({ visible: true })} resume={(r) => `${r.nom}${r.specialites ? " · " + r.specialites : ""}${r.visible ? "" : " (masquée)"}`} /></>}
-            {onglet === "bibliotheque" && <><Aide>La bibliothèque s’affiche en bas de la page Cultiver, pour les adhérents connectés : les meilleurs livres sur les cactus et succulentes, avec leur couverture, leurs caractéristiques et les sujets abordés. Photographiez la couverture : elle est réduite automatiquement pour rester légère.</Aide>
-                <Editeur table="livres" ordre="ordre" titre="Livres" champs={CHAMPS_LIVRE} nouveau={(l) => ({ ordre: (l.length + 1) * 10, langue: "Français" })} resume={(r) => `${r.titre}${r.auteurs ? " · " + r.auteurs : ""}${r.annee ? " (" + r.annee + ")" : ""}`} /></>}
+            {onglet === "cultiver" && <CultiverAdmin />}
             {onglet === "salon" && sousSalon === "planning" && <TachesAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "retro" && <RetroplanningAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "exposants" && <><Aide>Les exposants déposent leur demande sur la page Salon (ou sur le formulaire papier). Acceptez, attribuez la zone, la surface (m²), les tables et le n° de stand, puis fixez la contribution : elle se calcule d’après les tarifs au m², et reste modifiable. Rien n’est envoyé aux exposants automatiquement.</Aide>
@@ -141,12 +140,43 @@ const CHAMPS_LIVRE: Champ[] = [
     { k: "pages", t: "Nombre de pages", type: "number" },
     { k: "langue", t: "Langue", type: "text" },
     { k: "isbn", t: "ISBN", type: "text" },
-    { k: "genres", t: "Familles et sujets abordés (séparés par des virgules)", type: "text", place: "Cactaceae, culture, identification" },
+    { k: "genres", t: "Genres et familles de plantes (mots-clés, séparés par des virgules)", type: "text", place: "Cactaceae, Mammillaria" },
+    { k: "favori", t: "Favori (affiché d’emblée, 4 au plus)", type: "bool" },
     { k: "caracteristiques", t: "Caractéristiques", type: "textarea", place: "Format, illustrations, niveau…" },
     { k: "avis", t: "Pourquoi on le recommande", type: "textarea" },
     { k: "couverture_url", t: "Couverture (photo)", type: "fichier", dossier: "livres", accept: "image/*", taille: 500 },
     { k: "ordre", t: "Ordre d’affichage", type: "number" },
 ]
+
+const CHAMPS_ARTICLE: Champ[] = [
+    { k: "titre", t: "Titre", type: "text", requis: true },
+    { k: "source", t: "Repère (au-dessus du titre)", type: "text", place: "N°4 · Septembre 2026 · p. 6" },
+    { k: "chapo", t: "Chapeau (résumé affiché sur la carte)", type: "textarea" },
+    { k: "photo_url", t: "Photo principale", type: "fichier", dossier: "articles", accept: "image/*", taille: 1600 },
+    { k: "corps", t: "Texte de l’article", type: "textarea", place: "Une ligne vide entre les paragraphes.\n## Un intertitre\n- une puce\n**en gras**\n[photo 2]" },
+    { k: "photo2_url", t: "Photo 2 (placée là où vous écrivez [photo 2])", type: "fichier", dossier: "articles", accept: "image/*", taille: 1600 },
+    { k: "legende2", t: "Légende de la photo 2", type: "text" },
+    { k: "photo3_url", t: "Photo 3 (placée là où vous écrivez [photo 3])", type: "fichier", dossier: "articles", accept: "image/*", taille: 1600 },
+    { k: "legende3", t: "Légende de la photo 3", type: "text" },
+    { k: "ordre", t: "Ordre d’affichage", type: "number" },
+    { k: "publie", t: "Publié sur le site", type: "bool" },
+]
+
+// Onglet « Cultiver » : articles (sur le modèle des guides) et bibliothèque
+function CultiverAdmin() {
+    const [sous, setSous] = React.useState<"articles" | "livres">("articles")
+    const b = (k: typeof sous, t: string) => <button key={k} onClick={() => setSous(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sous === k ? C.accent : "transparent", color: sous === k ? C.accentDark : C.txt, borderColor: sous === k ? C.accent : C.line }}>{t}</button>
+    return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{b("articles", "Articles")}{b("livres", "Bibliothèque")}</div>
+        {sous === "articles" ? <>
+            <Aide>Les articles s’ajoutent sous les guides de la page Cultiver, avec la même présentation, et s’ouvrent sur une page à eux. Mise en forme du texte : une ligne vide entre les paragraphes, « ## » en début de ligne pour un intertitre, « - » pour une puce, **mots** pour du gras, et [photo 2] ou [photo 3] seuls sur une ligne pour placer les photos supplémentaires. Cochez « Publié » quand l’article est prêt.</Aide>
+            <Editeur table="articles" ordre="ordre" titre="Articles" champs={CHAMPS_ARTICLE} nouveau={(l) => ({ ordre: (l.length + 1) * 10, publie: false })} resume={(r) => `${r.titre}${r.publie ? "" : " (brouillon)"}`} />
+        </> : <>
+            <Aide>La bibliothèque est en bas de la page Cultiver, visible de tous. Les 4 livres cochés « Favori » s’affichent d’emblée ; les autres apparaissent avec « Voir toute la bibliothèque », où l’on peut filtrer par plante. Mots-clés : uniquement des genres ou familles de plantes (Cactaceae, Lithops…). Photographiez la couverture : elle est réduite automatiquement.</Aide>
+            <Editeur table="livres" ordre="ordre" titre="Livres" champs={CHAMPS_LIVRE} nouveau={(l) => ({ ordre: (l.length + 1) * 10, langue: "Français", favori: false })} resume={(r) => `${r.favori ? "★ " : ""}${r.titre}${r.auteurs ? " · " + r.auteurs : ""}`} />
+        </>}
+    </div>
+}
 
 // Page Adhésion : la campagne la plus récente dont la date d’ouverture est passée s’affiche (année, tarif, bouton)
 const CHAMPS_CAMPAGNE_ADH: Champ[] = [

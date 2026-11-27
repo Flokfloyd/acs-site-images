@@ -1303,3 +1303,46 @@ alter table public.ecritures add constraint ecritures_sens_check check (sens in 
 drop policy if exists livres_lecture on public.livres;
 create policy livres_lecture on public.livres for select using (true);
 grant select on public.livres to anon;
+
+-- 34. Bibliothèque : 4 favoris affichés d'emblée, le reste en dépliant ; mots-clés limités aux plantes
+alter table public.livres add column if not exists favori boolean not null default false;
+comment on column public.livres.genres is 'genres et familles de plantes abordés, séparés par des virgules (servent de filtres)';
+update public.livres set favori = true, ordre = 10, genres = 'Aizoaceae' where titre like 'Aizoaceae%';
+update public.livres set favori = true, ordre = 20, genres = 'Aizoaceae, Lithops' where titre like 'Lithops%';
+update public.livres set favori = true, ordre = 30, genres = 'Cactaceae' where titre like 'Taxonomie%';
+update public.livres set favori = true, ordre = 40, genres = 'Cactaceae' where titre like 'Portraits%';
+
+-- 35. Articles « Cultiver » ajoutés depuis l'administration, sur le modèle des guides (page /article#<slug>)
+create table if not exists public.articles (
+  id         uuid primary key default gen_random_uuid(),
+  slug       text unique,
+  titre      text not null check (char_length(titre) between 2 and 160),
+  source     text check (char_length(source) <= 120),        -- ex. « N°4 · Septembre 2026 · p. 6 »
+  chapo      text check (char_length(chapo) <= 600),
+  photo_url  text,
+  corps      text not null default '' check (char_length(corps) <= 60000),
+  photo2_url text, legende2 text check (char_length(legende2) <= 200),
+  photo3_url text, legende3 text check (char_length(legende3) <= 200),
+  ordre      int not null default 100,
+  publie     boolean not null default false,
+  cree_le    timestamptz not null default now()
+);
+create or replace function public.articles_slug() returns trigger language plpgsql as $$
+begin
+  if new.slug is null or new.slug = '' then
+    new.slug := trim(both '-' from regexp_replace(lower(translate(new.titre,
+      'àâäáãåçéèêëíìîïñóòôöõúùûüýÿœæÀÂÄÁÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸŒÆ’''',
+      'aaaaaaceeeeiiiinooooouuuuyyoaaaaaaaceeeeiiiinooooouuuuyyoa  ')), '[^a-z0-9]+', '-', 'g'));
+    if exists (select 1 from public.articles where slug = new.slug and id <> new.id) then new.slug := new.slug || '-' || substr(new.id::text, 1, 4); end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists articles_slug on public.articles;
+create trigger articles_slug before insert or update on public.articles for each row execute function public.articles_slug();
+alter table public.articles enable row level security;
+drop policy if exists articles_lecture on public.articles;
+create policy articles_lecture on public.articles for select using (publie or est_admin());
+drop policy if exists articles_admin on public.articles;
+create policy articles_admin on public.articles for all using (est_admin()) with check (est_admin());
+grant select on public.articles to anon, authenticated;
+grant insert, update, delete on public.articles to authenticated;
