@@ -1297,7 +1297,7 @@ function StatsCampagne({ c, majListe }: { c: any; majListe: () => void }) {
                         {s.erreur && <span style={{ color: C.danger, fontSize: 13 }}>{s.erreur}</span>}
                     </div>
                 ))}
-                {voir === "erreurs" && liste.length > 0 && <p style={{ ...muted, fontSize: 13, marginTop: 8 }}>Corrigez ces adresses dans l’onglet Adhérents : sinon ces personnes ne reçoivent rien, ni campagnes ni codes de connexion.</p>}
+                {voir === "erreurs" && liste.length > 0 && <p style={{ ...muted, fontSize: 13, marginTop: 8 }}>Corrigez ces adresses dans Adhérents › Fichier des adhérents : sinon ces personnes ne reçoivent rien, ni campagnes ni codes de connexion.</p>}
             </div>}
             <p style={{ ...muted, fontSize: 12.5, marginTop: 10 }}>Les « ouverts » sont une estimation : certains logiciels de messagerie (Apple Mail notamment) comptent un e-mail comme ouvert sans qu’il soit lu, d’autres bloquent ce suivi.</p>
             <Msg text={msg.t} err={msg.err} />

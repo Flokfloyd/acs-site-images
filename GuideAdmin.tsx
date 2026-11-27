@@ -108,7 +108,7 @@ export default function GuideAdmin() {
                     <li style={li}><b>Chaque mois</b> : import AssoConnect, sauvegarde.</li>
                     <li style={li}><b>Automne</b> : créer la campagne d’adhésion de l’année suivante sur AssoConnect, puis l’ajouter ici avec son lien. Elle s’affiche le 1er décembre (date modifiable).</li>
                     <li style={li}><b>Février</b> : assemblée générale. Mettre à jour la composition du bureau sur la page L’association (Framer) si elle change.</li>
-                    <li style={li}><b>Hiver – printemps</b> : ouvrir les demandes d’exposants (onglet Salon), traiter les demandes au fil de l’eau, fixer les dates dans l’agenda. Quand le dépliant est prêt : charger le PDF et publier la liste des exposants.</li>
+                    <li style={li}><b>Hiver – printemps</b> : ouvrir les demandes d’exposants (Salon des plantes › Exposants et réglages), traiter les demandes au fil de l’eau, fixer les dates dans l’agenda. Quand le dépliant est prêt : charger le PDF et publier la liste des exposants.</li>
                     <li style={li}><b>Après le salon</b> : fermer les demandes, mettre à jour les chiffres de l’accueil (exposants, visiteurs) dans Framer.</li>
                     <li style={li}><b>Deux fois par an</b> : publier le nouveau semestriel.</li>
                     <li style={li}><b>Fin octobre</b> : renouveler la remise association de Framer (formule Basic offerte un an, jusqu’au 22 novembre). Un bandeau jaune l’annonce en haut de l’administration un mois avant, jusqu’à ce qu’on clique sur « C’est fait ».</li>
@@ -121,7 +121,7 @@ export default function GuideAdmin() {
                     <li style={li}><b>Les codes de connexion n’arrivent plus.</b> Regarder d’abord dans les indésirables. Sinon, vérifier sur Brevo que le quota du jour n’est pas dépassé (300). Si la clé Brevo a été changée, il faut aussi la recopier dans Supabase › Authentication › Emails › SMTP.</li>
                     <li style={li}><b>Le site public ne s’affiche plus.</b> Vérifier dans Framer (Settings › Plans) que la formule Basic est toujours active : si la remise n’a pas été renouvelée, le site repasse en gratuit, limité à 1 Go de trafic par mois.</li>
                     <li style={li}><b>Les messages du formulaire Contact n’arrivent pas.</b> Dans Framer, vérifier que l’adresse de réception est bien validée (réglages du formulaire).</li>
-                    <li style={li}><b>Un adhérent n’arrive pas à se connecter.</b> Vérifier dans l’onglet Adhérents son e-mail et son statut, lui renvoyer son code ou un e-mail de connexion.</li>
+                    <li style={li}><b>Un adhérent n’arrive pas à se connecter.</b> Vérifier dans Adhérents › Fichier des adhérents son e-mail et son statut, puis lui renvoyer son code depuis Adhérents › Accès et codes ou un e-mail de connexion.</li>
                 </ul>
             </Partie>
 

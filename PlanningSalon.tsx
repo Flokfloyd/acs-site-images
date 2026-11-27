@@ -548,7 +548,7 @@ export function RetroplanningAdmin({ client, etroit }: { client: any; etroit: bo
         const suivante = reg.edition + 1
         const { count } = await client.from("salon_taches").select("id", { count: "exact", head: true }).eq("edition", suivante)
         if (count) return setMsg({ t: `Le rétroplanning ${suivante} existe déjà.`, err: true })
-        if (!window.confirm(`Préparer le salon ${suivante} ?\n\nLes ${l.length} tâches sont recopiées (non faites), avec les mêmes délais. L’administration passe alors sur ${suivante} : pensez à indiquer ses dates dans l’onglet Exposants.`)) return
+        if (!window.confirm(`Préparer le salon ${suivante} ?\n\nLes ${l.length} tâches sont recopiées (non faites), avec les mêmes délais. L’administration passe alors sur ${suivante} : pensez à indiquer ses dates dans Salon des plantes › Exposants et réglages.`)) return
         const r1 = await client.from("salon_reglages").upsert({ edition: suivante, ouvert: false }, { onConflict: "edition", ignoreDuplicates: true })
         if (r1.error) return setMsg({ t: r1.error.message, err: true })
         const { error } = await client.from("salon_taches").insert(l.map((t) => ({ edition: suivante, titre: t.titre, details: t.details, semaines_avant: t.semaines_avant, responsable: t.responsable, cle: t.cle })))
