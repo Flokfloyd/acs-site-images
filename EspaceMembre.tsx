@@ -1072,7 +1072,7 @@ export function GalerieMembres() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 14 }}>
                     {groupes.map((g) => (
                         <button key={g.titre} onClick={() => setAlbumOuvert(g.titre)} style={{ all: "unset", cursor: "pointer", display: "block", background: C.panel, border: `1px solid ${C.line}` }}>
-                            <div style={{ position: "relative", height: 170, overflow: "hidden", background: "#2e241e" }}><img src={g.liste[0].vignette_url || g.liste[0].image_url} alt="" loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block" }} /></div>
+                            <div role="img" aria-label={g.titre} style={{ height: 170, backgroundColor: "#2e241e", backgroundImage: `url("${g.liste[0].vignette_url || g.liste[0].image_url}")`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }} />
                             <div style={{ padding: "10px 12px" }}>
                                 <div style={{ fontWeight: 600, fontSize: 15, lineHeight: 1.3 }}>{g.titre}</div>
                                 <div style={{ fontSize: 12.5, color: C.mute, marginTop: 2 }}>{g.sous ? g.sous + " · " : ""}{g.liste.length} photo{g.liste.length > 1 ? "s" : ""}</div>

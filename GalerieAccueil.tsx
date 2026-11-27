@@ -67,7 +67,8 @@ function Vignette({ p, onClick, hauteur, sous }: { p: Photo; onClick: () => void
     return (
         <button onClick={onClick} onMouseEnter={() => setSur(true)} onMouseLeave={() => setSur(false)} aria-label={p.legende ? `Agrandir : ${p.legende}` : "Agrandir la photo"}
             style={{ all: "unset", cursor: "zoom-in", position: "relative", display: "block", height: hauteur, overflow: "hidden", background: "#2e241e" }}>
-            <img {...(p.vignette_url ? { src: p.vignette_url } : imgLeger(p.image_url))} alt={p.legende || ""} loading="lazy" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", display: "block", transform: sur ? "scale(1.04)" : "none", transition: "transform .5s ease" }} />
+            {/* image en fond (background-size: cover) : remplit toujours la case, quel que soit le navigateur (Safari laissait une bande en haut) */}
+            <span aria-hidden style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, display: "block", backgroundImage: `url("${p.vignette_url || imgLeger(p.image_url).src || ""}")`, backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", transform: sur ? "scale(1.04)" : "none", transition: "transform .5s ease" }} />
             {p.legende && (
                 <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, padding: "56px 16px 16px", background: "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%)", color: "#f6f0e6", fontFamily: sans, fontWeight: 600, fontSize: 15, textAlign: "center" }}>{p.legende}{sous && <span style={{ display: "block", fontWeight: 400, fontSize: 12, opacity: 0.75, marginTop: 2 }}>{sous}</span>}</div>
             )}
