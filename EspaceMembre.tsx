@@ -6,6 +6,7 @@ import { demoClient } from "./AcsDemo.tsx"
 import { COTE, pt } from "./CarteBretagne.tsx"
 import { GALERIE, type Photo } from "./GalerieAccueil.tsx"
 import Collection from "./Collection.tsx"
+import { NavSections, type Rubrique } from "./NavSections.tsx"
 import { TachesBenevoles } from "./PlanningSalon.tsx"
 
 // En mode démo (aperçu dans l’éditeur), toutes les fonctions utilisent un faux client en mémoire
@@ -169,8 +170,10 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
     }, [])
     const client = sb()!
     const [onglet, setO] = React.useState<O>(lireHash())
+    // téléphone : sans rubrique demandée dans l'adresse, on affiche d'abord la liste des rubriques
+    const [ouvert, setOuvert] = React.useState(() => typeof window !== "undefined" && !!window.location.hash)
     const admin = moi.role === "admin"
-    React.useEffect(() => { const f = () => setO(lireHash()); window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f) }, [])
+    React.useEffect(() => { const f = () => { setO(lireHash()); setOuvert(true) }; window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f) }, [])
     const setOnglet = (o: O) => { setO(o); try { history.replaceState(null, "", o === "accueil" ? location.pathname : "#" + o) } catch (e) {} }
     const [aRepondre, setARepondre] = React.useState(0)
     React.useEffect(() => { compterSondages().then(setARepondre) }, [onglet])
@@ -181,7 +184,14 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
         client.from("discussion").select("id", { count: "exact", head: true }).gt("cree_le", vu).neq("email", moi.email.toLowerCase())
             .then(({ count, error }: any) => setNonLus(error ? 0 : count || 0))
     }, [onglet])
-    const tabs: [O, string][] = [["accueil", "Vue d’ensemble"], ["profil", "Profil"], ["collection", "Collection"], ["sondages", aRepondre ? `Sondages (${aRepondre})` : "Sondages"], ["discussion", nonLus ? `Discussion (${nonLus})` : "Discussion"], ["annuaire", "Annuaire"]]
+    const rubriques: Rubrique[] = [
+        { k: "accueil", titre: "Vue d’ensemble", desc: "Adhésion, prochains rendez-vous", icone: "accueil" },
+        { k: "profil", titre: "Mon profil", desc: "Coordonnées, préférences, historique", icone: "profil" },
+        { k: "collection", titre: "Ma collection", desc: "Mes plantes, échanges et graines", icone: "plante" },
+        { k: "sondages", titre: "Sondages", desc: "Donner son avis à l’association", icone: "sondage", badge: aRepondre || undefined },
+        { k: "discussion", titre: "Discussion", desc: "Échanger entre adhérents", icone: "discussion", badge: nonLus || undefined },
+        { k: "annuaire", titre: "Annuaire", desc: "Trouver un adhérent près de chez soi", icone: "annuaire" },
+    ]
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -194,17 +204,14 @@ function Tableau({ moi, lienSemestriels }: { moi: Adherent; lienSemestriels: str
                     <button style={btn(false)} onClick={() => client.auth.signOut()}>Se déconnecter</button>
                 </div>
             </div>
-            {/* téléphone : grille de 2 colonnes, tous les onglets visibles sans glisser */}
-            <style>{`@media (max-width:640px){.acs-onglets{display:grid!important;grid-template-columns:1fr 1fr;gap:6px!important;border-bottom:none!important;overflow:visible!important}.acs-onglets>button{white-space:normal!important;text-align:left;padding:10px 12px!important;border:1px solid ${C.line}!important;border-left:3px solid transparent!important;font-size:14px!important}.acs-onglets>button[aria-selected=true]{border-left-color:${C.accent}!important;background:rgba(246,240,230,.06)!important}}`}</style>
-            <div className="acs-onglets" role="tablist" style={{ display: "flex", gap: 0, borderBottom: `1px solid ${C.line}`, overflowX: "auto" }}>
-                {tabs.map(([k, t]) => <button key={k} role="tab" aria-selected={onglet === k} onClick={() => setOnglet(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 16px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", }}>{t}</button>)}
-            </div>
-            {onglet === "accueil" && <VueEnsemble moi={moi} aller={setOnglet} />}
+            <NavSections rubriques={rubriques} actif={ouvert ? onglet : null} choisir={(k) => { if (k) { setOnglet(k as O); setOuvert(true); window.scrollTo({ top: 0, behavior: "smooth" }) } else { setOuvert(false); setOnglet("accueil") } }} etroit={false}>
+            {onglet === "accueil" && <VueEnsemble moi={moi} aller={(o: O) => { setOnglet(o); setOuvert(true) }} />}
             {onglet === "profil" && <><Profil moi={moi} /><Historique moi={moi} /></>}
             {onglet === "sondages" && <Sondages moi={moi} />}
             {onglet === "discussion" && <Discussion moi={moi} />}
             {onglet === "annuaire" && <Annuaire />}
             {onglet === "collection" && <Collection client={sb()} email={moi.email} auteur={[moi.prenom, moi.nom ? moi.nom.charAt(0).toUpperCase() + "." : ""].filter(Boolean).join(" ") || moi.email.split("@")[0]} />}
+            </NavSections>
         </div>
     )
 }

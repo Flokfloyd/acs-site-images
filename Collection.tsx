@@ -343,12 +343,12 @@ export default function Collection({ client, email, auteur }: { client: any; ema
                     {plantes.length > 0 && <span style={{ fontSize: 13, color: C.mute }}>{[`${plantes.length - nSemis} plante${plantes.length - nSemis > 1 ? "s" : ""}`, nSemis ? `${nSemis} semis` : "", nEch ? `${nEch} au troc` : ""].filter(Boolean).join(" · ")}</span>}
                 </div>
                 <p style={{ margin: "6px 0 0", color: C.mute, fontSize: 14 }}>Visible de vous seul. {etroit ? "Touchez" : "Cliquez sur"} une plante pour ouvrir sa fiche. « À échanger » et « Graines à donner » la proposent aux autres adhérents dans l’onglet Troc.</p>
-                <div style={{ display: "flex", flexWrap: etroit ? "wrap" : "nowrap", alignItems: "flex-end", gap: etroit ? 8 : 12, borderBottom: etroit ? "none" : `1px solid ${C.line}`, marginTop: 16 }}>
-                <div role="tablist" style={{ display: etroit ? "grid" : "flex", gridTemplateColumns: "1fr 1fr", gap: 0, flex: etroit ? "1 1 100%" : "1 1 auto", minWidth: 0, overflowX: etroit ? undefined : "auto" }}>
-                    {onglets.map(([k, t], i) => <button key={k} role="tab" aria-selected={vue === k} onClick={() => { setVue(k); setEdit(null); setImp(null); setPdf(false); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: etroit && vue === k ? C.panel2 : "transparent", color: vue === k ? C.txt : C.mute, border: etroit ? `1px solid ${C.line}` : "none", borderBottom: `2px solid ${vue === k ? C.accent : etroit ? C.line : "transparent"}`, borderRadius: 0, padding: "10px 12px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", marginRight: etroit ? -1 : 0, marginBottom: etroit ? -1 : 0, gridColumn: etroit && i === onglets.length - 1 && (onglets.length + (plantes.length > 0 ? 1 : 0)) % 2 ? "1 / -1" : undefined }}>{t}</button>)}
-                    {etroit && plantes.length > 0 && <div style={{ marginBottom: -1 }}>{menuExport}</div>}
-                </div>
-                {plantes.length > 0 && !etroit && <div style={{ flex: "0 0 auto", paddingBottom: 6 }}>{menuExport}</div>}
+                {/* volets : même présentation en onglets-pastilles que le reste de l'espace membre */}
+                <div role="tablist" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginTop: 16 }}>
+                    <>
+                        {onglets.map(([k, t]) => <button key={k} role="tab" aria-selected={vue === k} onClick={() => { setVue(k); setEdit(null); setImp(null); setPdf(false); setTri({ k: k === "rusticite" ? "t_min" : k === "semis" ? "semis" : "espece", sens: 1 }) }} style={{ background: vue === k ? C.accent : "transparent", color: vue === k ? C.accentDark : C.txt, border: `1px solid ${vue === k ? C.accent : C.line}`, borderRadius: 0, padding: "8px 14px", font: "inherit", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>)}
+                    </>
+                    {plantes.length > 0 && <div role="presentation" style={{ marginLeft: "auto" }}>{menuExport}</div>}
                 </div>
                 {outils && plantes.length > 0 && <>
                     {(plantes.length >= 8 || q || type) && <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 14, alignItems: "center" }}>

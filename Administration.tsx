@@ -11,7 +11,8 @@ import {
 import { GALERIE } from "./GalerieAccueil.tsx"
 import { ZONES_SALON, ouvrirFormulairePapier } from "./InscriptionSalon.tsx"
 import GuideAdmin from "./GuideAdmin.tsx"
-import ComptaAdmin from "./ComptaAdmin.tsx"
+import ComptaAdmin, { VUES_COMPTA, type Vue as VueCompta } from "./ComptaAdmin.tsx"
+import { NavSections, type Rubrique } from "./NavSections.tsx"
 import { TachesAdmin, RetroplanningAdmin, AlertesRetroplanning } from "./PlanningSalon.tsx"
 import type { Champ, Question } from "./EspaceMembre.tsx"
 const { Msg, Aide, Editeur, ChampForm, ImportAdherents, ResultatsSondage } = UI
@@ -37,6 +38,17 @@ const lireHash = (): O => {
     const h = window.location.hash.slice(1) as O
     return ONGLETS.some(([k]) => k === h) ? h : "agenda"
 }
+// rubriques de l'administration (grandes tuiles) et leurs sous-rubriques ; « salon:… » ouvre un volet du Salon
+const RUBRIQUES: Rubrique[] = [
+    { k: "evenements", titre: "Agenda et événements", desc: "Dates, inscriptions, billets, sondages", icone: "agenda", sous: [["agenda", "Agenda"], ["billets", "Contrôle des billets"], ["sondages", "Sondages"]] },
+    { k: "membres", titre: "Adhérents", desc: "Fichier, adhésions et paiements, accès", icone: "adherents", sous: [["adherents:fichier", "Fichier des adhérents"], ["paiements", "Adhésions et paiements"], ["adherents:acces", "Accès et codes"]] },
+    { k: "compta", titre: "Comptabilité", desc: "Tableau de bord, journal, états, budget", icone: "compta", sous: VUES_COMPTA.map(([k, t]) => ["compta:" + k, t] as [string, string]) },
+    { k: "salon", titre: "Salon des plantes", desc: "Exposants, producteurs, bénévoles, rétroplanning", icone: "salon", sous: [["salon:exposants", "Exposants et réglages"], ["salon:fiches", "Fiches producteurs"], ["salon:planning", "Tâches des bénévoles"], ["salon:retro", "Rétroplanning"]] },
+    { k: "communication", titre: "Communication", desc: "E-mails, galerie photos, semestriels", icone: "communication", sous: [["campagnes", "Campagnes e-mail"], ["galerie", "Galerie"], ["semestriels", "Semestriels"]] },
+    { k: "site", titre: "Site et boutique", desc: "Articles et livres de Cultiver, boutique", icone: "site", sous: [["cultiver:articles", "Articles Cultiver"], ["cultiver:livres", "Bibliothèque"], ["boutique", "Boutique"]] },
+    { k: "guide", titre: "Guide et rappels", desc: "Mode d’emploi, rappels de l’année", icone: "guide", sous: [["guide", "Guide"]] },
+]
+const rubriqueDe = (o: string) => RUBRIQUES.find((r) => r.sous!.some(([k]) => k.split(":")[0] === o))!
 const CODE_BILLET = /ACS-[A-Z0-9]{4}-[A-Z0-9]{4}/i
 
 /**
@@ -51,6 +63,7 @@ export default function Administration(props: { pageMembre: string }) {
     const [campagneOuverte, setCampagneOuverte] = React.useState<string | null>(null)
     const [sousSalon, setSousSalon] = React.useState<"exposants" | "planning" | "retro" | "fiches">("exposants")
     const [ref, etroit] = useEtroit(760)
+    const [ouvert, setOuvert] = React.useState(() => typeof window !== "undefined" && (!!window.location.hash || !!new URLSearchParams(window.location.search).get("billet")))
 
     React.useEffect(() => {
         if (!client) return
@@ -66,7 +79,15 @@ export default function Administration(props: { pageMembre: string }) {
         const { data } = client.auth.onAuthStateChange((_e: any, s: any) => { if (!s) setEtat("deconnecte") })
         return () => { window.removeEventListener("hashchange", f); data.subscription.unsubscribe() }
     }, [])
-    const aller = (o: O) => { setO(o); try { history.replaceState(null, "", "#" + o) } catch (e) {} ; window.scrollTo({ top: 0, behavior: "smooth" }) }
+    const aller = (o: O) => { setO(o); setOuvert(true); try { history.replaceState(null, "", "#" + o) } catch (e) {} ; window.scrollTo({ top: 0, behavior: "smooth" }) }
+    const [sousCultiver, setSousCultiver] = React.useState<"articles" | "livres">("articles")
+    const [sousAdh, setSousAdh] = React.useState<"fichier" | "acces">("fichier")
+    const [sousCompta, setSousCompta] = React.useState<VueCompta>("bord")
+    const allerSous = (k: string) => { const [o, v] = k.split(":"); if (v && o === "salon") setSousSalon(v as any); if (v && o === "cultiver") setSousCultiver(v as any); if (v && o === "adherents") setSousAdh(v as any); if (v && o === "compta") setSousCompta(v as any); aller(o as O) }
+    const choisirRubrique = (k: string | null) => {
+        if (!k) { setOuvert(false); try { history.replaceState(null, "", location.pathname) } catch (e) {} ; return }
+        allerSous(RUBRIQUES.find((r) => r.k === k)!.sous![0][0])
+    }
     const ouvrirCampagne = (id: string) => { setCampagneOuverte(id); aller("campagnes") }
 
     const wrap = (c: React.ReactNode) => <div className="acs-large" style={{ width: "100%", maxWidth: "100%", minWidth: 0, contain: "inline-size", overflowWrap: "anywhere", overflowX: "clip", color: C.txt, ...font }}><style>{".acs-large input,.acs-large select,.acs-large textarea{max-width:100%;min-width:0;box-sizing:border-box}.acs-large img{max-width:100%}.acs-large *{scrollbar-width:thin;scrollbar-color:rgba(246,240,230,.32) transparent}.acs-large ::-webkit-scrollbar{width:8px;height:8px}.acs-large ::-webkit-scrollbar-track{background:transparent}.acs-large ::-webkit-scrollbar-thumb{background:rgba(246,240,230,.28);border-radius:0}.acs-large ::-webkit-scrollbar-thumb:hover{background:rgba(246,240,230,.5)}.acs-large ::-webkit-scrollbar-corner{background:transparent}.acs-large select option{background:#15100d;color:#f6f0e6}"}</style>{c}</div>
@@ -79,15 +100,8 @@ export default function Administration(props: { pageMembre: string }) {
         <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <RappelsEnCours />
             <AlertesRetroplanning client={client} ouvrir={() => { setSousSalon("retro"); aller("salon") }} />
-            {etroit ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-                    {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ ...small(), padding: "10px 8px", textAlign: "center", fontSize: 14, fontWeight: 600, background: onglet === k ? C.accent : "transparent", color: onglet === k ? C.accentDark : C.txt, borderColor: onglet === k ? C.accent : C.line }}>{t}</button>)}
-                </div>
-            ) : (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 0, borderBottom: `1px solid ${C.line}` }}>
-                    {ONGLETS.map(([k, t]) => <button key={k} onClick={() => aller(k)} style={{ background: "transparent", color: onglet === k ? C.txt : C.mute, border: "none", borderBottom: `2px solid ${onglet === k ? C.accent : "transparent"}`, borderRadius: 0, padding: "12px 14px", font: "inherit", fontSize: 15, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>{t}</button>)}
-                </div>
-            )}
+            <NavSections rubriques={RUBRIQUES} actif={ouvert ? rubriqueDe(onglet).k : null} choisir={choisirRubrique} etroit={etroit}
+                sousActif={onglet === "salon" ? "salon:" + sousSalon : onglet === "cultiver" ? "cultiver:" + sousCultiver : onglet === "adherents" ? "adherents:" + sousAdh : onglet === "compta" ? "compta:" + sousCompta : onglet} choisirSous={allerSous}>
             {onglet === "agenda" && <Agenda moi={email} ouvrirCampagne={ouvrirCampagne} etroit={etroit} />}
             {onglet === "billets" && <ControleBillets />}
             {onglet === "paiements" && <><Aide>Les paiements encaissés sur AssoConnect (en ligne ou au salon avec l’appli) s’ajoutent ici en important un export AssoConnect, par exemple une fois par mois. Notez à la main les adhésions réglées par chèque ou en espèces hors AssoConnect.</Aide>
@@ -95,14 +109,11 @@ export default function Administration(props: { pageMembre: string }) {
                 <Editeur table="campagnes_adhesion" ordre="annee" desc titre="Campagnes d’adhésion (page Adhésion)" champs={CHAMPS_CAMPAGNE_ADH} nouveau={(l) => { const a = Math.max(new Date().getFullYear(), ...l.map((x: any) => x.annee)) + 1; return { annee: a, ouverture: `${a - 1}-12-01`, tarif: l[0]?.tarif ?? 20 } }} resume={(r) => `${r.annee} · affichée dès le ${dateFr(r.ouverture)} · ${r.tarif} €${r.lien ? "" : " · lien de paiement à ajouter"}`} />
                 <Editeur table="adhesions" ordre="cree_le" desc titre="Adhésions" champs={CHAMPS_ADHESION} nouveau={() => { const a = new Date().getFullYear(); return { annee: a, montant: 20, formule: "Année complète", debut: `${a}-01-01`, fin: `${a}-12-31`, source: "Chèque" } }} resume={(r) => `${r.annee} · ${r.email} · ${euros(r.montant)} · ${r.formule}${r.source ? " · " + r.source : ""}`} />
                 <Editeur table="inscriptions" ordre="cree_le" desc titre="Inscriptions et achats" champs={CHAMPS_INSCR} nouveau={() => ({ montant: 0, statut: "valide", nb_personnes: 1 })} resume={(r) => `${dateFr(r.cree_le)} · ${r.formulaire} · ${r.email}${r.nb_personnes > 1 ? " · " + r.nb_personnes + " pers." : ""} · ${euros(r.montant)}${r.statut !== "valide" ? " · " + STATUTS[r.statut] : ""}`} /></>}
-            {onglet === "adherents" && <AdherentsAdmin moi={email} />}
-            {onglet === "compta" && <ComptaAdmin moi={email} />}
-            {onglet === "salon" && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {([["exposants", "Exposants et réglages"], ["fiches", "Fiches producteurs"], ["planning", "Tâches des bénévoles"], ["retro", "Rétroplanning"]] as const).map(([k, t]) => <button key={k} onClick={() => setSousSalon(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sousSalon === k ? C.accent : "transparent", color: sousSalon === k ? C.accentDark : C.txt, borderColor: sousSalon === k ? C.accent : C.line }}>{t}</button>)}
-            </div>}
+            {onglet === "adherents" && <AdherentsAdmin moi={email} sous={sousAdh} />}
+            {onglet === "compta" && <ComptaAdmin moi={email} vue={sousCompta} setVue={setSousCompta} />}
             {onglet === "salon" && sousSalon === "fiches" && <><Aide>Chaque fiche s’ouvre quand un visiteur clique sur le nom de l’exposant dans la liste des exposants de la page Salon. Écrivez le nom exactement comme dans la liste (le nom de la demande d’emplacement). Photo : un stand ou des plantes, sans personne reconnaissable sauf accord.</Aide>
                 <Editeur table="producteurs" ordre="nom" titre="Fiches producteurs" champs={CHAMPS_PRODUCTEUR} nouveau={() => ({ visible: true })} resume={(r) => `${r.nom}${r.specialites ? " · " + r.specialites : ""}${r.visible ? "" : " (masquée)"}`} /></>}
-            {onglet === "cultiver" && <CultiverAdmin />}
+            {onglet === "cultiver" && <CultiverAdmin sous={sousCultiver} />}
             {onglet === "salon" && sousSalon === "planning" && <TachesAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "retro" && <RetroplanningAdmin client={client} etroit={etroit} />}
             {onglet === "salon" && sousSalon === "exposants" && <><Aide>Les exposants déposent leur demande sur la page Salon (ou sur le formulaire papier). Acceptez, attribuez la zone, la surface (m²), les tables et le n° de stand, puis fixez la contribution : elle se calcule d’après les tarifs au m², et reste modifiable. Rien n’est envoyé aux exposants automatiquement.</Aide>
@@ -115,6 +126,7 @@ export default function Administration(props: { pageMembre: string }) {
             {onglet === "guide" && <><GuideAdmin /><Editeur table="rappels_admin" ordre="a_partir_du" titre="Rappels de l’administration" champs={CHAMPS_RAPPEL} nouveau={() => ({ chaque_annee: false, fait: false })} resume={(r) => `${r.titre} · affiché dès le ${dateFr(r.a_partir_du)}${r.fait ? " · fait" : ""}`} /></>}
             {onglet === "semestriels" && <><AccesPage page="semestriels" nom="Semestriels" reservee="Adhérents (visiteurs : 5 pages d’aperçu)" /><Aide>Pour un nouveau numéro : choisissez le PDF final, ajoutez la couverture (image) et cochez « Publier ». Il apparaît aussitôt dans la liseuse du site.</Aide>
                 <Editeur table="semestriels" ordre="numero" desc titre="Semestriels" champs={CHAMPS_SEM} nouveau={(l) => ({ numero: Math.max(0, ...l.map((r) => r.numero || 0)) + 1 })} resume={(r) => `N°${r.numero} · ${r.date_label}${r.publie ? "" : " (non publié)"}`} /></>}
+            </NavSections>
             <Sauvegarde />
         </div>
     )
@@ -163,11 +175,8 @@ const CHAMPS_ARTICLE: Champ[] = [
 ]
 
 // Onglet « Cultiver » : articles (sur le modèle des guides) et bibliothèque
-function CultiverAdmin() {
-    const [sous, setSous] = React.useState<"articles" | "livres">("articles")
-    const b = (k: typeof sous, t: string) => <button key={k} onClick={() => setSous(k)} style={{ ...small(), padding: "8px 14px", fontWeight: 600, background: sous === k ? C.accent : "transparent", color: sous === k ? C.accentDark : C.txt, borderColor: sous === k ? C.accent : C.line }}>{t}</button>
+function CultiverAdmin({ sous }: { sous: "articles" | "livres" }) {
     return <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{b("articles", "Articles")}{b("livres", "Bibliothèque")}</div>
         {sous === "articles" ? <>
             <Aide>Les articles s’ajoutent sous les guides de la page Cultiver, avec la même présentation, et s’ouvrent sur une page à eux. Mise en forme du texte : une ligne vide entre les paragraphes, « ## » en début de ligne pour un intertitre, « - » pour une puce, **mots** pour du gras, et [photo 2] ou [photo 3] seuls sur une ligne pour placer les photos supplémentaires. Cochez « Publié » quand l’article est prêt.</Aide>
             <Editeur table="articles" ordre="ordre" titre="Articles" champs={CHAMPS_ARTICLE} nouveau={(l) => ({ ordre: (l.length + 1) * 10, publie: false })} resume={(r) => `${r.titre}${r.publie ? "" : " (brouillon)"}`} />
@@ -573,12 +582,15 @@ function Sauvegarde() {
 }
 
 // ---------- Adhérents ----------
-function AdherentsAdmin({ moi }: { moi: string }) {
+function AdherentsAdmin({ moi, sous }: { moi: string; sous: "fichier" | "acces" }) {
     const annee = new Date().getFullYear()
     const [cle, setCle] = React.useState(0)
-    return <>
+    if (sous === "acces") return <>
+        <Aide>Les administrateurs ont accès à toute cette administration. Chaque adhérent se connecte à l’espace membre avec un code personnel reçu par e-mail.</Aide>
         <Administrateurs moi={moi} changer={() => setCle((x) => x + 1)} />
         <CodesConnexion moi={moi} />
+    </>
+    return <>
         <Aide>Seules les adresses de cette liste peuvent se connecter. Pour le bureau, remplissez « Fonction au bureau » : la personne apparaît alors dans les contacts du bureau.</Aide>
         <ImportAdherents />
         <Editeur key={cle} table="adherents" ordre="nom" titre="Adhérents" champs={CHAMPS_ADH} avant={localiserAdherent} resume={(r) => `${[r.prenom, r.nom].filter(Boolean).join(" ") || "—"} · ${r.email}${r.fonction_bureau ? " · " + r.fonction_bureau : ""}${r.role === "admin" ? " · admin" : ""}${r.cotisation_annee && r.cotisation_annee < annee ? " · cotisation " + r.cotisation_annee : ""}${r.actif ? "" : " (désactivé)"}`} />
