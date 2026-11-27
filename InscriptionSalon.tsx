@@ -5,7 +5,7 @@ import { addPropertyControls, ControlType } from "framer"
 import { C, font, serif, sb } from "./AcsBase.tsx"
 
 export const ZONES_SALON = ["Petite salle", "Entre les salles", "Grande salle", "Terrain de sport"] as const
-const SURFACES = [2, 4, 6, 8, 10, 12]   // m²
+const SURFACES = [4, 6, 8, 10, 12]   // m² ; une case libre permet d’en demander plus
 const TABLES = [0, 1, 2, 3, 4]          // tables de 0,80 × 1,80 m, selon le stock
 
 const champ: React.CSSProperties = { width: "100%", boxSizing: "border-box", colorScheme: "dark", background: "#0f0c0a", color: C.txt, border: `1px solid ${C.line}`, borderRadius: 0, padding: "11px 13px", font: "inherit", fontSize: 15, outline: "none" }
@@ -60,6 +60,7 @@ ${ligne("Date et signature", "")}</div></body></html>`)
 export default function InscriptionSalon(props: { titre?: string }) {
     const [reg, setReg] = React.useState<Reglages | null | undefined>(undefined)
     const [d, setD] = React.useState<Demande>(vide)
+    const [autre, setAutre] = React.useState("")   // surface libre (case « Autre »)
     const [piege, setPiege] = React.useState("")
     const [accord, setAccord] = React.useState(false)
     const [etat, setEtat] = React.useState<"" | "envoi" | "ok">("")
@@ -176,9 +177,17 @@ export default function InscriptionSalon(props: { titre?: string }) {
                     <div>
                         <span style={etiq}>Surface du stand</span>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {SURFACES.map((m) => <button key={m} type="button" onClick={() => set("metres", m)} aria-pressed={d.metres === m} style={{ ...bouton(d.metres === m), padding: "10px 14px", fontSize: 14, minWidth: 64 }}>{m} m²</button>)}
+                            {SURFACES.map((m) => <button key={m} type="button" onClick={() => { setAutre(""); set("metres", m) }} aria-pressed={!autre && d.metres === m} style={{ ...bouton(!autre && d.metres === m), padding: "10px 14px", fontSize: 14, minWidth: 64 }}>{m} m²</button>)}
+                            <label style={{ ...bouton(!!autre), display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", fontSize: 14, cursor: "text" }}>
+                                <span>Autre :</span>
+                                <input type="number" inputMode="numeric" min={4} max={40} step={1} placeholder="16"
+                                    value={autre}
+                                    onChange={(e) => { const v = e.target.value; setAutre(v); const n = Math.round(Number(v)); set("metres", v === "" || !(n > 0) ? 4 : Math.min(40, n)) }}
+                                    style={{ width: 56, padding: "6px 6px", fontSize: 14, background: "transparent", color: "inherit", border: "1px solid currentColor", borderRadius: 0, textAlign: "center" }} aria-label="Autre surface en m²" />
+                                <span>m²</span>
+                            </label>
                         </div>
-                        <p style={aide}>Au-delà de 12 m², précisez-le en remarque.</p>
+                        <p style={aide}>Pour un stand plus grand, indiquez la surface dans la case « Autre » (jusqu’à 40 m²).</p>
                     </div>
 
                     <div>
