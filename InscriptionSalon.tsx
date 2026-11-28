@@ -61,6 +61,7 @@ export default function InscriptionSalon(props: { titre?: string }) {
     const [reg, setReg] = React.useState<Reglages | null | undefined>(undefined)
     const [d, setD] = React.useState<Demande>(vide)
     const [autre, setAutre] = React.useState("")   // surface libre (case « Autre »)
+    const [autreT, setAutreT] = React.useState("") // nombre de tables libre (case « Autre »)
     const [piege, setPiege] = React.useState("")
     const [accord, setAccord] = React.useState(false)
     const [etat, setEtat] = React.useState<"" | "envoi" | "ok">("")
@@ -193,9 +194,17 @@ export default function InscriptionSalon(props: { titre?: string }) {
                     <div>
                         <span style={etiq}>Tables souhaitées</span>
                         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            {TABLES.map((m) => <button key={m} type="button" onClick={() => set("tables", m)} aria-pressed={d.tables === m} style={{ ...bouton(d.tables === m), padding: "10px 14px", fontSize: 14, minWidth: 64 }}>{m === 0 ? "Aucune" : m}</button>)}
+                            {TABLES.map((m) => <button key={m} type="button" onClick={() => { setAutreT(""); set("tables", m) }} aria-pressed={!autreT && d.tables === m} style={{ ...bouton(!autreT && d.tables === m), padding: "10px 14px", fontSize: 14, minWidth: 64 }}>{m === 0 ? "Aucune" : m}</button>)}
+                            <label style={{ ...bouton(!!autreT), display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", fontSize: 14, cursor: "text" }}>
+                                <span>Autre :</span>
+                                <input type="number" inputMode="numeric" min={1} max={20} step={1} placeholder="6"
+                                    value={autreT}
+                                    onChange={(e) => { const v = e.target.value; setAutreT(v); const n = Math.round(Number(v)); set("tables", v === "" || !(n >= 0) ? 1 : Math.min(20, n)) }}
+                                    style={{ width: 56, padding: "6px 6px", fontSize: 14, background: "transparent", color: "inherit", border: "1px solid currentColor", borderRadius: 0, textAlign: "center" }} aria-label="Autre nombre de tables" />
+                                <span>tables</span>
+                            </label>
                         </div>
-                        <p style={aide}>Tables de 0,80 × 1,80 m prêtées par l’association, selon le stock disponible.</p>
+                        <p style={aide}>Tables de 0,80 × 1,80 m prêtées par l’association, selon le stock disponible. Pour plus de 4 tables, indiquez le nombre dans la case « Autre » (jusqu’à 20).</p>
                     </div>
 
                     <div>
