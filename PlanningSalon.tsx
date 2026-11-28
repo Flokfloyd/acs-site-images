@@ -230,9 +230,10 @@ function EnteteFiche({ c, postes, ici }: { c: Creneau; postes: Poste[]; ici: Ins
         <h3 style={{ ...titre2, paddingRight: 30 }}>{p?.nom ?? "Tâche"}</h3>
         {(p?.description || c.note) && <p style={{ ...discret, fontSize: 14, marginBottom: 8 }}>{[p?.description, c.note].filter(Boolean).join(" · ")}</p>}
         <p style={{ margin: "10px 0 6px", fontSize: 15 }}><b>Besoin : {c.places} personne{c.places > 1 ? "s" : ""}</b> <span style={{ color: manque ? ORANGE : C.accent }}>· {manque ? `il en manque ${manque}` : "complet"}</span></p>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
-            {ici.map((i) => <span key={i.id} style={{ fontSize: 14, border: `1px solid ${C.line}`, padding: "4px 10px" }}>{i.nom}</span>)}
-            {Array.from({ length: manque }).map((_, k) => <span key={k} style={{ fontSize: 14, border: `1px dashed ${C.line}`, padding: "4px 10px", color: C.mute }}>place libre</span>)}
+        {/* deux colonnes de même largeur ; un nom trop long se termine par « … » (nom complet au survol) */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 6, marginBottom: 4 }}>
+            {ici.map((i) => <span key={i.id} title={i.nom} style={{ fontSize: 14, border: `1px solid ${C.line}`, padding: "6px 10px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{i.nom}</span>)}
+            {Array.from({ length: manque }).map((_, k) => <span key={k} style={{ fontSize: 14, border: `1px dashed ${C.line}`, padding: "6px 10px", color: C.mute, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>place libre</span>)}
         </div>
     </>
 }

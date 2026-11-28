@@ -255,7 +255,8 @@ export default function Semestriels(props: { hauteurMax: number }) {
                         return (
                             <div style={{ position: "absolute", top: 0, left: simple ? 0 : avant ? 0 : pw, width: pw, height: ph, transformStyle: "preserve-3d", transformOrigin: avant ? "100% 50%" : "0 50%", transform: `rotateY(${flip.a}deg)`, transition: "transform 700ms cubic-bezier(.45,.05,.3,1)", zIndex: 3 }}>
                                 <div style={face(false)}><Page it={it} p={recto} style={pageStyle} /><div style={{ ...reflet(avant ? "g" : "d", 1 + ombreAnim * 2) }} /></div>
-                                <div style={face(true)}>{simple ? <div style={{ ...pageStyle, background: "#efe8dc" }} /> : <Page it={it} p={verso} style={pageStyle} />}<div style={reflet(avant ? "d" : "g", 1 + ombreAnim * 2)} /></div>
+                                {/* sur téléphone (une page à la fois), le dos de la feuille n'est pas dessiné : plus de bande grise à gauche pendant qu'elle tourne */}
+                                {!simple && <div style={face(true)}><Page it={it} p={verso} style={pageStyle} /><div style={reflet(avant ? "d" : "g", 1 + ombreAnim * 2)} /></div>}
                             </div>
                         )
                     })()}
