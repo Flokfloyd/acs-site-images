@@ -1066,8 +1066,10 @@ export function GalerieMembres() {
     return (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.mute, marginRight: 4 }}>Affichage</span>
+                {/* téléphone : sans le mot « Affichage », les trois boutons occupent toute la ligne (chacun selon son texte) */}
+                <style>{`@media (max-width: 600px){.acs-gal-vues{flex:1 1 100%;flex-wrap:nowrap!important}.acs-gal-vues button{flex:1 1 auto;padding-left:8px!important;padding-right:8px!important}.acs-gal-lib{display:none}}`}</style>
+                <div className="acs-gal-vues" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <span className="acs-gal-lib" style={{ fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: C.mute, marginRight: 4 }}>Affichage</span>
                     <button style={puce(vue === "album")} onClick={() => { setVue("album"); setAlbumOuvert(null) }}>Par album</button>
                     <button style={puce(vue === "section")} onClick={() => { setVue("section"); setAlbumOuvert(null) }}>Par section</button>
                     <button style={puce(vue === "tout")} onClick={() => { setVue("tout"); setAlbumOuvert(null) }}>Tout</button>
